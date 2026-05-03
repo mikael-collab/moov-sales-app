@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MOOV Sales">
+<title>MOOV Sales</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;background:#f5f5f5;position:relative;overflow:hidden;}
+
+/* Header */
+.hdr{flex-shrink:0;padding:12px 14px 10px;color:#fff;transition:background .3s;}
+.hdr-row{display:flex;align-items:center;justify-content:space-between;}
+.hdr-mid{text-align:center;flex:1;}
+.hdr-mid h1{font-size:16px;font-weight:600;margin:0;}
+.hdr-mid p{font-size:11px;opacity:.75;}
+.hdr-btn{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;width:36px;height:36px;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.hdr-btn.hidden{visibility:hidden;}
+
+/* Content scroll */
+#content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* Bottom nav */
+.bnav{flex-shrink:0;display:flex;background:#fff;border-top:1px solid #e0e0e0;}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 2px 10px;border:none;background:transparent;cursor:pointer;font-family:inherit;border-top:2.5px solid transparent;transition:all .2s;color:#aaa;}
+.bnav-btn.active{border-top-color:var(--tc);background:var(--tbg);color:var(--tc);}
+.bnav-btn .ico{font-size:18px;margin-bottom:2px;}
+.bnav-btn .lbl{font-size:9px;font-weight:500;white-space:nowrap;}
+
+/* Install banner */
+.ibanner{background:#1565c0;color:#fff;padding:9px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.ibanner span{font-size:11px;flex:1;line-height:1.4;}
+.ibanner button{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;}
+
+/* Search bar */
+.sbar{background:#fff;border-bottom:1px solid #ebebeb;padding:10px 12px;position:sticky;top:0;z-index:10;}
+.swrap{position:relative;}
+.sinput{width:100%;padding:10px 36px 10px 30px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:inherit;background:#f8f8f8;outline:none;transition:border-color .2s;direction:rtl;}
+.sinput:focus{border-color:var(--tc,#1a73e8);background:#fff;}
+.sico{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+.sclr{position:absolute;left:9px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;padding:0;line-height:1;}
+.smeta{display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:#aaa;}
+.sref{background:none;border:none;font-size:11px;font-family:inherit;cursor:pointer;}
+
+/* Cards */
+.card{margin:0 10px 8px;border-radius:12px;overflow:hidden;border:1.5px solid transparent;transition:border-color .2s,box-shadow .2s;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.card.exp{border-color:var(--tc);box-shadow:0 3px 12px rgba(0,0,0,.1);}
+.card-hdr{padding:12px 14px;cursor:pointer;user-select:none;}
+.r1{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap;}
+.r2{display:flex;gap:9px;font-size:12px;color:#666;flex-wrap:wrap;align-items:center;}
+.r3{margin-top:4px;display:flex;justify-content:space-between;align-items:center;}
+.card-body{border-top:1.5px solid rgba(0,0,0,.05);padding:12px 14px 14px;}
+
+/* Typography */
+.cust-name{font-weight:600;font-size:15px;color:#222;flex-shrink:0;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.biz-name{font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.toggle-hint{font-size:11px;transition:color .2s;}
+
+/* ID badge + copy */
+.id-badge{font-size:12px;color:#555;background:#f0f0f0;border-radius:6px;padding:2px 8px;font-family:monospace;letter-spacing:1px;flex-shrink:0;}
+.copy-btn{border:1px solid #ddd;border-radius:6px;padding:2px 8px;font-size:11px;background:transparent;color:#666;cursor:pointer;transition:all .2s;font-family:inherit;flex-shrink:0;}
+.copy-btn.done{background:var(--tc);border-color:var(--tc);color:#fff;}
+
+/* Tags */
+.tag{font-size:11px;background:#f0f0f0;border-radius:5px;padding:1px 7px;color:#555;white-space:nowrap;}
+.tag.blue{background:#e3f0ff;color:#1a73e8;}
+.tag.pay{background:#f0f0f0;}
+
+/* Section title */
+.sec-title{font-size:11px;font-weight:600;color:#aaa;margin-bottom:8px;letter-spacing:.5px;}
+
+/* Grid */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.gcell{background:#fff;border-radius:8px;padding:8px 10px;border:.5px solid #ebebeb;}
+.gcell.wide{grid-column:span 2;}
+.glabel{font-size:10px;color:#aaa;margin-bottom:2px;}
+.gval{font-size:13px;font-weight:500;color:#222;word-break:break-all;}
+
+/* Data table */
+.dtable{background:#fff;border-radius:10px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:10px;}
+.dthead{padding:8px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;justify-content:space-between;align-items:center;}
+.dtrow{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-top:.5px solid #f0f0f0;}
+.dtlabel{font-size:12px;color:#666;}
+.dtval{font-size:13px;font-weight:500;color:#222;}
+.dtval.money{font-weight:700;}
+.dtval.hi{font-size:15px;font-weight:700;}
+.dtval.disc{color:#c62828;}
+
+/* Products */
+.prod-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:.5px solid #f0f0f0;}
+.prod-em{font-size:20px;margin-left:8px;}
+.prod-name{font-size:13px;font-weight:500;color:#222;}
+.prod-sub{font-size:10px;color:#aaa;}
+.prod-qty{font-size:15px;font-weight:700;}
+
+/* Number badge */
+.nbadge{display:inline-block;color:#fff;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;}
+
+/* Summary bar */
+.sumbar{margin:10px 10px 8px;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;color:#fff;}
+
+/* Form */
+.fwrap{padding:14px 14px 30px;overflow-y:auto;}
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0 14px;}
+.divider hr{flex:1;border:none;border-top:.5px solid #ddd;}
+.divider span{font-size:12px;font-weight:600;color:#aaa;white-space:nowrap;}
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:13px;font-weight:500;color:#555;margin-bottom:5px;}
+.field label small{font-size:11px;color:#bbb;font-weight:400;}
+.field input{display:block;width:100%;padding:11px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;font-family:inherit;background:#f8f8f8;outline:none;transition:border-color .2s;direction:rtl;-webkit-appearance:none;}
+.field input:focus{border-color:var(--tc);background:#fff;}
+.field input.num{direction:ltr;text-align:right;font-family:monospace;letter-spacing:1px;}
+.irow{display:flex;gap:8px;}
+.dash-btn{padding:11px 17px;border-radius:10px;border:1.5px solid var(--tc);background:transparent;color:var(--tc);font-size:22px;font-weight:700;line-height:1;cursor:pointer;flex-shrink:0;}
+.save-btn{width:100%;padding:14px;border-radius:10px;background:var(--tc);color:#fff;border:none;font-size:16px;font-weight:600;margin-top:10px;cursor:pointer;transition:background .2s;-webkit-appearance:none;}
+.save-btn:disabled{background:#ccc;cursor:wait;}
+
+/* Alerts */
+.alert{padding:12px 14px;border-radius:10px;font-weight:500;text-align:center;font-size:14px;margin-bottom:14px;}
+.alert.ok{background:#e6f4ea;color:#1e8e3e;}
+.alert.err{background:#fce8e6;color:#c62828;}
+
+/* Status screens */
+.status{padding:48px 16px;text-align:center;}
+.spinner{width:36px;height:36px;border:3px solid #f0f0f0;border-top-color:#1a73e8;border-radius:50%;margin:0 auto 14px;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Setup screen */
+.setup{padding:24px 16px;}
+.setup-step{background:#f8f8f8;border-radius:10px;padding:13px;font-size:13px;color:#444;line-height:2.1;margin-top:12px;border:.5px solid #e8e8e8;}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:3px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="install-banner" class="ibanner" style="display:none">
+    <span>📱 iPhone: לחץ <b>שתף</b> ← <b>הוסף למסך הבית</b> &nbsp;|&nbsp; Android: תפריט ← <b>הוסף למסך הבית</b></span>
+    <button onclick="this.parentElement.style.display='none'">×</button>
+  </div>
+
+  <div class="hdr" id="hdr">
+    <div class="hdr-row">
+      <button class="hdr-btn hidden" id="back-btn" onclick="goBack()">←</button>
+      <div class="hdr-mid">
+        <h1 id="hdr-title">לקוחות</h1>
+        <p>מיקאל קולמן | MOOV</p>
+      </div>
+      <button class="hdr-btn hidden" id="add-btn" onclick="openNewCustomer()">+</button>
+    </div>
+  </div>
+
+  <div id="content"></div>
+
+  <div class="bnav" id="bnav">
+    <button class="bnav-btn active" data-tab="customers" onclick="switchTab('customers')" style="--tc:#1a73e8;--tbg:#e8f0fe;color:#1a73e8">
+      <span class="ico">👥</span><span class="lbl">לקוחות</span>
+    </button>
+    <button class="bnav-btn" data-tab="invoices" onclick="switchTab('invoices')" style="--tc:#d67000;--tbg:#fff3e0">
+      <span class="ico">📄</span><span class="lbl">חשבוניות</span>
+    </button>
+    <button class="bnav-btn" data-tab="receipts" onclick="switchTab('receipts')" style="--tc:#1e8e3e;--tbg:#e6f4ea">
+      <span class="ico">🧾</span><span class="lbl">קבלות</span>
+    </button>
+    <button class="bnav-btn" data-tab="tax" onclick="switchTab('tax')" style="--tc:#7b1fa2;--tbg:#f3e5f5">
+      <span class="ico">📋</span><span class="lbl">חשמ"ק</span>
+    </button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  ⚙️  PASTE YOUR APPS SCRIPT URL HERE
+// ════════════════════════════════════════════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwL6vYxa7w8PEaD5r3Uc0FS-Amufx1uoYkFTc1dNrLdMl5MNREfHlfyg9yxWMMkZDqx/exec';
+// ════════════════════════════════════════════════
+
+const TABS = {
+  customers:{ label:'לקוחות',            color:'#1a73e8', bg:'#e8f0fe' },
+  invoices: { label:'חשבוניות',           color:'#d67000', bg:'#fff3e0' },
+  receipts: { label:'קבלות',              color:'#1e8e3e', bg:'#e6f4ea' },
+  tax:      { label:'חשבוניות מס קבלה',  color:'#7b1fa2', bg:'#f3e5f5' },
+};
+
+const CF = [
+  {k:'A',label:'שם לקוח',      mode:'text',  req:true},
+  {k:'B',label:'ת"ז / ח"פ',   mode:'num',   copy:true},
+  {k:'C',label:'שם העסק',       mode:'text'},
+  {k:'D',label:'טלפון',         mode:'tel'},
+  {k:'E',label:'כתובת מייל',    mode:'email'},
+  {k:'F',label:'רחוב ומספר',    mode:'text'},
+  {k:'G',label:'עיר',           mode:'text'},
+  {k:'H',label:'שם בעל החשבון', mode:'text',  bank:true},
+  {k:'I',label:'שם הבנק',       mode:'text',  bank:true},
+  {k:'J',label:'מספר הסניף',    mode:'num',   bank:true},
+  {k:'K',label:'מספר חשבון',    mode:'num',   bank:true},
+];
+
+const PRODS = [
+  {qk:'E', label:'Blueberry Mint 10',  heb:'אוכמניות',    nic:10, em:'🫐'},
+  {qk:'G', label:'Jalapeno Lime 14',   heb:'חלפיניו ליים', nic:14, em:'🌶'},
+  {qk:'I', label:'Jalapeno Lime 6',    heb:'חלפיניו ליים', nic:6,  em:'🌶'},
+  {qk:'K', label:'Peppermint 20',      heb:'מנטה',         nic:20, em:'🌿'},
+  {qk:'M', label:'Peppermint 10',      heb:'מנטה',         nic:10, em:'🌿'},
+  {qk:'O', label:'Peppermint 3',       heb:'מנטה',         nic:3,  em:'🌿'},
+  {qk:'Q', label:'Raspberry Soda 10',  heb:'פטל',          nic:10, em:'🍓'},
+  {qk:'S', label:'Watermelon 20',      heb:'אבטיח',        nic:20, em:'🍉'},
+  {qk:'U', label:'Watermelon 14',      heb:'אבטיח',        nic:14, em:'🍉'},
+  {qk:'W', label:'Banana 3',           heb:'בננה',         nic:3,  em:'🍌'},
+];
+
+const RF = [
+  {k:'A',label:'מספר חשבונית',                   icon:'🧾'},
+  {k:'B',label:'סוג תשלום',                       icon:'💳'},
+  {k:'C',label:'סכום התשלום',                     icon:'₪', money:true},
+  {k:'D',label:'תאריך תשלום / תאריך פרעון שיק',  icon:'📅'},
+  {k:'E',label:'מספר שיק',                        icon:'#'},
+  {k:'F',label:'צילום שיק',                       icon:'📷'},
+  {k:'G',label:'הערות',                           icon:'📝', wide:true},
+  {k:'H',label:'שם לקוח',                         icon:'👤'},
+  {k:'I',label:'ת"ז / ח"פ',                       icon:'🪪'},
+  {k:'J',label:'מספר קבלה',                       icon:'🔢'},
+];
+
+const INV_TAIL = [
+  {k:'AD',label:'תנאי תשלום'},
+  {k:'AE',label:'סה"כ כולל מע"מ', money:true, hi:true},
+  {k:'AF',label:'מספר חשבונית', num:true},
+  {k:'AG',label:'סוג תשלום'},
+  {k:'AH',label:'סכום התשלום', money:true},
+  {k:'AI',label:'תאריך תשלום / תאריך פרעון שיק'},
+  {k:'AJ',label:'מספר שיק'},
+  {k:'AK',label:'הערות', wide:true},
+];
+
+const TAX_TAIL = [
+  {k:'AD',label:'סה"כ כולל מע"מ', money:true, hi:true},
+  {k:'AE',label:'סוג תשלום'},
+  {k:'AF',label:'סכום התשלום', money:true},
+  {k:'AG',label:'תאריך תשלום / תאריך פרעון שיק'},
+  {k:'AH',label:'מספר שיק'},
+  {k:'AI',label:'צילום שיק'},
+  {k:'AJ',label:'הערות', wide:true},
+  {k:'AK',label:'מספר חשבונית מס / קבלה', num:true},
+];
+
+// ── State ──
+const S = {
+  tab:'customers', screen:'list',
+  customers:[], csState:'idle',
+  invoices:[],  isState:'idle',
+  receipts:[],  rsState:'idle',
+  tax:[],       tsState:'idle',
+  search:'', expId:null,
+  form:{}, saving:false, msg:null,
+  copied:null, copiedTimer:null,
+};
+
+const tc  = ()=> TABS[S.tab].color;
+const tbg = ()=> TABS[S.tab].bg;
+
+function ef(){ const o={}; CF.forEach(f=>o[f.k]=''); return o; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fmt(v){
+  const n=parseFloat((v||'').toString().replace(/[^0-9.]/g,''));
+  if(isNaN(n))return v;
+  return '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2});
+}
+function isBusy(e){
+  const m=(e?.message||e?.error||'').toLowerCase();
+  return m.includes('quota')||m.includes('rate')||m.includes('limit')||m.includes('429');
+}
+
+// ── API ──
+async function apiFetch(params){
+  const url = SCRIPT_URL+'?'+new URLSearchParams(params);
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const d = await r.json();
+  if(d.error) throw new Error(d.error);
+  return d;
+}
+async function apiPost(body){
+  const r = await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const d = await r.json();
+  if(d.error) throw new Error(d.error);
+  return d;
+}
+
+// ── Load ──
+async function loadCustomers(){
+  S.csState='loading'; render();
+  try{
+    const d=await apiFetch({action:'getSheet',sheet:'לקוחות'});
+    S.customers=(d.data||[]).map((r,i)=>({...r,_id:i}));
+    S.csState='ok';
+  }catch(e){ S.csState=isBusy(e)?'busy':'error'; }
+  render();
+}
+async function loadInvoices(){
+  S.isState='loading'; render();
+  try{
+    const d=await apiFetch({action:'getSheet',sheet:'חשבוניות',limit:20});
+    S.invoices=(d.data||[]).map((r,i)=>({...r,_id:i}));
+    S.isState='ok';
+  }catch(e){ S.isState=isBusy(e)?'busy':'error'; }
+  render();
+}
+async function loadReceipts(){
+  S.rsState='loading'; render();
+  try{
+    const d=await apiFetch({action:'getSheet',sheet:'קבלות',limit:20});
+    S.receipts=(d.data||[]).map((r,i)=>({...r,_id:i}));
+    S.rsState='ok';
+  }catch(e){ S.rsState=isBusy(e)?'busy':'error'; }
+  render();
+}
+async function loadTax(){
+  S.tsState='loading'; render();
+  try{
+    const d=await apiFetch({action:'getSheet',sheet:'חשבוניות מס קבלה',limit:20});
+    S.tax=(d.data||[]).map((r,i)=>({...r,_id:i}));
+    S.tsState='ok';
+  }catch(e){ S.tsState=isBusy(e)?'busy':'error'; }
+  render();
+}
+
+// ── Nav ──
+function switchTab(tab){
+  S.tab=tab; S.screen='list'; S.search=''; S.expId=null; S.msg=null;
+  document.querySelectorAll('.bnav-btn').forEach(b=>{
+    const a=b.dataset.tab===tab;
+    b.classList.toggle('active',a);
+    b.style.color=a?TABS[tab].color:'';
+  });
+  if(tab==='invoices'&&S.isState==='idle')loadInvoices();
+  if(tab==='receipts'&&S.rsState==='idle')loadReceipts();
+  if(tab==='tax'&&S.tsState==='idle')loadTax();
+  setHeader(); render();
+}
+function goBack(){ S.screen='list'; S.msg=null; S.form=ef(); setHeader(); render(); }
+function openNewCustomer(){ S.screen='new-customer'; S.form=ef(); S.msg=null; setHeader(); render(); }
+function setHeader(){
+  document.getElementById('hdr').style.background=tc();
+  document.getElementById('hdr-title').textContent=
+    S.screen==='new-customer'?'+ לקוח חדש':TABS[S.tab].label;
+  const back=document.getElementById('back-btn');
+  const add=document.getElementById('add-btn');
+  back.classList.toggle('hidden', S.screen==='list');
+  add.classList.toggle('hidden', !(S.tab==='customers'&&S.screen==='list'));
+}
+
+// ── Render ──
+function render(){
+  const el=document.getElementById('content');
+  const pos=el.scrollTop;
+  if(S.tab==='customers')
+    el.innerHTML = S.screen==='list' ? renderCustList() : renderForm();
+  else if(S.tab==='invoices') el.innerHTML=renderInvList(S.invoices,S.isState,'inv');
+  else if(S.tab==='receipts') el.innerHTML=renderRecList();
+  else el.innerHTML=renderInvList(S.tax,S.tsState,'tax');
+  el.scrollTop=pos;
+  bindInputs();
+}
+
+// ── Customer List ──
+function filteredC(){
+  if(!S.search.trim())return S.customers;
+  const q=S.search.toLowerCase();
+  return S.customers.filter(c=>['A','B','C','D','E','F','G'].some(k=>(c[k]||'').toLowerCase().includes(q)));
+}
+
+function renderCustList(){
+  const st=S.csState;
+  const fc=filteredC();
+  let h=`
+  <div class="sbar">
+    <div class="swrap">
+      <input class="sinput" id="sinput" type="text" placeholder='חיפוש: שם, ת"ז, טלפון, עיר...' value="${esc(S.search)}">
+      <span class="sico">🔍</span>
+      ${S.search?`<button class="sclr" onclick="clearSearch()">×</button>`:''}
+    </div>
+    <div class="smeta">
+      <span id="scnt">${st==='ok'?`${fc.length} לקוחות${S.search?` (מתוך ${S.customers.length})`:''}`:'...'}</span>
+      <button class="sref" style="color:${tc()}" onclick="loadCustomers()">↻ רענן</button>
+    </div>
+  </div>`;
+
+  if(st!=='ok')return h+statusHtml(st,'loadCustomers()','לקוחות');
+
+  if(!fc.length){
+    if(!S.customers.length)
+      return h+`<div class="status"><div style="font-size:14px;color:#999;margin-bottom:16px">אין לקוחות עדיין</div>
+        <button onclick="openNewCustomer()" style="background:${tc()};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">+ הוסף לקוח</button></div>`;
+    return h+`<div class="status"><div style="font-size:14px;color:#999">אין תוצאות עבור "${esc(S.search)}"</div></div>`;
+  }
+
+  h+=`<div style="padding:8px 0 20px">`;
+  fc.forEach((c,i)=>{ h+=cCard(c,i); });
+  h+=`</div>`;
+  return h;
+}
+
+function cCard(c,i){
+  const isE=S.expId===c._id;
+  const bg=i%2===0?'#fff':'#f5f8ff';
+  const bank=c.H||c.I||c.J||c.K;
+  const cpd=S.copied===`${c._id}-B`;
+  return `
+  <div class="card${isE?' exp':''}" style="background:${isE?'#fff':bg};${isE?`--tc:${tc()}`:''}">
+    <div class="card-hdr" onclick="tog(${c._id})">
+      <div class="r1">
+        <span class="cust-name">${esc(c.A||'—')}</span>
+        ${c.B?`<span class="id-badge">${esc(c.B)}</span>
+          <button class="copy-btn${cpd?' done':''}" onclick="event.stopPropagation();cp('${esc(c.B)}','${c._id}-B')"
+            ${cpd?`style="background:${tc()};border-color:${tc()}"`:''}>${cpd?'✓ הועתק':'📋 העתק'}</button>`:''}
+        ${c.C?`<span class="biz-name" style="color:${tc()}">${esc(c.C)}</span>`:''}
+      </div>
+      <div class="r2">
+        ${c.D?`<span>📱 ${esc(c.D)}</span>`:''}
+        ${c.E?`<span style="overflow:hidden;text-overflow:ellipsis;max-width:160px;direction:ltr">✉ ${esc(c.E)}</span>`:''}
+        ${(c.F||c.G)?`<span>📍 ${esc([c.F,c.G].filter(Boolean).join(', '))}</span>`:''}
+      </div>
+      <div class="r3">
+        ${bank&&!isE?`<span class="tag">🏦 פרטי בנק</span>`:'<span></span>'}
+        <span class="toggle-hint" style="color:${isE?tc():'#ccc'}">${isE?'▲ סגור':'▼ פרטים'}</span>
+      </div>
+    </div>
+    ${isE?cCardBody(c):''}
+  </div>`;
+}
+
+function cCardBody(c){
+  const bank=CF.filter(f=>f.bank&&c[f.k]);
+  let h=`<div class="card-body" style="background:${tc()}08">
+    <div class="sec-title">פרטי קשר</div>
+    <div class="g2" style="margin-bottom:12px">`;
+  CF.filter(f=>!f.bank&&c[f.k]).forEach(f=>{
+    const wide=['E','F'].includes(f.k);
+    h+=`<div class="gcell${wide?' wide':''}">
+      <div class="glabel">${f.label}</div>
+      <div class="gval" style="direction:${f.mode==='email'?'ltr':'rtl'}">${esc(c[f.k])}</div>
+    </div>`;
+  });
+  h+=`</div>`;
+  if(bank.length){
+    h+=`<div class="sec-title">🏦 פרטי בנק</div><div class="dtable">`;
+    bank.forEach((f,i)=>{
+      h+=`<div class="dtrow"${i===0?' style="border-top:none"':''}>
+        <span class="dtlabel">${f.label}</span>
+        <span class="dtval" style="${['J','K'].includes(f.k)?'font-family:monospace;letter-spacing:1px':''}">${esc(c[f.k])}</span>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  return h;
+}
+
+// ── New Customer Form ──
+function renderForm(){
+  let h=`<div class="fwrap">`;
+  if(S.msg) h+=`<div class="alert ${S.msg.t==='s'?'ok':'err'}">${S.msg.t==='s'?'✅ ':'❌ '}${esc(S.msg.m)}</div>`;
+  h+=`<div class="sec-title">פרטי לקוח</div>`;
+  CF.filter(f=>!f.bank).forEach(f=>{ h+=fField(f); });
+  h+=`<div class="divider"><hr><span>🏦 פרטי בנק</span><hr></div>`;
+  CF.filter(f=>f.bank).forEach(f=>{ h+=fField(f); });
+  h+=`<button class="save-btn" style="background:${S.saving?'#ccc':tc()}" ${S.saving?'disabled':''} onclick="saveCust()">
+    ${S.saving?'⏳ שומר...':'💾 שמור לקוח'}
+  </button></div>`;
+  return h;
+}
+
+function fField(f){
+  const v=esc(S.form[f.k]||'');
+  if(f.k==='B') return `
+    <div class="field">
+      <label>${f.label} <small>(עמודה B *)</small></label>
+      <div class="irow">
+        <input type="text" inputmode="numeric" id="f-B" class="num" value="${v}" oninput="uf('B',this.value.replace(/[^0-9-]/g,''))">
+        <button class="dash-btn" style="border-color:${tc()};color:${tc()}" onclick="addDash()">-</button>
+      </div>
+    </div>`;
+  const im=f.mode==='num'?'numeric':f.mode==='tel'?'tel':f.mode==='email'?'email':'text';
+  const dir=f.mode==='email'?'ltr':'rtl';
+  const isNum=f.mode==='num';
+  return `
+    <div class="field">
+      <label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
+      <input type="${f.mode==='email'?'email':f.mode==='tel'?'tel':'text'}" inputmode="${im}"
+        id="f-${f.k}" value="${v}"
+        ${isNum?'class="num"':''}
+        style="direction:${dir}"
+        oninput="uf('${f.k}',this.value)">
+    </div>`;
+}
+
+// ── Invoice / Tax List ──
+function renderInvList(data, state, type){
+  const isInv=type==='inv';
+  const reload=isInv?'loadInvoices()':'loadTax()';
+  const label=isInv?'חשבוניות':'חשבוניות מס קבלה';
+  const shortLabel=isInv?'חשבוניות':'חשמ"ק';
+  const totalKey=isInv?'AE':'AD';
+  const numKey=isInv?'AF':'AK';
+  const tail=isInv?INV_TAIL:TAX_TAIL;
+
+  if(state!=='ok') return statusHtml(state,reload,label);
+
+  if(!data.length) return `<div class="status"><div style="font-size:14px;color:#999;margin-bottom:16px">אין ${label} להצגה</div>
+    <button onclick="${reload}" style="background:${tc()};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען נתונים</button></div>`;
+
+  const grand=data.reduce((s,r)=>{const v=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));return s+(isNaN(v)?0:v);},0);
+
+  let h=`<div style="padding-bottom:20px">
+    <div class="sumbar" style="background:${tc()}">
+      <span style="font-size:13px;font-weight:500">${data.length} ${shortLabel} אחרונות</span>
+      <span style="font-size:16px;font-weight:700">${fmt(grand.toString())}</span>
+    </div>`;
+
+  [...data].reverse().forEach((r,i)=>{
+    const id=`${type}-${r._id}`;
+    const isE=S.expId===id;
+    const bg=i%2===0?'#fff':(isInv?'#fffbf5':'#fdf8ff');
+    const invNum=r[numKey];
+    const totVAT=r[totalKey];
+    const prods=PRODS.filter(p=>parseFloat(r[p.qk])>0);
+    const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
+
+    h+=`<div class="card${isE?' exp':''}" style="background:${isE?'#fff':bg};${isE?`--tc:${tc()}`:''}">
+      <div class="card-hdr" onclick="tog('${id}')">
+        <div class="r1">
+          ${invNum?`<span class="nbadge" style="background:${tc()}">#${esc(invNum)}</span>`:''}
+          <span style="font-weight:600;font-size:14px;color:#222;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.B||r.A||'—')}</span>
+          ${totVAT?`<span style="font-size:15px;font-weight:700;color:${tc()};flex-shrink:0">${fmt(totVAT)}</span>`:''}
+        </div>
+        <div class="r2">
+          ${r.C?`<span>📅 ${esc(r.C)}</span>`:''}
+          ${prods.slice(0,3).map(p=>`<span class="tag">${p.em} ×${r[p.qk]}</span>`).join('')}
+          ${prods.length>3?`<span style="font-size:11px;color:#aaa">+${prods.length-3}</span>`:''}
+          ${totItems>0?`<span style="font-size:11px;color:#bbb;margin-right:auto">${totItems} יח'</span>`:''}
+        </div>
+        <div class="r3" style="justify-content:flex-end">
+          <span class="toggle-hint" style="color:${isE?tc():'#ccc'}">${isE?'▲ סגור':'▼ פרטים'}</span>
+        </div>
+      </div>`;
+
+    if(isE){
+      h+=`<div class="card-body" style="background:${tc()}08">`;
+      // top row
+      h+=`<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        ${r.A?`<span class="id-badge">${esc(r.A)}</span>`:''}
+        ${r.B?`<span style="font-size:13px;font-weight:600;color:#222">${esc(r.B)}</span>`:''}
+        ${r.C?`<span style="font-size:12px;color:#888;margin-right:auto">📅 ${esc(r.C)}</span>`:''}
+      </div>`;
+      // products
+      if(prods.length){
+        h+=`<div class="dtable" style="margin-bottom:10px">
+          <div class="dthead" style="background:${tc()}"><span>פירוט הזמנה</span><span>${totItems} יח'</span></div>`;
+        prods.forEach(p=>{
+          h+=`<div class="prod-row">
+            <div style="display:flex;align-items:center">
+              <span class="prod-em">${p.em}</span>
+              <div><div class="prod-name">${p.label}</div><div class="prod-sub">${p.heb} • ניקוטין ${p.nic}mg</div></div>
+            </div>
+            <span class="prod-qty" style="color:${tc()}">${r[p.qk]} יח'</span>
+          </div>`;
+        });
+        h+=`</div>`;
+      }
+      // pricing
+      const pricing=[
+        r.X&&{l:'מחיר ליחידה (לפני מע"מ)',v:fmt(r.X)},
+        r.Y&&{l:'סה"כ לפני מע"מ',v:fmt(r.Y)},
+        r.Z&&{l:'הנחה',v:r.Z+'%',disc:true},
+        r.AA&&{l:'סה"כ אחר הנחה (לפני מע"מ)',v:fmt(r.AA)},
+        totVAT&&{l:'סה"כ כולל מע"מ',v:fmt(totVAT),hi:true},
+      ].filter(Boolean);
+      if(pricing.length){
+        h+=`<div class="dtable" style="margin-bottom:10px">`;
+        pricing.forEach((row,ri)=>{
+          h+=`<div class="dtrow"${ri===0?'style="border-top:none"':''} ${row.hi?`style="background:${tc()}12;border-top:none"`:''}> 
+            <span class="dtlabel">${row.l}</span>
+            <span class="dtval${row.hi?' hi':row.disc?' disc':''}" style="color:${row.hi?tc():row.disc?'#c62828':'#222'}">${row.v}</span>
+          </div>`;
+        });
+        h+=`</div>`;
+      }
+      // payment tail
+      h+=`<div class="dtable">
+        <div style="padding:6px 12px;background:#f8f8f8;border-bottom:.5px solid #f0f0f0;font-size:12px;font-weight:600;color:#666">פרטי תשלום</div>`;
+      tail.filter(f=>r[f.k]&&!f.wide).forEach((f,fi)=>{
+        h+=`<div class="dtrow"${fi===0?'style="border-top:none"':''}>
+          <span class="dtlabel">${f.label}</span>
+          <span class="dtval${f.money||f.hi?' money':''}" style="color:${f.money||f.hi?tc():'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</span>
+        </div>`;
+      });
+      tail.filter(f=>r[f.k]&&f.wide).forEach(f=>{
+        h+=`<div style="padding:8px 12px;border-top:.5px solid #f0f0f0">
+          <div class="glabel">${f.label}</div>
+          <div style="font-size:13px;color:#222;margin-top:2px">${esc(r[f.k])}</div>
+        </div>`;
+      });
+      h+=`</div></div>`;
+    }
+    h+=`</div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+// ── Receipt List ──
+function renderRecList(){
+  const {receipts:data,rsState:state}=S;
+  if(state!=='ok') return statusHtml(state,'loadReceipts()','קבלות');
+  if(!data.length) return `<div class="status"><div style="font-size:14px;color:#999;margin-bottom:16px">אין קבלות להצגה</div>
+    <button onclick="loadReceipts()" style="background:${tc()};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען קבלות</button></div>`;
+
+  const total=data.reduce((s,r)=>{const v=parseFloat((r.C||'').replace(/[^0-9.]/g,''));return s+(isNaN(v)?0:v);},0);
+
+  let h=`<div style="padding-bottom:20px">
+    <div class="sumbar" style="background:${tc()}">
+      <span style="font-size:13px;font-weight:500">${data.length} קבלות אחרונות</span>
+      <span style="font-size:16px;font-weight:700">${fmt(total.toString())}</span>
+    </div>`;
+
+  [...data].reverse().forEach((r,i)=>{
+    const id=`rec-${r._id}`;
+    const isE=S.expId===id;
+    const bg=i%2===0?'#fff':'#f0faf4';
+    const num=r.J||r.A||`#${i+1}`;
+    h+=`<div class="card${isE?' exp':''}" style="background:${isE?'#fff':bg};${isE?`--tc:${tc()}`:''}">
+      <div class="card-hdr" onclick="tog('${id}')">
+        <div class="r1" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span class="nbadge" style="background:${tc()}">קבלה ${esc(num)}</span>
+            ${r.H?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(r.H)}</span>`:''}
+          </div>
+          ${r.C?`<span style="font-size:15px;font-weight:700;color:${tc()}">${fmt(r.C)}</span>`:''}
+        </div>
+        <div class="r2">
+          ${r.B?`<span class="tag pay">${esc(r.B)}</span>`:''}
+          ${r.D?`<span>📅 ${esc(r.D)}</span>`:''}
+          ${r.A?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
+          ${r.E?`<span class="tag blue">🏦 שיק</span>`:''}
+        </div>
+        <div class="r3" style="justify-content:flex-end">
+          <span class="toggle-hint" style="color:${isE?tc():'#ccc'}">${isE?'▲ סגור':'▼ פרטים'}</span>
+        </div>
+      </div>`;
+    if(isE){
+      h+=`<div class="card-body" style="background:${tc()}08"><div class="g2" style="margin-bottom:8px">`;
+      RF.filter(f=>!f.wide&&r[f.k]).forEach(f=>{
+        h+=`<div class="gcell"><div class="glabel">${f.icon} ${f.label}</div>
+          <div class="gval" style="color:${f.money?tc():'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
+      });
+      h+=`</div>`;
+      RF.filter(f=>f.wide&&r[f.k]).forEach(f=>{
+        h+=`<div class="gcell wide" style="margin-bottom:8px"><div class="glabel">${f.icon} ${f.label}</div>
+          <div class="gval">${esc(r[f.k])}</div></div>`;
+      });
+      if(r.F) h+=`<div style="background:#e8f0fe;border-radius:8px;padding:9px 12px;border:.5px solid #b3c9f5;display:flex;align-items:center;gap:8px">
+        <span>📷</span><span style="font-size:12px;color:#1a73e8;font-weight:500">יש קובץ צילום שיק מצורף</span></div>`;
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+// ── Status Helpers ──
+function statusHtml(state,reload,label){
+  if(state==='loading'||state==='idle')
+    return `<div class="status"><div class="spinner"></div><div style="color:#999;font-size:14px">טוען ${label}...</div></div>`;
+  if(state==='busy')
+    return `<div class="status">
+      <div style="font-size:36px;margin-bottom:12px">🔄</div>
+      <div style="font-weight:600;color:#e65100;font-size:16px;margin-bottom:8px">השרת עמוס</div>
+      <div style="font-size:13px;color:#888;margin-bottom:16px;line-height:1.7">חריגה ממגבלת ה-API.<br>המתן דקה ונסה שוב.</div>
+      <button onclick="${reload}" style="background:#e65100;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:500;cursor:pointer">↻ נסה שוב</button></div>`;
+  return `<div class="status">
+    <div style="font-size:36px;margin-bottom:12px">⚠️</div>
+    <div style="font-weight:500;color:#c62828;font-size:15px;margin-bottom:16px">שגיאה בטעינה</div>
+    <button onclick="${reload}" style="background:#c62828;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">נסה שוב</button></div>`;
+}
+
+// ── Events ──
+function bindInputs(){
+  const si=document.getElementById('sinput');
+  if(si){
+    si.addEventListener('input',e=>{
+      S.search=e.target.value;
+      const fc=filteredC();
+      const cnt=document.getElementById('scnt');
+      if(cnt)cnt.textContent=`${fc.length} לקוחות${S.search?` (מתוך ${S.customers.length})`:''}`; 
+      // Update cards only
+      const listEl=document.querySelector('#content > div:last-child');
+      if(listEl){
+        const cardsHtml=fc.length===0
+          ? `<div class="status"><div style="font-size:14px;color:#999">אין תוצאות עבור "${esc(S.search)}"</div></div>`
+          : `<div style="padding:8px 0 20px">${fc.map((c,i)=>cCard(c,i)).join('')}</div>`;
+        // Re-render smartly — replace the cards container only
+        const cDiv=listEl.querySelector('div[style*="padding:8px"]')||listEl.querySelector('.status');
+        if(cDiv){ cDiv.outerHTML=cardsHtml; } else { render(); restoreFocus(); }
+      }
+    });
+    si.addEventListener('focus',()=>{ si.style.borderColor=tc(); });
+    si.addEventListener('blur',()=>{ si.style.borderColor=''; });
+  }
+}
+
+function restoreFocus(){
+  const si=document.getElementById('sinput');
+  if(si){ const l=S.search.length; si.focus(); si.setSelectionRange(l,l); }
+}
+
+function clearSearch(){
+  S.search='';
+  render();
+  setTimeout(()=>{ const si=document.getElementById('sinput'); if(si)si.focus(); },50);
+}
+
+function tog(id){
+  S.expId = S.expId===id ? null : id;
+  render();
+  setTimeout(()=>{
+    const exp=document.querySelector('.card.exp');
+    if(exp)exp.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },50);
+}
+
+async function cp(text,key){
+  try{ await navigator.clipboard.writeText(text); }
+  catch{
+    const t=document.createElement('textarea');
+    t.value=text; t.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(t); t.select(); document.execCommand('copy');
+    document.body.removeChild(t);
+  }
+  if(S.copiedTimer)clearTimeout(S.copiedTimer);
+  S.copied=key; render();
+  S.copiedTimer=setTimeout(()=>{ S.copied=null; render(); },2000);
+}
+
+function uf(k,v){ S.form[k]=v; }
+
+function addDash(){
+  S.form['B']=(S.form['B']||'')+'-';
+  const inp=document.getElementById('f-B');
+  if(inp){ inp.value=S.form['B']; inp.focus(); }
+}
+
+async function saveCust(){
+  if(!S.form.A||!S.form.A.trim()){ S.msg={t:'e',m:'שם לקוח הוא שדה חובה'}; render(); return; }
+  S.saving=true; S.msg=null; render();
+  try{
+    await apiPost({action:'addCustomer',data:S.form});
+    S.customers.push({...S.form,_id:S.customers.length});
+    S.msg={t:'s',m:'הלקוח נשמר בהצלחה!'};
+    S.saving=false; render();
+    setTimeout(()=>{ S.screen='list'; S.form=ef(); S.msg=null; setHeader(); render(); },1500);
+  }catch(e){
+    S.msg={t:'e',m:e.message||'שגיאה בשמירה'};
+    S.saving=false; render();
+  }
+}
+
+// ── Init ──
+function init(){
+  if(SCRIPT_URL==='147Zig2OPV_daJN8i6U_EwANeTYVInWymh6qwq9C27uc'){
+    document.getElementById('content').innerHTML=`
+      <div class="setup">
+        <div style="text-align:center;font-size:36px;margin-bottom:12px">⚙️</div>
+        <div style="text-align:center;font-weight:600;font-size:16px;color:#222;margin-bottom:6px">נדרשת הגדרה חד-פעמית</div>
+        <div style="text-align:center;font-size:13px;color:#888;margin-bottom:14px;line-height:1.6">
+          פתח את קובץ ה-HTML במחשב,<br>הדבק את ה-URL של ה-Apps Script ושמור שוב.
+        </div>
+        <div class="setup-step">
+          1️⃣ פתח <b>script.google.com</b> במחשב<br>
+          2️⃣ צור פרויקט חדש ← הדבק את קוד ה-Apps Script<br>
+          3️⃣ <b>Deploy</b> ← New deployment ← Web App<br>
+          4️⃣ Execute as: <b>Me</b> | Who has access: <b>Anyone</b><br>
+          5️⃣ העתק את ה-<b>Deployment URL</b><br>
+          6️⃣ פתח קובץ HTML בנוטפד ← הדבק את ה-URL בשורת <b>SCRIPT_URL</b> ← שמור<br>
+          7️⃣ שלח את קובץ ה-HTML לטלפון (מייל / גוגל דרייב)
+        </div>
+      </div>`;
+    return;
+  }
+  // Show install banner
+  const isMobile=/Android|iPhone|iPad/i.test(navigator.userAgent);
+  if(isMobile&&!window.navigator.standalone){
+    document.getElementById('install-banner').style.display='flex';
+  }
+  document.getElementById('hdr').style.background=tc();
+  S.form=ef();
+  loadCustomers();
+}
+
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
