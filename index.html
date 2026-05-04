@@ -27,7 +27,6 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
 #content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .bnav{flex-shrink:0;display:flex;background:#fff;border-top:1px solid #e0e0e0;}
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 2px 10px;border:none;background:transparent;cursor:pointer;font-family:inherit;border-top:2.5px solid transparent;transition:all .2s;color:#aaa;}
-.bnav-btn.active{border-top-color:var(--tc);background:var(--tbg);color:var(--tc);}
 .bnav-btn .ico{font-size:18px;margin-bottom:2px;}
 .bnav-btn .lbl{font-size:9px;font-weight:500;white-space:nowrap;}
 /* Setup */
@@ -42,7 +41,6 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
 .step-row{display:flex;gap:10px;margin-bottom:9px;align-items:flex-start;}
 .step-num{background:#1a73e8;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
 .step-txt{font-size:13px;color:#444;line-height:1.6;flex:1;}
-.step-txt b{color:#222;}
 /* Settings */
 .set-wrap{padding:16px 14px 30px;}
 .stitle{font-size:11px;font-weight:600;color:#aaa;margin:14px 0 7px;letter-spacing:.5px;}
@@ -63,7 +61,6 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
 .dcell{background:#1e3a5f;border-radius:4px;padding:2px 7px;font-size:10px;font-family:monospace;}
 .dk{color:#93c5fd;}.dv{color:#86efac;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
 .derr{color:#f87171;font-size:11px;}.dempty{color:#6b7280;font-size:11px;}
-/* URL inputs */
 .url-input{width:100%;padding:12px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:inherit;background:#f8f8f8;outline:none;direction:ltr;text-align:left;-webkit-appearance:none;margin-bottom:10px;transition:border-color .2s;}
 .url-input:focus{border-color:#1a73e8;background:#fff;}
 .url-input.err{border-color:#c62828;}
@@ -123,7 +120,6 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
 .finput{display:block;width:100%;padding:11px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;font-family:inherit;background:#f8f8f8;outline:none;direction:rtl;-webkit-appearance:none;transition:border-color .2s;}
 .finput:focus{border-color:var(--tc,#1a73e8);background:#fff;}
 .finput.num{direction:ltr;text-align:right;font-family:monospace;letter-spacing:1px;}
-.finput.ltr{direction:ltr;text-align:left;}
 select.finput{cursor:pointer;}
 textarea.finput{resize:vertical;min-height:70px;font-size:14px;line-height:1.6;}
 .irow{display:flex;gap:8px;}
@@ -131,12 +127,12 @@ textarea.finput{resize:vertical;min-height:70px;font-size:14px;line-height:1.6;}
 .save-btn{width:100%;padding:14px;border-radius:10px;color:#fff;border:none;font-size:16px;font-weight:600;margin-top:10px;cursor:pointer;-webkit-appearance:none;}
 .save-btn:disabled{background:#ccc !important;cursor:wait;}
 /* Customer suggest */
+.field-wrap{position:relative;}
 .suggest-box{position:absolute;top:100%;right:0;left:0;background:#fff;border:1.5px solid #e0e0e0;border-top:none;border-radius:0 0 10px 10px;max-height:160px;overflow-y:auto;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,.1);}
 .suggest-item{padding:10px 13px;cursor:pointer;font-size:14px;color:#333;border-top:.5px solid #f0f0f0;}
 .suggest-item:first-child{border-top:none;}
-.suggest-item:hover,.suggest-item:active{background:#f0f4ff;}
+.suggest-item:active{background:#f0f4ff;}
 .suggest-sub{font-size:11px;color:#aaa;margin-top:2px;}
-.field-wrap{position:relative;}
 .alert{padding:12px 14px;border-radius:10px;font-weight:500;text-align:center;font-size:14px;margin-bottom:14px;}
 .alert.ok{background:#e6f4ea;color:#1e8e3e;}
 .alert.err{background:#fce8e6;color:#c62828;}
@@ -161,16 +157,16 @@ textarea.finput{resize:vertical;min-height:70px;font-size:14px;line-height:1.6;}
   </div>
   <div id="content"></div>
   <div class="bnav" id="bnav">
-    <button class="bnav-btn active" data-tab="customers" onclick="switchTab('customers')" style="--tc:#1a73e8;--tbg:#e8f0fe;color:#1a73e8">
+    <button class="bnav-btn" data-tab="customers" onclick="switchTab('customers')">
       <span class="ico">👥</span><span class="lbl">לקוחות</span>
     </button>
-    <button class="bnav-btn" data-tab="invoices" onclick="switchTab('invoices')" style="--tc:#d67000;--tbg:#fff3e0">
+    <button class="bnav-btn" data-tab="invoices" onclick="switchTab('invoices')">
       <span class="ico">📄</span><span class="lbl">חשבוניות</span>
     </button>
-    <button class="bnav-btn" data-tab="receipts" onclick="switchTab('receipts')" style="--tc:#1e8e3e;--tbg:#e6f4ea">
+    <button class="bnav-btn" data-tab="receipts" onclick="switchTab('receipts')">
       <span class="ico">🧾</span><span class="lbl">קבלות</span>
     </button>
-    <button class="bnav-btn" data-tab="tax" onclick="switchTab('tax')" style="--tc:#7b1fa2;--tbg:#f3e5f5">
+    <button class="bnav-btn" data-tab="tax" onclick="switchTab('tax')">
       <span class="ico">📋</span><span class="lbl">חשמ"ק</span>
     </button>
   </div>
@@ -179,10 +175,10 @@ textarea.finput{resize:vertical;min-height:70px;font-size:14px;line-height:1.6;}
 const STORAGE_KEY='moov_url_v4';
 
 const TABS={
-  customers:{label:'לקוחות',          color:'#1a73e8',bg:'#e8f0fe'},
-  invoices: {label:'חשבוניות',         color:'#d67000',bg:'#fff3e0'},
-  receipts: {label:'קבלות',            color:'#1e8e3e',bg:'#e6f4ea'},
-  tax:      {label:'חשבוניות/קבלות',  color:'#7b1fa2',bg:'#f3e5f5'},
+  customers:{label:'לקוחות',         color:'#1a73e8',bg:'#e8f0fe'},
+  invoices: {label:'חשבוניות',        color:'#d67000',bg:'#fff3e0'},
+  receipts: {label:'קבלות',           color:'#1e8e3e',bg:'#e6f4ea'},
+  tax:      {label:'חשבוניות/קבלות', color:'#7b1fa2',bg:'#f3e5f5'},
 };
 const SHEETS={
   customers:'לקוחות',
@@ -205,7 +201,6 @@ const CF=[
   {k:'K',label:'מספר חשבון',    mode:'num', bank:true},
 ];
 
-// Corrected product columns (11 products, D-X names, E-Y quantities)
 const PRODS=[
   {qk:'E', label:'Blueberry Mint 10', heb:'אוכמניות',     nic:10, em:'🫐'},
   {qk:'G', label:'Blueberry Mint 6',  heb:'אוכמניות',     nic:6,  em:'🫐'},
@@ -240,8 +235,6 @@ const TAX_TAIL=[
   {k:'AJ',label:'הערות',wide:true},
   {k:'AK',label:'מספר חשבונית מס / קבלה'},
 ];
-
-// קבלות fields
 const RF=[
   {k:'A',label:'מספר חשבונית',                 icon:'🧾'},
   {k:'B',label:'סוג תשלום',                     icon:'💳'},
@@ -254,7 +247,6 @@ const RF=[
   {k:'I',label:'ת"ז / ח"פ',                     icon:'🪪'},
   {k:'J',label:'מספר קבלה',                     icon:'🔢'},
 ];
-
 const PAYMENT_TYPES=['מזומן','שיק','העברה בנקאית','אשראי','ביט','פייבוקס'];
 
 const S={
@@ -275,12 +267,13 @@ const S={
 };
 
 const tc=()=>TABS[S.tab].color;
+const tbg=()=>TABS[S.tab].bg;
 function efC(){const o={};CF.forEach(f=>o[f.k]='');return o;}
 function efR(){return{A:'',B:'מזומן',C:'',D:today(),E:'',F:'',G:'',H:'',I:'',J:''};}
-function today(){const d=new Date();return d.toLocaleDateString('he-IL');}
+function today(){return new Date().toLocaleDateString('he-IL');}
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function v(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
+function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
 function fmt(x){
   const n=parseFloat((x||'').toString().replace(/[^0-9.]/g,''));
   if(isNaN(n)||n===0)return x||'';
@@ -349,11 +342,12 @@ async function runDiagnose(){
 }
 
 // ── Loaders ──
-async function loadAny(tab,stateKey,limit){
+async function loadAny(tab,stateKey,limit,requireCol){
   S[stateKey]='loading';render();
   try{
     const params={sheet:SHEETS[tab]};
-    if(limit)params.limit=limit;
+    if(limit)  params.limit=limit;
+    if(requireCol) params.require=requireCol;  // ← key fix for invoices
     const d=await apiFetch(params);
     S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i}));
     S[stateKey]='ok';
@@ -364,24 +358,39 @@ async function loadAny(tab,stateKey,limit){
   }
   render();
 }
-const loadCustomers=()=>loadAny('customers','csState',0);
-const loadInvoices =()=>loadAny('invoices', 'isState',20);
-const loadReceipts =()=>loadAny('receipts', 'rsState',20);
-const loadTax      =()=>loadAny('tax',      'tsState',20);
+
+// requireCol: only return rows where this column is non-zero
+// AE = total with VAT for חשבוניות
+// AD = total with VAT for חשבוניות/קבלות
+const loadCustomers=()=>loadAny('customers','csState',0,'');
+const loadInvoices =()=>loadAny('invoices', 'isState',20,'AE');
+const loadReceipts =()=>loadAny('receipts', 'rsState',20,'');
+const loadTax      =()=>loadAny('tax',      'tsState',20,'AD');
 
 // ── Navigation ──
 function switchTab(tab){
   S.tab=tab;S.screen='list';S.search='';S.expId=null;S.msg=null;S.showSuggest=false;
-  document.querySelectorAll('.bnav-btn').forEach(b=>{
-    const a=b.dataset.tab===tab;
-    b.classList.toggle('active',a);
-    b.style.color=a?TABS[tab].color:'';
-  });
+  syncNav();
   if(tab==='invoices'&&S.isState==='idle')loadInvoices();
-  if(tab==='receipts'&&S.rsState==='idle')loadReceipts();
-  if(tab==='tax'&&S.tsState==='idle')loadTax();
+  else if(tab==='receipts'&&S.rsState==='idle')loadReceipts();
+  else if(tab==='tax'&&S.tsState==='idle')loadTax();
   setHeader();render();
 }
+
+// Sync nav highlight to always match S.tab — called on every render
+function syncNav(){
+  document.querySelectorAll('.bnav-btn').forEach(btn=>{
+    const t=btn.dataset.tab;
+    const isActive=t===S.tab;
+    const cfg=TABS[t];
+    if(isActive){
+      btn.style.cssText=`--tc:${cfg.color};--tbg:${cfg.bg};color:${cfg.color};border-top:2.5px solid ${cfg.color};background:${cfg.bg};`;
+    }else{
+      btn.style.cssText='color:#aaa;border-top:2.5px solid transparent;background:transparent;';
+    }
+  });
+}
+
 function goBack(){S.screen='list';S.msg=null;S.cForm=efC();S.rForm=efR();S.showSuggest=false;setHeader();render();}
 function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();}
 function openNewReceipt(){S.screen='new-receipt';S.rForm=efR();S.msg=null;S.showSuggest=false;setHeader();render();}
@@ -393,7 +402,7 @@ function setHeader(){
     'list':TABS[S.tab]?.label,
     'new-customer':'+ לקוח חדש',
     'new-receipt':'+ קבלה חדשה',
-    'settings':'⚙️ הגדרות'
+    'settings':'⚙️ הגדרות',
   };
   document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[S.tab]?.label||'';
   const back=document.getElementById('back-btn');
@@ -401,39 +410,44 @@ function setHeader(){
   back.classList.toggle('hidden',S.screen==='list');
   if(S.screen==='settings'){
     right.classList.add('hidden');
-  } else if(S.tab==='customers'&&S.screen==='list'){
+  }else if(S.tab==='customers'&&S.screen==='list'){
     right.classList.remove('hidden');right.textContent='+';right.onclick=openNewCustomer;
-  } else if(S.tab==='receipts'&&S.screen==='list'){
+  }else if(S.tab==='receipts'&&S.screen==='list'){
     right.classList.remove('hidden');right.textContent='+';right.onclick=openNewReceipt;
-  } else {
+  }else{
     right.classList.remove('hidden');right.textContent='⚙️';right.onclick=openSettings;
   }
 }
 
 // ── Render ──
 function render(){
+  syncNav();  // always sync nav on every render
   const el=document.getElementById('content');
   const pos=el.scrollTop;
+
   if(!S.scriptUrl&&S.screen!=='settings'){
     el.innerHTML=renderSetup();
     document.getElementById('bnav').style.display='none';
     el.scrollTop=pos;bindAll();return;
   }
   document.getElementById('bnav').style.display='flex';
-  if(S.screen==='settings')       el.innerHTML=renderSettings();
+
+  if(S.screen==='settings')          el.innerHTML=renderSettings();
   else if(S.screen==='new-customer') el.innerHTML=renderCustForm();
   else if(S.screen==='new-receipt')  el.innerHTML=renderReceiptForm();
-  else if(S.tab==='customers')    el.innerHTML=renderCustList();
-  else if(S.tab==='invoices')     el.innerHTML=renderDocList(S.invoices,S.isState,false);
-  else if(S.tab==='receipts')     el.innerHTML=renderRecList();
-  else                            el.innerHTML=renderDocList(S.tax,S.tsState,true);
+  else if(S.tab==='customers')       el.innerHTML=renderCustList();
+  else if(S.tab==='invoices')        el.innerHTML=renderDocList(S.invoices,S.isState,false);
+  else if(S.tab==='receipts')        el.innerHTML=renderRecList();
+  else                               el.innerHTML=renderDocList(S.tax,S.tsState,true);
+
   el.scrollTop=pos;bindAll();
 }
 
 // ── Setup ──
 function renderSetup(){
   return`<div class="setup-screen">
-    <div class="setup-hero"><div class="logo">📊</div><h2>MOOV Sales App</h2><p>חיבור חד-פעמי ל-Google Sheets שלך</p></div>
+    <div class="setup-hero"><div class="logo">📊</div><h2>MOOV Sales App</h2>
+      <p>חיבור חד-פעמי ל-Google Sheets שלך</p></div>
     <div class="setup-body">
       <div class="setup-card">
         <h3>🔗 הדבק את ה-URL של ה-Apps Script</h3>
@@ -466,15 +480,7 @@ function renderSettings(){
     </div>`;
 
   if(connected){
-    h+=`<div class="stitle">גיליונות</div>
-    <div class="scard">
-      ${Object.entries(SHEETS).map(([k,sv],i)=>`<div class="srow"${i===0?' style="border-top:none"':''}>
-        <span class="slabel" style="font-size:12px">${TABS[k]?.label||k}</span>
-        <span class="sval" style="color:#1e8e3e">${esc(sv)}</span>
-      </div>`).join('')}
-    </div>
-
-    <div class="stitle">נתונים</div>
+    h+=`<div class="stitle">נתונים</div>
     <div class="scard">
       ${[['customers','לקוחות','csState'],['invoices','חשבוניות','isState'],['receipts','קבלות','rsState'],['tax','חשמ"ק','tsState']]
         .map(([k,lbl,sk],i)=>{
@@ -499,7 +505,7 @@ function renderSettings(){
         const d=S.diagData[tab];if(!d)return;
         h+=`<div class="diag-sheet"><div class="diag-name">${esc(d.sheetName)}</div>`;
         if(d.error){h+=`<div class="derr">❌ ${esc(d.error)}</div>`;}
-        else if(!d.firstRow){h+=`<div class="dempty">📭 ריק</div>`;}
+        else if(!d.firstRow){h+=`<div class="dempty">📭 ריק — אין חשבוניות שהושלמו עדיין</div>`;}
         else{
           const entries=Object.entries(d.firstRow).filter(([k,val])=>k!=='_bg'&&val&&String(val).trim());
           h+=entries.length?`<div class="diag-grid">${entries.slice(0,25).map(([k,val])=>`<div class="dcell"><span class="dk">${esc(k)}:</span><span class="dv">${esc(String(val).slice(0,16))}</span></div>`).join('')}</div>`:`<div class="dempty">⚠️ ריק</div>`;
@@ -518,7 +524,7 @@ function renderSettings(){
         <button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:16px;font-size:11px;color:#ccc">MOOV Sales App v1.6</div></div>`;
+  h+=`<div style="text-align:center;margin-top:16px;font-size:11px;color:#ccc">MOOV Sales App v1.7</div></div>`;
   return h;
 }
 
@@ -581,11 +587,8 @@ function renderCustList(){
 }
 
 function cCard(c,i){
-  const isE=S.expId===c._id;
-  const bg=rowBg(c,isE);
-  const cpd=S.copied===`${c._id}-B`;
-  const color=tc();
-  const bank=c.H||c.I||c.J||c.K;
+  const isE=S.expId===c._id;const bg=rowBg(c,isE);
+  const cpd=S.copied===`${c._id}-B`;const color=tc();const bank=c.H||c.I||c.J||c.K;
   return`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
     <div class="card-hdr" onclick="tog(${c._id})">
       <div class="r1">
@@ -610,8 +613,7 @@ function cCard(c,i){
   </div>`;
 }
 function cCardBody(c,color){
-  let h=`<div class="card-body">
-    <div class="sec-t">פרטי קשר</div><div class="g2" style="margin-bottom:12px">`;
+  let h=`<div class="card-body"><div class="sec-t">פרטי קשר</div><div class="g2" style="margin-bottom:12px">`;
   CF.filter(f=>!f.bank&&c[f.k]).forEach(f=>{
     h+=`<div class="gcell${['E','F'].includes(f.k)?' wide':''}">
       <div class="glabel">${f.label}</div>
@@ -637,7 +639,7 @@ function cCardBody(c,color){
 function renderCustForm(){
   const color=tc();
   let h=`<div class="fwrap" style="--tc:${color}">`;
-  if(S.msg)h+=`<div class="alert ${S.msg.t==='s'?'ok':'err'}">${S.msg.t==='s'?'✅ ':'❌ '}${esc(S.msg.m)}</div>`;
+  if(S.msg)h+=alertHtml(S.msg);
   h+=`<div class="sec-t">פרטי לקוח</div>`;
   CF.filter(f=>!f.bank).forEach(f=>{h+=custField(f);});
   h+=`<div class="divider"><hr><span>🏦 פרטי בנק</span><hr></div>`;
@@ -659,7 +661,7 @@ function custField(f){
   return`<div class="field">
     <label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
     <input type="${f.mode==='email'?'email':f.mode==='tel'?'tel':'text'}" inputmode="${im}"
-      id="fc-${f.k}" class="finput" value="${vv}" ${f.mode==='num'?'style="direction:ltr;text-align:right;font-family:monospace"':''}
+      id="fc-${f.k}" class="finput" value="${vv}"
       style="direction:${f.mode==='email'?'ltr':'rtl'}"
       oninput="uf('cForm','${f.k}',this.value)">
   </div>`;
@@ -667,100 +669,81 @@ function custField(f){
 
 // ── New Receipt Form ──
 function renderReceiptForm(){
-  const color=tc();
-  const rf=S.rForm;
-  const isChk=rf.B==='שיק';
-
-  // Build customer suggestions for search
-  const sug=S.suggest;
-
+  const color=tc();const rf=S.rForm;const isChk=rf.B==='שיק';
   let h=`<div class="fwrap" style="--tc:${color}">`;
-  if(S.msg)h+=`<div class="alert ${S.msg.t==='s'?'ok':'err'}">${S.msg.t==='s'?'✅ ':'❌ '}${esc(S.msg.m)}</div>`;
+  if(S.msg)h+=alertHtml(S.msg);
 
-  // H — Customer name with autocomplete
   h+=`<div class="field">
     <label>שם לקוח <small>(עמודה H)</small></label>
     <div class="field-wrap">
       <input type="text" id="r-H" class="finput" value="${esc(rf.H)}" placeholder="הקלד לחיפוש לקוח..."
         oninput="onCustSearch(this.value)" autocomplete="off">
-      ${sug.length&&S.showSuggest?`<div class="suggest-box" id="suggest-box">
-        ${sug.slice(0,6).map(c=>`<div class="suggest-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
+      ${S.showSuggest&&S.suggest.length?`<div class="suggest-box" id="suggest-box">
+        ${S.suggest.slice(0,6).map(c=>`<div class="suggest-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
           <div>${esc(c.A)}</div>
           <div class="suggest-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
         </div>`).join('')}
       </div>`:''}
     </div>
-  </div>`;
+  </div>
 
-  // I — ת"ז/ח"פ
-  h+=`<div class="field">
+  <div class="field">
     <label>ת"ז / ח"פ <small>(עמודה I)</small></label>
     <input type="text" inputmode="numeric" id="r-I" class="finput num" value="${esc(rf.I)}"
       oninput="uf('rForm','I',this.value)">
-  </div>`;
+  </div>
 
-  // J — מספר קבלה
-  h+=`<div class="field">
+  <div class="field">
     <label>מספר קבלה <small>(עמודה J)</small></label>
     <input type="text" inputmode="numeric" id="r-J" class="finput num" value="${esc(rf.J)}"
       oninput="uf('rForm','J',this.value)">
-  </div>`;
+  </div>
 
-  // A — מספר חשבונית
-  h+=`<div class="field">
+  <div class="field">
     <label>מספר חשבונית <small>(עמודה A)</small></label>
     <input type="text" inputmode="numeric" id="r-A" class="finput num" value="${esc(rf.A)}"
       oninput="uf('rForm','A',this.value)">
-  </div>`;
+  </div>
 
-  // B — סוג תשלום dropdown
-  h+=`<div class="field">
+  <div class="field">
     <label>סוג תשלום <small>(עמודה B)</small></label>
     <select id="r-B" class="finput" onchange="uf('rForm','B',this.value);render()">
       ${PAYMENT_TYPES.map(pt=>`<option value="${pt}"${rf.B===pt?' selected':''}>${pt}</option>`).join('')}
     </select>
-  </div>`;
+  </div>
 
-  // C — סכום
-  h+=`<div class="field">
-    <label>סכום התשלום ₪ <small>(עמודה C)</small></label>
+  <div class="field">
+    <label>סכום התשלום ₪ <small>(עמודה C) *</small></label>
     <input type="text" inputmode="decimal" id="r-C" class="finput num" value="${esc(rf.C)}"
       oninput="uf('rForm','C',this.value)">
-  </div>`;
+  </div>
 
-  // D — תאריך
-  h+=`<div class="field">
+  <div class="field">
     <label>תאריך תשלום <small>(עמודה D)</small></label>
     <input type="text" id="r-D" class="finput" value="${esc(rf.D)}"
       oninput="uf('rForm','D',this.value)">
-  </div>`;
+  </div>
 
-  // E — מספר שיק (only if שיק)
-  if(isChk){
-    h+=`<div class="field">
-      <label>מספר שיק <small>(עמודה E)</small></label>
-      <input type="text" inputmode="numeric" id="r-E" class="finput num" value="${esc(rf.E)}"
-        oninput="uf('rForm','E',this.value)">
-    </div>`;
-  }
+  ${isChk?`<div class="field">
+    <label>מספר שיק <small>(עמודה E)</small></label>
+    <input type="text" inputmode="numeric" id="r-E" class="finput num" value="${esc(rf.E)}"
+      oninput="uf('rForm','E',this.value)">
+  </div>`:''}
 
-  // G — הערות
-  h+=`<div class="field">
+  <div class="field">
     <label>הערות <small>(עמודה G)</small></label>
     <textarea id="r-G" class="finput" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
-  </div>`;
+  </div>
 
-  h+=`<button class="save-btn" style="background:${S.saving?'#ccc':color}" ${S.saving?'disabled':''} onclick="saveReceipt()">
+  <button class="save-btn" style="background:${S.saving?'#ccc':color}" ${S.saving?'disabled':''} onclick="saveReceipt()">
     ${S.saving?'⏳ שומר...':'💾 שמור קבלה'}</button></div>`;
   return h;
 }
 
 // ── Receipt List ──
 function renderRecList(){
-  const {receipts:data,rsState:state}=S;
-  const color=tc();
-  const errMsg=S.errors['receipts'];
-  if(state==='error')return errScreen(errMsg,'loadReceipts()','קבלות',color);
+  const {receipts:data,rsState:state}=S;const color=tc();
+  if(state==='error')return errScreen(S.errors.receipts,'loadReceipts()','קבלות',color);
   if(state!=='ok')return statusHtml(state,'loadReceipts()','קבלות');
   if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
     <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
@@ -773,24 +756,22 @@ function renderRecList(){
     </div>`;
 
   [...data].reverse().forEach((r,i)=>{
-    const id=`rec-${r._id}`;const isE=S.expId===id;
-    const bg=rowBg(r,isE);
-    const num=v(r.J)||v(r.A)||`#${i+1}`;
-    const custName=v(r.H);const amount=v(r.C);
+    const id=`rec-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
+    const num=nz(r.J)||nz(r.A)||`#${i+1}`;
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1" style="justify-content:space-between">
           <div style="display:flex;align-items:center;gap:7px">
             <span class="nbadge" style="background:${color}">קבלה ${esc(num)}</span>
-            ${custName?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(custName)}</span>`:''}
+            ${nz(r.H)?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(r.H)}</span>`:''}
           </div>
-          ${amount?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(amount)}</span>`:''}
+          ${nz(r.C)?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(r.C)}</span>`:''}
         </div>
         <div class="r2">
-          ${v(r.B)?`<span class="tag">${esc(r.B)}</span>`:''}
-          ${v(r.D)?`<span>📅 ${esc(r.D)}</span>`:''}
-          ${v(r.A)?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
-          ${v(r.E)?`<span class="tag blue">🏦 שיק ${esc(r.E)}</span>`:''}
+          ${nz(r.B)?`<span class="tag">${esc(r.B)}</span>`:''}
+          ${nz(r.D)?`<span>📅 ${esc(r.D)}</span>`:''}
+          ${nz(r.A)?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
+          ${nz(r.E)?`<span class="tag blue">🏦 שיק ${esc(r.E)}</span>`:''}
         </div>
         <div class="r3" style="justify-content:flex-end">
           <span class="toggle-hint" style="color:${isE?color:'#bbb'}">${isE?'▲ סגור':'▼ פרטים'}</span>
@@ -798,12 +779,12 @@ function renderRecList(){
       </div>`;
     if(isE){
       h+=`<div class="card-body"><div class="g2" style="margin-bottom:8px">`;
-      RF.filter(f=>!f.wide&&v(r[f.k])).forEach(f=>{
+      RF.filter(f=>!f.wide&&nz(r[f.k])).forEach(f=>{
         h+=`<div class="gcell"><div class="glabel">${f.icon} ${f.label}</div>
           <div class="gval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
       });
       h+=`</div>`;
-      RF.filter(f=>f.wide&&v(r[f.k])).forEach(f=>{
+      RF.filter(f=>f.wide&&nz(r[f.k])).forEach(f=>{
         h+=`<div class="gcell wide" style="margin-bottom:8px"><div class="glabel">${f.icon} ${f.label}</div>
           <div class="gval">${esc(r[f.k])}</div></div>`;
       });
@@ -814,7 +795,7 @@ function renderRecList(){
   return h+`</div>`;
 }
 
-// ── Invoice / Tax List ──
+// ── Document List (Invoices + Tax) ──
 function renderDocList(data,state,isTax){
   const label=isTax?'חשבוניות/קבלות':'חשבוניות';
   const reload=isTax?'loadTax()':'loadInvoices()';
@@ -826,8 +807,12 @@ function renderDocList(data,state,isTax){
 
   if(state==='error')return errScreen(errMsg,reload,label,color);
   if(state!=='ok')return statusHtml(state,reload,label);
-  if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין ${label}</p>
-    <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
+  if(!data.length)return`<div class="status">
+    <p style="font-size:36px;margin-bottom:12px">${isTax?'📋':'📄'}</p>
+    <p style="color:#999;margin-bottom:6px">אין ${label} שהושלמו</p>
+    <p style="font-size:12px;color:#bbb;margin-bottom:16px">רק חשבוניות עם סכום מאושר יוצגו כאן</p>
+    <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">↻ רענן</button>
+  </div>`;
 
   const grand=data.reduce((s,r)=>{const n=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));return s+(isNaN(n)?0:n);},0);
   let h=`<div style="padding-bottom:24px">
@@ -837,14 +822,9 @@ function renderDocList(data,state,isTax){
     </div>`;
 
   [...data].reverse().forEach((r,i)=>{
-    const id=`${isTax?'t':'v'}-${r._id}`;
-    const isE=S.expId===id;
-    const bg=rowBg(r,isE);
-    const totVAT=v(r[totalKey]);
-    const invNum=v(r[numKey]);
-    const bizName=v(r.B);
-    const custId=v(r.A);
-    const date=v(r.C);
+    const id=`${isTax?'t':'v'}-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
+    const totVAT=nz(r[totalKey]);const invNum=nz(r[numKey]);
+    const bizName=nz(r.B);const custId=nz(r.A);const date=nz(r.C);
     const prods=PRODS.filter(p=>{const q=parseFloat(r[p.qk]);return!isNaN(q)&&q>0;});
     const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
 
@@ -890,10 +870,10 @@ function renderDocList(data,state,isTax){
       }
 
       const pricing=[
-        v(r.Z)&&{l:'מחיר ליחידה (לפני מע"מ)',vv:fmt(r.Z)},
-        v(r.AA)&&{l:'סה"כ לפני מע"מ',vv:fmt(r.AA)},
-        v(r.AB)&&{l:'הנחה',vv:r.AB+'%',disc:true},
-        v(r.AC)&&{l:'סה"כ אחר הנחה (לפני מע"מ)',vv:fmt(r.AC)},
+        nz(r.Z)&&{l:'מחיר ליחידה (לפני מע"מ)',vv:fmt(r.Z)},
+        nz(r.AA)&&{l:'סה"כ לפני מע"מ',vv:fmt(r.AA)},
+        nz(r.AB)&&{l:'הנחה',vv:r.AB+'%',disc:true},
+        nz(r.AC)&&{l:'סה"כ אחר הנחה (לפני מע"מ)',vv:fmt(r.AC)},
         totVAT&&{l:'סה"כ כולל מע"מ',vv:fmt(totVAT),hi:true},
       ].filter(Boolean);
       if(pricing.length){
@@ -907,16 +887,16 @@ function renderDocList(data,state,isTax){
         h+=`</div>`;
       }
 
-      const payFields=tail.filter(f=>v(r[f.k]));
-      if(payFields.length){
+      const payF=tail.filter(f=>nz(r[f.k]));
+      if(payF.length){
         h+=`<div class="dtable"><div style="padding:7px 12px;background:#f5f5f5;border-bottom:.5px solid #ebebeb;font-size:12px;font-weight:600;color:#666">פרטי תשלום</div>`;
-        payFields.filter(f=>!f.wide).forEach((f,fi)=>{
+        payF.filter(f=>!f.wide).forEach((f,fi)=>{
           h+=`<div class="dtrow"${fi===0?' style="border-top:none"':''}>
             <span class="dtlabel">${f.label}</span>
             <span class="dtval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</span>
           </div>`;
         });
-        payFields.filter(f=>f.wide).forEach(f=>{
+        payF.filter(f=>f.wide).forEach(f=>{
           h+=`<div style="padding:8px 12px;border-top:.5px solid #f0f0f0">
             <div class="glabel">${f.label}</div>
             <div style="font-size:13px;color:#222;margin-top:2px">${esc(r[f.k])}</div></div>`;
@@ -930,6 +910,10 @@ function renderDocList(data,state,isTax){
   return h+`</div>`;
 }
 
+// ── Helpers ──
+function alertHtml(msg){
+  return`<div class="alert ${msg.t==='s'?'ok':'err'}">${msg.t==='s'?'✅ ':'❌ '}${esc(msg.m)}</div>`;
+}
 function errScreen(errMsg,reload,label,color){
   return`<div class="status">
     <p style="font-size:30px;margin-bottom:12px">⚠️</p>
@@ -940,8 +924,6 @@ function errScreen(errMsg,reload,label,color){
       <button onclick="openSettings()" style="background:#37474f;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer">⚙️ אבחון</button>
     </div></div>`;
 }
-
-// ── Status ──
 function statusHtml(state,reload,label){
   if(state==='loading'||state==='idle')
     return`<div class="status"><div class="spinner"></div><p style="color:#999;font-size:14px">טוען ${label}...</p></div>`;
@@ -966,13 +948,6 @@ function bindAll(){
       if(cnt)cnt.textContent=`${fc.length} לקוחות${S.search?` (מתוך ${S.customers.length})`:''} `;
     });
   }
-  // Close suggest on outside click
-  document.addEventListener('click',closeSuggestOutside,{once:true});
-}
-function closeSuggestOutside(e){
-  if(!e.target.closest('#r-H')&&!e.target.closest('#suggest-box')){
-    S.showSuggest=false;render();
-  }
 }
 function clearSearch(){S.search='';render();setTimeout(()=>document.getElementById('sinput')?.focus(),50);}
 function tog(id){
@@ -991,51 +966,36 @@ async function cp(text,key){
   S.copied=key;render();
   S.copiedTimer=setTimeout(()=>{S.copied=null;render();},2000);
 }
-
 function uf(formKey,k,val){S[formKey][k]=val;}
-
 function addDashC(){
   S.cForm['B']=(S.cForm['B']||'')+'-';
   const inp=document.getElementById('f-B');
   if(inp){inp.value=S.cForm['B'];inp.focus();}
 }
-
-// Customer autocomplete for receipt form
 function onCustSearch(val){
   S.rForm.H=val;
-  if(val.length<2){S.suggest=[];S.showSuggest=false;return;}
+  if(val.length<2){S.suggest=[];S.showSuggest=false;
+    const box=document.getElementById('suggest-box');if(box)box.remove();return;}
   const q=val.toLowerCase();
-  S.suggest=S.customers.filter(c=>
-    (c.A||'').toLowerCase().includes(q)||
-    (c.B||'').toLowerCase().includes(q)||
-    (c.C||'').toLowerCase().includes(q)
-  );
+  S.suggest=S.customers.filter(c=>(c.A||'').toLowerCase().includes(q)||(c.B||'').toLowerCase().includes(q)||(c.C||'').toLowerCase().includes(q));
   S.showSuggest=S.suggest.length>0;
-  // Re-render suggest only
-  const box=document.getElementById('suggest-box');
   const wrap=document.querySelector('.field-wrap');
-  if(wrap){
-    const existing=wrap.querySelector('.suggest-box');
-    if(S.showSuggest&&S.suggest.length){
-      const html=`<div class="suggest-box" id="suggest-box">
-        ${S.suggest.slice(0,6).map(c=>`<div class="suggest-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
-          <div>${esc(c.A)}</div>
-          <div class="suggest-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
-        </div>`).join('')}
-      </div>`;
-      if(existing)existing.outerHTML=html;
-      else wrap.insertAdjacentHTML('beforeend',html);
-    }else if(existing){existing.remove();}
-  }
+  if(!wrap)return;
+  const existing=document.getElementById('suggest-box');
+  if(S.showSuggest){
+    const html=`<div class="suggest-box" id="suggest-box">
+      ${S.suggest.slice(0,6).map(c=>`<div class="suggest-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
+        <div>${esc(c.A)}</div>
+        <div class="suggest-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
+      </div>`).join('')}
+    </div>`;
+    if(existing)existing.outerHTML=html;else wrap.insertAdjacentHTML('beforeend',html);
+  }else if(existing){existing.remove();}
 }
 function pickCustomer(name,id){
-  S.rForm.H=name;
-  S.rForm.I=id;
-  S.showSuggest=false;
-  S.suggest=[];
+  S.rForm.H=name;S.rForm.I=id;S.showSuggest=false;S.suggest=[];
   render();
 }
-
 async function saveCust(){
   if(!S.cForm.A?.trim()){S.msg={t:'e',m:'שם לקוח הוא שדה חובה'};render();return;}
   if(S.cForm.D)S.cForm.D=fmtPhone(S.cForm.D);
@@ -1043,34 +1003,25 @@ async function saveCust(){
   try{
     await apiPost({action:'addCustomer',data:{...S.cForm}});
     S.customers.push({...S.cForm,_id:S.customers.length,_bg:'#ffffff'});
-    S.msg={t:'s',m:'הלקוח נשמר בהצלחה!'};
-    S.saving=false;render();
+    S.msg={t:'s',m:'הלקוח נשמר בהצלחה!'};S.saving=false;render();
     setTimeout(()=>{S.screen='list';S.cForm=efC();S.msg=null;setHeader();render();},1500);
-  }catch(e){
-    S.msg={t:'e',m:e.message||'שגיאה בשמירה'};
-    S.saving=false;render();
-  }
+  }catch(e){S.msg={t:'e',m:e.message||'שגיאה'};S.saving=false;render();}
 }
-
 async function saveReceipt(){
   if(!S.rForm.C?.trim()){S.msg={t:'e',m:'סכום התשלום הוא שדה חובה'};render();return;}
   S.saving=true;S.msg=null;render();
   try{
     await apiPost({action:'addReceipt',data:{...S.rForm}});
     S.receipts.push({...S.rForm,_id:S.receipts.length,_bg:'#ffffff'});
-    S.msg={t:'s',m:'הקבלה נשמרה בהצלחה!'};
-    S.saving=false;render();
+    S.msg={t:'s',m:'הקבלה נשמרה בהצלחה!'};S.saving=false;render();
     setTimeout(()=>{S.screen='list';S.rForm=efR();S.msg=null;setHeader();render();},1500);
-  }catch(e){
-    S.msg={t:'e',m:e.message||'שגיאה בשמירה'};
-    S.saving=false;render();
-  }
+  }catch(e){S.msg={t:'e',m:e.message||'שגיאה'};S.saving=false;render();}
 }
 
 // ── Init ──
 window.addEventListener('DOMContentLoaded',()=>{
   S.cForm=efC();S.rForm=efR();
-  setHeader();
+  setHeader();syncNav();
   if(S.scriptUrl){render();pingSheets().then(()=>loadCustomers());}
   else{render();}
 });
