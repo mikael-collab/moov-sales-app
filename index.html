@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -117,13 +120,23 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
 .field{margin-bottom:13px;}
 .field label{display:block;font-size:13px;font-weight:500;color:#555;margin-bottom:5px;}
 .field label small{font-size:11px;color:#bbb;font-weight:400;}
-.field input{display:block;width:100%;padding:11px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;font-family:inherit;background:#f8f8f8;outline:none;direction:rtl;-webkit-appearance:none;transition:border-color .2s;}
-.field input:focus{border-color:var(--tc,#1a73e8);background:#fff;}
-.field input.num{direction:ltr;text-align:right;font-family:monospace;letter-spacing:1px;}
+.finput{display:block;width:100%;padding:11px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;font-family:inherit;background:#f8f8f8;outline:none;direction:rtl;-webkit-appearance:none;transition:border-color .2s;}
+.finput:focus{border-color:var(--tc,#1a73e8);background:#fff;}
+.finput.num{direction:ltr;text-align:right;font-family:monospace;letter-spacing:1px;}
+.finput.ltr{direction:ltr;text-align:left;}
+select.finput{cursor:pointer;}
+textarea.finput{resize:vertical;min-height:70px;font-size:14px;line-height:1.6;}
 .irow{display:flex;gap:8px;}
 .dash-btn{padding:11px 17px;border-radius:10px;border:1.5px solid var(--tc,#1a73e8);background:transparent;color:var(--tc,#1a73e8);font-size:22px;font-weight:700;line-height:1;cursor:pointer;flex-shrink:0;}
 .save-btn{width:100%;padding:14px;border-radius:10px;color:#fff;border:none;font-size:16px;font-weight:600;margin-top:10px;cursor:pointer;-webkit-appearance:none;}
 .save-btn:disabled{background:#ccc !important;cursor:wait;}
+/* Customer suggest */
+.suggest-box{position:absolute;top:100%;right:0;left:0;background:#fff;border:1.5px solid #e0e0e0;border-top:none;border-radius:0 0 10px 10px;max-height:160px;overflow-y:auto;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+.suggest-item{padding:10px 13px;cursor:pointer;font-size:14px;color:#333;border-top:.5px solid #f0f0f0;}
+.suggest-item:first-child{border-top:none;}
+.suggest-item:hover,.suggest-item:active{background:#f0f4ff;}
+.suggest-sub{font-size:11px;color:#aaa;margin-top:2px;}
+.field-wrap{position:relative;}
 .alert{padding:12px 14px;border-radius:10px;font-weight:500;text-align:center;font-size:14px;margin-bottom:14px;}
 .alert.ok{background:#e6f4ea;color:#1e8e3e;}
 .alert.err{background:#fce8e6;color:#c62828;}
@@ -171,7 +184,6 @@ const TABS={
   receipts: {label:'קבלות',            color:'#1e8e3e',bg:'#e6f4ea'},
   tax:      {label:'חשבוניות/קבלות',  color:'#7b1fa2',bg:'#f3e5f5'},
 };
-
 const SHEETS={
   customers:'לקוחות',
   invoices: 'חשבוניות',
@@ -193,21 +205,7 @@ const CF=[
   {k:'K',label:'מספר חשבון',    mode:'num', bank:true},
 ];
 
-// ── CORRECTED product columns based on diagnostic ──
-// Diagnostic revealed 11 products (D-Y for names, E-Y for quantities):
-// D=Blueberry Mint 10 name, E=qty
-// F=Blueberry Mint 6 name,  G=qty   ← extra product discovered
-// H=Jalapeno Lime 14 name,  I=qty
-// J=Jalapeno Lime 6 name,   K=qty
-// L=Peppermint 20 name,     M=qty
-// N=Peppermint 10 name,     O=qty
-// P=Peppermint 3 name,      Q=qty
-// R=Raspberry Soda 10 name, S=qty
-// T=Watermelon 20 name,     U=qty
-// V=Watermelon 14 name,     W=qty
-// X=Banana 3 name,          Y=qty
-// Z=price per unit (confirmed Z:13.00 in diagnostic)
-// AA=סה"כ לפני מע"מ, AB=הנחה, AC=סה"כ אחר הנחה
+// Corrected product columns (11 products, D-X names, E-Y quantities)
 const PRODS=[
   {qk:'E', label:'Blueberry Mint 10', heb:'אוכמניות',     nic:10, em:'🫐'},
   {qk:'G', label:'Blueberry Mint 6',  heb:'אוכמניות',     nic:6,  em:'🫐'},
@@ -222,9 +220,6 @@ const PRODS=[
   {qk:'Y', label:'Banana 3',          heb:'בננה',         nic:3,  em:'🍌'},
 ];
 
-// Pricing: Z=price/unit, AA=total, AB=discount%, AC=after discount
-// חשבוניות tail: AD=תנאי תשלום, AE=total+VAT, AF=invoice#, AG=payment type...
-// חשמ"ק tail:    AD=total+VAT, AE=payment type, AF=amount...
 const INV_TAIL=[
   {k:'AD',label:'תנאי תשלום'},
   {k:'AE',label:'סה"כ כולל מע"מ',money:true,hi:true},
@@ -246,6 +241,7 @@ const TAX_TAIL=[
   {k:'AK',label:'מספר חשבונית מס / קבלה'},
 ];
 
+// קבלות fields
 const RF=[
   {k:'A',label:'מספר חשבונית',                 icon:'🧾'},
   {k:'B',label:'סוג תשלום',                     icon:'💳'},
@@ -259,6 +255,8 @@ const RF=[
   {k:'J',label:'מספר קבלה',                     icon:'🔢'},
 ];
 
+const PAYMENT_TYPES=['מזומן','שיק','העברה בנקאית','אשראי','ביט','פייבוקס'];
+
 const S={
   tab:'customers',screen:'list',
   customers:[],csState:'idle',
@@ -266,34 +264,36 @@ const S={
   receipts:[], rsState:'idle',
   tax:[],      tsState:'idle',
   search:'',expId:null,
-  form:{},saving:false,msg:null,
+  cForm:{},rForm:{},
+  saving:false,msg:null,
   copied:null,copiedTimer:null,
   scriptUrl:localStorage.getItem(STORAGE_KEY)||'',
   availableSheets:[],
   diagData:{},diagRunning:false,
   errors:{},
+  suggest:[],showSuggest:false,
 };
 
 const tc=()=>TABS[S.tab].color;
-function ef(){const o={};CF.forEach(f=>o[f.k]='');return o;}
+function efC(){const o={};CF.forEach(f=>o[f.k]='');return o;}
+function efR(){return{A:'',B:'מזומן',C:'',D:today(),E:'',F:'',G:'',H:'',I:'',J:''};}
+function today(){const d=new Date();return d.toLocaleDateString('he-IL');}
+
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function val(v){return v&&v!=='0'&&v!=='0.00'?v:'';}
-function fmt(v){
-  const n=parseFloat((v||'').toString().replace(/[^0-9.]/g,''));
-  if(isNaN(n)||n===0)return v||'';
+function v(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
+function fmt(x){
+  const n=parseFloat((x||'').toString().replace(/[^0-9.]/g,''));
+  if(isNaN(n)||n===0)return x||'';
   return '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2});
 }
-function fmtPhone(v){
-  if(!v)return v;
-  const d=v.replace(/\D/g,'');
+function fmtPhone(x){
+  if(!x)return x;
+  const d=x.replace(/\D/g,'');
   if(d.length===10&&d.startsWith('0'))return d.slice(0,3)+'-'+d.slice(3);
   if(d.length===9&&d.startsWith('0'))return d.slice(0,2)+'-'+d.slice(2);
-  return v;
+  return x;
 }
-function isBusy(e){
-  const m=(e?.message||'').toLowerCase();
-  return m.includes('quota')||m.includes('rate')||m.includes('limit')||m.includes('429');
-}
+function isBusy(e){const m=(e?.message||'').toLowerCase();return m.includes('quota')||m.includes('rate')||m.includes('limit')||m.includes('429');}
 function rowBg(r,isExp){
   if(isExp)return'#ffffff';
   const bg=(r._bg||'#ffffff').toLowerCase().replace(/\s/g,'');
@@ -325,8 +325,8 @@ async function pingSheets(){
       S.availableSheets=d.sheets;
       d.sheets.forEach(name=>{
         const n=name.trim();
-        if(n==='לקוחות')         SHEETS.customers=n;
-        else if(n.includes('/')) SHEETS.tax=n;
+        if(n==='לקוחות')              SHEETS.customers=n;
+        else if(n.includes('/'))      SHEETS.tax=n;
         else if(/^חשבוניות$/.test(n)) SHEETS.invoices=n;
         else if(/^קבלות$/.test(n))    SHEETS.receipts=n;
       });
@@ -371,7 +371,7 @@ const loadTax      =()=>loadAny('tax',      'tsState',20);
 
 // ── Navigation ──
 function switchTab(tab){
-  S.tab=tab;S.screen='list';S.search='';S.expId=null;S.msg=null;
+  S.tab=tab;S.screen='list';S.search='';S.expId=null;S.msg=null;S.showSuggest=false;
   document.querySelectorAll('.bnav-btn').forEach(b=>{
     const a=b.dataset.tab===tab;
     b.classList.toggle('active',a);
@@ -382,21 +382,30 @@ function switchTab(tab){
   if(tab==='tax'&&S.tsState==='idle')loadTax();
   setHeader();render();
 }
-function goBack(){S.screen='list';S.msg=null;S.form=ef();setHeader();render();}
-function openNewCustomer(){S.screen='new-customer';S.form=ef();S.msg=null;setHeader();render();}
+function goBack(){S.screen='list';S.msg=null;S.cForm=efC();S.rForm=efR();S.showSuggest=false;setHeader();render();}
+function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();}
+function openNewReceipt(){S.screen='new-receipt';S.rForm=efR();S.msg=null;S.showSuggest=false;setHeader();render();}
 function openSettings(){S.screen='settings';setHeader();render();}
 
 function setHeader(){
   document.getElementById('hdr').style.background=S.screen==='settings'?'#37474f':tc();
-  const titles={'list':TABS[S.tab]?.label,'new-customer':'+ לקוח חדש','settings':'⚙️ הגדרות'};
+  const titles={
+    'list':TABS[S.tab]?.label,
+    'new-customer':'+ לקוח חדש',
+    'new-receipt':'+ קבלה חדשה',
+    'settings':'⚙️ הגדרות'
+  };
   document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[S.tab]?.label||'';
   const back=document.getElementById('back-btn');
   const right=document.getElementById('right-btn');
   back.classList.toggle('hidden',S.screen==='list');
-  if(S.screen==='settings'){right.classList.add('hidden');}
-  else if(S.tab==='customers'&&S.screen==='list'){
+  if(S.screen==='settings'){
+    right.classList.add('hidden');
+  } else if(S.tab==='customers'&&S.screen==='list'){
     right.classList.remove('hidden');right.textContent='+';right.onclick=openNewCustomer;
-  }else{
+  } else if(S.tab==='receipts'&&S.screen==='list'){
+    right.classList.remove('hidden');right.textContent='+';right.onclick=openNewReceipt;
+  } else {
     right.classList.remove('hidden');right.textContent='⚙️';right.onclick=openSettings;
   }
 }
@@ -408,15 +417,17 @@ function render(){
   if(!S.scriptUrl&&S.screen!=='settings'){
     el.innerHTML=renderSetup();
     document.getElementById('bnav').style.display='none';
-    el.scrollTop=pos;bindInputs();return;
+    el.scrollTop=pos;bindAll();return;
   }
   document.getElementById('bnav').style.display='flex';
-  if(S.screen==='settings')      el.innerHTML=renderSettings();
-  else if(S.tab==='customers')   el.innerHTML=S.screen==='list'?renderCustList():renderForm();
-  else if(S.tab==='invoices')    el.innerHTML=renderDocList(S.invoices,S.isState,false);
-  else if(S.tab==='receipts')    el.innerHTML=renderRecList();
-  else                           el.innerHTML=renderDocList(S.tax,S.tsState,true);
-  el.scrollTop=pos;bindInputs();
+  if(S.screen==='settings')       el.innerHTML=renderSettings();
+  else if(S.screen==='new-customer') el.innerHTML=renderCustForm();
+  else if(S.screen==='new-receipt')  el.innerHTML=renderReceiptForm();
+  else if(S.tab==='customers')    el.innerHTML=renderCustList();
+  else if(S.tab==='invoices')     el.innerHTML=renderDocList(S.invoices,S.isState,false);
+  else if(S.tab==='receipts')     el.innerHTML=renderRecList();
+  else                            el.innerHTML=renderDocList(S.tax,S.tsState,true);
+  el.scrollTop=pos;bindAll();
 }
 
 // ── Setup ──
@@ -430,13 +441,6 @@ function renderSetup(){
         <input class="url-input" id="script-url-input" type="url" inputmode="url"
           placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
         <button class="save-url-btn" onclick="saveUrl('script-url-input','url-err')">✅ התחבר לגיליון</button>
-      </div>
-      <div class="setup-card">
-        <h3>📋 שלבים</h3>
-        <div class="step-row"><div class="step-num">1</div><div class="step-txt">פתח <b>script.google.com</b> במחשב</div></div>
-        <div class="step-row"><div class="step-num">2</div><div class="step-txt">הדבק את קוד ה-Apps Script ← שמור</div></div>
-        <div class="step-row"><div class="step-num">3</div><div class="step-txt"><b>Deploy</b> ← New deployment ← Web app ← Execute as Me ← Anyone</div></div>
-        <div class="step-row"><div class="step-num">4</div><div class="step-txt">העתק ה-<b>Deployment URL</b> ← הדבק למעלה</div></div>
       </div>
     </div>
   </div>`;
@@ -462,15 +466,15 @@ function renderSettings(){
     </div>`;
 
   if(connected){
-    h+=`<div class="stitle">גיליונות ← מיפוי</div>
+    h+=`<div class="stitle">גיליונות</div>
     <div class="scard">
-      ${Object.entries(SHEETS).map(([k,v],i)=>`<div class="srow"${i===0?' style="border-top:none"':''}>
+      ${Object.entries(SHEETS).map(([k,sv],i)=>`<div class="srow"${i===0?' style="border-top:none"':''}>
         <span class="slabel" style="font-size:12px">${TABS[k]?.label||k}</span>
-        <span class="sval" style="color:#1e8e3e">${esc(v)}</span>
+        <span class="sval" style="color:#1e8e3e">${esc(sv)}</span>
       </div>`).join('')}
     </div>
 
-    <div class="stitle">נתונים טעונים</div>
+    <div class="stitle">נתונים</div>
     <div class="scard">
       ${[['customers','לקוחות','csState'],['invoices','חשבוניות','isState'],['receipts','קבלות','rsState'],['tax','חשמ"ק','tsState']]
         .map(([k,lbl,sk],i)=>{
@@ -480,11 +484,11 @@ function renderSettings(){
             <span style="font-size:11px;color:${st==='ok'?(cnt>0?'#1e8e3e':'#f59e0b'):st==='error'?'#c62828':'#aaa'}">
               ${st==='ok'?cnt+' שורות':st==='error'?'❌ שגיאה':st==='loading'?'טוען...':'לא טעון'}
             </span>
-          </div>${err?`<div style="padding:3px 14px 8px;font-size:10px;color:#c62828;direction:ltr;text-align:left">${esc(err)}</div>`:''}`;
+          </div>${err?`<div style="padding:3px 14px 8px;font-size:10px;color:#c62828;direction:ltr">${esc(err.slice(0,100))}</div>`:''}`;
         }).join('')}
     </div>
 
-    <div class="stitle">אבחון עמודות</div>
+    <div class="stitle">אבחון</div>
     <div class="scard" style="padding:14px">
       <button class="save-url-btn" style="background:${S.diagRunning?'#ccc':'#37474f'}" ${S.diagRunning?'disabled':''} onclick="runDiagnose()">
         ${S.diagRunning?'⏳ מאבחן...':'🔬 הרץ אבחון'}</button>`;
@@ -497,8 +501,8 @@ function renderSettings(){
         if(d.error){h+=`<div class="derr">❌ ${esc(d.error)}</div>`;}
         else if(!d.firstRow){h+=`<div class="dempty">📭 ריק</div>`;}
         else{
-          const entries=Object.entries(d.firstRow).filter(([k,v])=>k!=='_bg'&&v&&String(v).trim());
-          h+=entries.length?`<div class="diag-grid">${entries.slice(0,25).map(([k,v])=>`<div class="dcell"><span class="dk">${esc(k)}:</span><span class="dv">${esc(String(v).slice(0,16))}</span></div>`).join('')}</div>`:`<div class="dempty">⚠️ שורה ריקה</div>`;
+          const entries=Object.entries(d.firstRow).filter(([k,val])=>k!=='_bg'&&val&&String(val).trim());
+          h+=entries.length?`<div class="diag-grid">${entries.slice(0,25).map(([k,val])=>`<div class="dcell"><span class="dk">${esc(k)}:</span><span class="dv">${esc(String(val).slice(0,16))}</span></div>`).join('')}</div>`:`<div class="dempty">⚠️ ריק</div>`;
         }
         h+=`</div>`;
       });
@@ -514,26 +518,26 @@ function renderSettings(){
         <button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:16px;font-size:11px;color:#ccc">MOOV Sales App v1.5</div></div>`;
+  h+=`<div style="text-align:center;margin-top:16px;font-size:11px;color:#ccc">MOOV Sales App v1.6</div></div>`;
   return h;
 }
 
 function saveUrl(inputId,errId){
   const inp=document.getElementById(inputId);
   const errEl=document.getElementById(errId);
-  const v=(inp?.value||'').trim();
-  if(!v||!v.startsWith('https://script.google.com')){
+  const val=(inp?.value||'').trim();
+  if(!val||!val.startsWith('https://script.google.com')){
     if(inp)inp.classList.add('err');
     if(errEl){errEl.textContent='URL לא תקין';errEl.style.display='block';}
     return;
   }
-  S.scriptUrl=v;localStorage.setItem(STORAGE_KEY,v);
+  S.scriptUrl=val;localStorage.setItem(STORAGE_KEY,val);
   resetAll();S.screen='list';S.tab='customers';
   document.getElementById('bnav').style.display='flex';
   setHeader();pingSheets().then(()=>loadCustomers());
 }
 function clearUrl(){
-  if(!confirm('למחוק את ה-URL השמור?'))return;
+  if(!confirm('למחוק את ה-URL?'))return;
   S.scriptUrl='';localStorage.removeItem(STORAGE_KEY);
   resetAll();S.screen='list';
   document.getElementById('bnav').style.display='none';
@@ -605,7 +609,6 @@ function cCard(c,i){
     ${isE?cCardBody(c,color):''}
   </div>`;
 }
-
 function cCardBody(c,color){
   let h=`<div class="card-body">
     <div class="sec-t">פרטי קשר</div><div class="g2" style="margin-bottom:12px">`;
@@ -631,35 +634,184 @@ function cCardBody(c,color){
 }
 
 // ── New Customer Form ──
-function renderForm(){
+function renderCustForm(){
   const color=tc();
   let h=`<div class="fwrap" style="--tc:${color}">`;
   if(S.msg)h+=`<div class="alert ${S.msg.t==='s'?'ok':'err'}">${S.msg.t==='s'?'✅ ':'❌ '}${esc(S.msg.m)}</div>`;
   h+=`<div class="sec-t">פרטי לקוח</div>`;
-  CF.filter(f=>!f.bank).forEach(f=>{h+=fField(f);});
+  CF.filter(f=>!f.bank).forEach(f=>{h+=custField(f);});
   h+=`<div class="divider"><hr><span>🏦 פרטי בנק</span><hr></div>`;
-  CF.filter(f=>f.bank).forEach(f=>{h+=fField(f);});
+  CF.filter(f=>f.bank).forEach(f=>{h+=custField(f);});
   h+=`<button class="save-btn" style="background:${S.saving?'#ccc':color}" ${S.saving?'disabled':''} onclick="saveCust()">
     ${S.saving?'⏳ שומר...':'💾 שמור לקוח'}</button></div>`;
   return h;
 }
-function fField(f){
-  const v=esc(S.form[f.k]||'');
+function custField(f){
+  const vv=esc(S.cForm[f.k]||'');
   if(f.k==='B')return`<div class="field">
     <label>${f.label} <small>(עמודה B${f.req?' *':''})</small></label>
     <div class="irow">
-      <input type="text" inputmode="numeric" id="f-B" class="num" value="${v}"
-        oninput="uf('B',this.value.replace(/[^0-9-]/g,''))">
-      <button class="dash-btn" onclick="addDash()">-</button>
+      <input type="text" inputmode="numeric" id="f-B" class="finput num" value="${vv}"
+        oninput="uf('cForm','B',this.value.replace(/[^0-9-]/g,''))">
+      <button class="dash-btn" onclick="addDashC()">-</button>
     </div></div>`;
   const im=f.mode==='num'?'numeric':f.mode==='tel'?'tel':f.mode==='email'?'email':'text';
   return`<div class="field">
     <label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
     <input type="${f.mode==='email'?'email':f.mode==='tel'?'tel':'text'}" inputmode="${im}"
-      id="f-${f.k}" value="${v}" ${f.mode==='num'?'class="num"':''}
+      id="fc-${f.k}" class="finput" value="${vv}" ${f.mode==='num'?'style="direction:ltr;text-align:right;font-family:monospace"':''}
       style="direction:${f.mode==='email'?'ltr':'rtl'}"
-      oninput="uf('${f.k}',this.value)">
+      oninput="uf('cForm','${f.k}',this.value)">
   </div>`;
+}
+
+// ── New Receipt Form ──
+function renderReceiptForm(){
+  const color=tc();
+  const rf=S.rForm;
+  const isChk=rf.B==='שיק';
+
+  // Build customer suggestions for search
+  const sug=S.suggest;
+
+  let h=`<div class="fwrap" style="--tc:${color}">`;
+  if(S.msg)h+=`<div class="alert ${S.msg.t==='s'?'ok':'err'}">${S.msg.t==='s'?'✅ ':'❌ '}${esc(S.msg.m)}</div>`;
+
+  // H — Customer name with autocomplete
+  h+=`<div class="field">
+    <label>שם לקוח <small>(עמודה H)</small></label>
+    <div class="field-wrap">
+      <input type="text" id="r-H" class="finput" value="${esc(rf.H)}" placeholder="הקלד לחיפוש לקוח..."
+        oninput="onCustSearch(this.value)" autocomplete="off">
+      ${sug.length&&S.showSuggest?`<div class="suggest-box" id="suggest-box">
+        ${sug.slice(0,6).map(c=>`<div class="suggest-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
+          <div>${esc(c.A)}</div>
+          <div class="suggest-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
+        </div>`).join('')}
+      </div>`:''}
+    </div>
+  </div>`;
+
+  // I — ת"ז/ח"פ
+  h+=`<div class="field">
+    <label>ת"ז / ח"פ <small>(עמודה I)</small></label>
+    <input type="text" inputmode="numeric" id="r-I" class="finput num" value="${esc(rf.I)}"
+      oninput="uf('rForm','I',this.value)">
+  </div>`;
+
+  // J — מספר קבלה
+  h+=`<div class="field">
+    <label>מספר קבלה <small>(עמודה J)</small></label>
+    <input type="text" inputmode="numeric" id="r-J" class="finput num" value="${esc(rf.J)}"
+      oninput="uf('rForm','J',this.value)">
+  </div>`;
+
+  // A — מספר חשבונית
+  h+=`<div class="field">
+    <label>מספר חשבונית <small>(עמודה A)</small></label>
+    <input type="text" inputmode="numeric" id="r-A" class="finput num" value="${esc(rf.A)}"
+      oninput="uf('rForm','A',this.value)">
+  </div>`;
+
+  // B — סוג תשלום dropdown
+  h+=`<div class="field">
+    <label>סוג תשלום <small>(עמודה B)</small></label>
+    <select id="r-B" class="finput" onchange="uf('rForm','B',this.value);render()">
+      ${PAYMENT_TYPES.map(pt=>`<option value="${pt}"${rf.B===pt?' selected':''}>${pt}</option>`).join('')}
+    </select>
+  </div>`;
+
+  // C — סכום
+  h+=`<div class="field">
+    <label>סכום התשלום ₪ <small>(עמודה C)</small></label>
+    <input type="text" inputmode="decimal" id="r-C" class="finput num" value="${esc(rf.C)}"
+      oninput="uf('rForm','C',this.value)">
+  </div>`;
+
+  // D — תאריך
+  h+=`<div class="field">
+    <label>תאריך תשלום <small>(עמודה D)</small></label>
+    <input type="text" id="r-D" class="finput" value="${esc(rf.D)}"
+      oninput="uf('rForm','D',this.value)">
+  </div>`;
+
+  // E — מספר שיק (only if שיק)
+  if(isChk){
+    h+=`<div class="field">
+      <label>מספר שיק <small>(עמודה E)</small></label>
+      <input type="text" inputmode="numeric" id="r-E" class="finput num" value="${esc(rf.E)}"
+        oninput="uf('rForm','E',this.value)">
+    </div>`;
+  }
+
+  // G — הערות
+  h+=`<div class="field">
+    <label>הערות <small>(עמודה G)</small></label>
+    <textarea id="r-G" class="finput" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
+  </div>`;
+
+  h+=`<button class="save-btn" style="background:${S.saving?'#ccc':color}" ${S.saving?'disabled':''} onclick="saveReceipt()">
+    ${S.saving?'⏳ שומר...':'💾 שמור קבלה'}</button></div>`;
+  return h;
+}
+
+// ── Receipt List ──
+function renderRecList(){
+  const {receipts:data,rsState:state}=S;
+  const color=tc();
+  const errMsg=S.errors['receipts'];
+  if(state==='error')return errScreen(errMsg,'loadReceipts()','קבלות',color);
+  if(state!=='ok')return statusHtml(state,'loadReceipts()','קבלות');
+  if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
+    <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
+
+  const total=data.reduce((s,r)=>{const n=parseFloat((r.C||'').replace(/[^0-9.]/g,''));return s+(isNaN(n)?0:n);},0);
+  let h=`<div style="padding-bottom:24px">
+    <div class="sumbar" style="background:${color}">
+      <span>${data.length} קבלות אחרונות</span>
+      <span style="font-size:16px;font-weight:700">${total>0?fmt(total.toString()):''}</span>
+    </div>`;
+
+  [...data].reverse().forEach((r,i)=>{
+    const id=`rec-${r._id}`;const isE=S.expId===id;
+    const bg=rowBg(r,isE);
+    const num=v(r.J)||v(r.A)||`#${i+1}`;
+    const custName=v(r.H);const amount=v(r.C);
+    h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
+      <div class="card-hdr" onclick="tog('${id}')">
+        <div class="r1" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span class="nbadge" style="background:${color}">קבלה ${esc(num)}</span>
+            ${custName?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(custName)}</span>`:''}
+          </div>
+          ${amount?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(amount)}</span>`:''}
+        </div>
+        <div class="r2">
+          ${v(r.B)?`<span class="tag">${esc(r.B)}</span>`:''}
+          ${v(r.D)?`<span>📅 ${esc(r.D)}</span>`:''}
+          ${v(r.A)?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
+          ${v(r.E)?`<span class="tag blue">🏦 שיק ${esc(r.E)}</span>`:''}
+        </div>
+        <div class="r3" style="justify-content:flex-end">
+          <span class="toggle-hint" style="color:${isE?color:'#bbb'}">${isE?'▲ סגור':'▼ פרטים'}</span>
+        </div>
+      </div>`;
+    if(isE){
+      h+=`<div class="card-body"><div class="g2" style="margin-bottom:8px">`;
+      RF.filter(f=>!f.wide&&v(r[f.k])).forEach(f=>{
+        h+=`<div class="gcell"><div class="glabel">${f.icon} ${f.label}</div>
+          <div class="gval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
+      });
+      h+=`</div>`;
+      RF.filter(f=>f.wide&&v(r[f.k])).forEach(f=>{
+        h+=`<div class="gcell wide" style="margin-bottom:8px"><div class="glabel">${f.icon} ${f.label}</div>
+          <div class="gval">${esc(r[f.k])}</div></div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+  return h+`</div>`;
 }
 
 // ── Invoice / Tax List ──
@@ -668,29 +820,16 @@ function renderDocList(data,state,isTax){
   const reload=isTax?'loadTax()':'loadInvoices()';
   const color=tc();
   const errMsg=S.errors[isTax?'tax':'invoices'];
-  // totalKey: AE for invoices, AD for tax (confirmed from diagnostic)
   const totalKey=isTax?'AD':'AE';
   const numKey=isTax?'AK':'AF';
   const tail=isTax?TAX_TAIL:INV_TAIL;
 
-  if(state==='error')return`<div class="status">
-    <p style="font-size:30px;margin-bottom:12px">⚠️</p>
-    <p style="font-weight:600;color:#c62828;font-size:15px;margin-bottom:8px">שגיאה: ${label}</p>
-    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;word-break:break-all">${esc(errMsg)}</div>`:''}
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-      <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">↻ נסה שוב</button>
-      <button onclick="openSettings()" style="background:#37474f;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">⚙️ אבחון</button>
-    </div></div>`;
-
+  if(state==='error')return errScreen(errMsg,reload,label,color);
   if(state!=='ok')return statusHtml(state,reload,label);
   if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין ${label}</p>
     <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
 
-  const grand=data.reduce((s,r)=>{
-    const v=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));
-    return s+(isNaN(v)?0:v);
-  },0);
-
+  const grand=data.reduce((s,r)=>{const n=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));return s+(isNaN(n)?0:n);},0);
   let h=`<div style="padding-bottom:24px">
     <div class="sumbar" style="background:${color}">
       <span>${data.length} ${isTax?'חשמ"ק':'חשבוניות'} אחרונות</span>
@@ -701,12 +840,12 @@ function renderDocList(data,state,isTax){
     const id=`${isTax?'t':'v'}-${r._id}`;
     const isE=S.expId===id;
     const bg=rowBg(r,isE);
-    const totVAT=val(r[totalKey]);
-    const invNum=val(r[numKey]);
-    const bizName=val(r.B); // שם העסק
-    const custId=val(r.A);  // ת"ז / ח"פ
-    const date=val(r.C);    // תאריך
-    const prods=PRODS.filter(p=>{const q=parseFloat(r[p.qk]);return !isNaN(q)&&q>0;});
+    const totVAT=v(r[totalKey]);
+    const invNum=v(r[numKey]);
+    const bizName=v(r.B);
+    const custId=v(r.A);
+    const date=v(r.C);
+    const prods=PRODS.filter(p=>{const q=parseFloat(r[p.qk]);return!isNaN(q)&&q>0;});
     const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
 
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
@@ -750,26 +889,25 @@ function renderDocList(data,state,isTax){
         h+=`</div>`;
       }
 
-      // Pricing — Z=price, AA=total, AB=discount, AC=after discount
       const pricing=[
-        val(r.Z)&&{l:'מחיר ליחידה (לפני מע"מ)',v:fmt(r.Z)},
-        val(r.AA)&&{l:'סה"כ לפני מע"מ',v:fmt(r.AA)},
-        val(r.AB)&&{l:'הנחה',v:r.AB+'%',disc:true},
-        val(r.AC)&&{l:'סה"כ אחר הנחה (לפני מע"מ)',v:fmt(r.AC)},
-        totVAT&&{l:'סה"כ כולל מע"מ',v:fmt(totVAT),hi:true},
+        v(r.Z)&&{l:'מחיר ליחידה (לפני מע"מ)',vv:fmt(r.Z)},
+        v(r.AA)&&{l:'סה"כ לפני מע"מ',vv:fmt(r.AA)},
+        v(r.AB)&&{l:'הנחה',vv:r.AB+'%',disc:true},
+        v(r.AC)&&{l:'סה"כ אחר הנחה (לפני מע"מ)',vv:fmt(r.AC)},
+        totVAT&&{l:'סה"כ כולל מע"מ',vv:fmt(totVAT),hi:true},
       ].filter(Boolean);
       if(pricing.length){
         h+=`<div class="dtable" style="margin-bottom:10px">`;
         pricing.forEach((row,ri)=>{
           h+=`<div class="dtrow" style="${ri===0?'border-top:none;':''}${row.hi?`background:${color}15`:''}">
             <span class="dtlabel">${row.l}</span>
-            <span class="dtval" style="color:${row.hi?color:row.disc?'#c62828':'#222'};font-size:${row.hi?15:13}px;font-weight:${row.hi?700:500}">${row.v}</span>
+            <span class="dtval" style="color:${row.hi?color:row.disc?'#c62828':'#222'};font-size:${row.hi?15:13}px;font-weight:${row.hi?700:500}">${row.vv}</span>
           </div>`;
         });
         h+=`</div>`;
       }
 
-      const payFields=tail.filter(f=>val(r[f.k]));
+      const payFields=tail.filter(f=>v(r[f.k]));
       if(payFields.length){
         h+=`<div class="dtable"><div style="padding:7px 12px;background:#f5f5f5;border-bottom:.5px solid #ebebeb;font-size:12px;font-weight:600;color:#666">פרטי תשלום</div>`;
         payFields.filter(f=>!f.wide).forEach((f,fi)=>{
@@ -792,74 +930,15 @@ function renderDocList(data,state,isTax){
   return h+`</div>`;
 }
 
-// ── Receipt List ──
-function renderRecList(){
-  const {receipts:data,rsState:state}=S;
-  const color=tc();
-  const errMsg=S.errors['receipts'];
-  if(state==='error')return`<div class="status">
+function errScreen(errMsg,reload,label,color){
+  return`<div class="status">
     <p style="font-size:30px;margin-bottom:12px">⚠️</p>
-    <p style="font-weight:600;color:#c62828;font-size:15px;margin-bottom:8px">שגיאה בטעינת קבלות</p>
-    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;word-break:break-all">${esc(errMsg)}</div>`:''}
-    <div style="display:flex;gap:8px;justify-content:center">
-      <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">↻ נסה שוב</button>
-      <button onclick="openSettings()" style="background:#37474f;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">⚙️ אבחון</button>
+    <p style="font-weight:600;color:#c62828;font-size:15px;margin-bottom:8px">שגיאה: ${label}</p>
+    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;word-break:break-all">${esc(errMsg.slice(0,120))}</div>`:''}
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer">↻ נסה שוב</button>
+      <button onclick="openSettings()" style="background:#37474f;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer">⚙️ אבחון</button>
     </div></div>`;
-
-  if(state!=='ok')return statusHtml(state,'loadReceipts()','קבלות');
-  if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
-    <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
-
-  const total=data.reduce((s,r)=>{const v=parseFloat((r.C||'').replace(/[^0-9.]/g,''));return s+(isNaN(v)?0:v);},0);
-  let h=`<div style="padding-bottom:24px">
-    <div class="sumbar" style="background:${color}">
-      <span>${data.length} קבלות אחרונות</span>
-      <span style="font-size:16px;font-weight:700">${total>0?fmt(total.toString()):''}</span>
-    </div>`;
-
-  [...data].reverse().forEach((r,i)=>{
-    const id=`rec-${r._id}`;const isE=S.expId===id;
-    const bg=rowBg(r,isE);
-    const num=val(r.J)||val(r.A)||`#${i+1}`;
-    const custName=val(r.H);
-    const amount=val(r.C);
-    h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
-      <div class="card-hdr" onclick="tog('${id}')">
-        <div class="r1" style="justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:7px">
-            <span class="nbadge" style="background:${color}">קבלה ${esc(num)}</span>
-            ${custName?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(custName)}</span>`:''}
-          </div>
-          ${amount?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(amount)}</span>`:''}
-        </div>
-        <div class="r2">
-          ${val(r.B)?`<span class="tag">${esc(r.B)}</span>`:''}
-          ${val(r.D)?`<span>📅 ${esc(r.D)}</span>`:''}
-          ${val(r.A)?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
-          ${val(r.E)?`<span class="tag blue">🏦 שיק</span>`:''}
-        </div>
-        <div class="r3" style="justify-content:flex-end">
-          <span class="toggle-hint" style="color:${isE?color:'#bbb'}">${isE?'▲ סגור':'▼ פרטים'}</span>
-        </div>
-      </div>`;
-    if(isE){
-      h+=`<div class="card-body"><div class="g2" style="margin-bottom:8px">`;
-      RF.filter(f=>!f.wide&&val(r[f.k])).forEach(f=>{
-        h+=`<div class="gcell"><div class="glabel">${f.icon} ${f.label}</div>
-          <div class="gval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
-      });
-      h+=`</div>`;
-      RF.filter(f=>f.wide&&val(r[f.k])).forEach(f=>{
-        h+=`<div class="gcell wide" style="margin-bottom:8px"><div class="glabel">${f.icon} ${f.label}</div>
-          <div class="gval">${esc(r[f.k])}</div></div>`;
-      });
-      if(val(r.F))h+=`<div style="background:#e8f0fe;border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:8px">
-        <span>📷</span><span style="font-size:12px;color:#1a73e8;font-weight:500">יש קובץ צילום שיק מצורף</span></div>`;
-      h+=`</div>`;
-    }
-    h+=`</div>`;
-  });
-  return h+`</div>`;
 }
 
 // ── Status ──
@@ -877,7 +956,7 @@ function statusHtml(state,reload,label){
 }
 
 // ── Events ──
-function bindInputs(){
+function bindAll(){
   const si=document.getElementById('sinput');
   if(si){
     si.addEventListener('input',e=>{
@@ -886,6 +965,13 @@ function bindInputs(){
       const cnt=document.getElementById('scnt');
       if(cnt)cnt.textContent=`${fc.length} לקוחות${S.search?` (מתוך ${S.customers.length})`:''} `;
     });
+  }
+  // Close suggest on outside click
+  document.addEventListener('click',closeSuggestOutside,{once:true});
+}
+function closeSuggestOutside(e){
+  if(!e.target.closest('#r-H')&&!e.target.closest('#suggest-box')){
+    S.showSuggest=false;render();
   }
 }
 function clearSearch(){S.search='';render();setTimeout(()=>document.getElementById('sinput')?.focus(),50);}
@@ -905,22 +991,76 @@ async function cp(text,key){
   S.copied=key;render();
   S.copiedTimer=setTimeout(()=>{S.copied=null;render();},2000);
 }
-function uf(k,v){S.form[k]=v;}
-function addDash(){
-  S.form['B']=(S.form['B']||'')+'-';
+
+function uf(formKey,k,val){S[formKey][k]=val;}
+
+function addDashC(){
+  S.cForm['B']=(S.cForm['B']||'')+'-';
   const inp=document.getElementById('f-B');
-  if(inp){inp.value=S.form['B'];inp.focus();}
+  if(inp){inp.value=S.cForm['B'];inp.focus();}
 }
+
+// Customer autocomplete for receipt form
+function onCustSearch(val){
+  S.rForm.H=val;
+  if(val.length<2){S.suggest=[];S.showSuggest=false;return;}
+  const q=val.toLowerCase();
+  S.suggest=S.customers.filter(c=>
+    (c.A||'').toLowerCase().includes(q)||
+    (c.B||'').toLowerCase().includes(q)||
+    (c.C||'').toLowerCase().includes(q)
+  );
+  S.showSuggest=S.suggest.length>0;
+  // Re-render suggest only
+  const box=document.getElementById('suggest-box');
+  const wrap=document.querySelector('.field-wrap');
+  if(wrap){
+    const existing=wrap.querySelector('.suggest-box');
+    if(S.showSuggest&&S.suggest.length){
+      const html=`<div class="suggest-box" id="suggest-box">
+        ${S.suggest.slice(0,6).map(c=>`<div class="suggest-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
+          <div>${esc(c.A)}</div>
+          <div class="suggest-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
+        </div>`).join('')}
+      </div>`;
+      if(existing)existing.outerHTML=html;
+      else wrap.insertAdjacentHTML('beforeend',html);
+    }else if(existing){existing.remove();}
+  }
+}
+function pickCustomer(name,id){
+  S.rForm.H=name;
+  S.rForm.I=id;
+  S.showSuggest=false;
+  S.suggest=[];
+  render();
+}
+
 async function saveCust(){
-  if(!S.form.A?.trim()){S.msg={t:'e',m:'שם לקוח הוא שדה חובה'};render();return;}
-  if(S.form.D)S.form.D=fmtPhone(S.form.D);
+  if(!S.cForm.A?.trim()){S.msg={t:'e',m:'שם לקוח הוא שדה חובה'};render();return;}
+  if(S.cForm.D)S.cForm.D=fmtPhone(S.cForm.D);
   S.saving=true;S.msg=null;render();
   try{
-    await apiPost({action:'addCustomer',data:{...S.form}});
-    S.customers.push({...S.form,_id:S.customers.length,_bg:'#ffffff'});
+    await apiPost({action:'addCustomer',data:{...S.cForm}});
+    S.customers.push({...S.cForm,_id:S.customers.length,_bg:'#ffffff'});
     S.msg={t:'s',m:'הלקוח נשמר בהצלחה!'};
     S.saving=false;render();
-    setTimeout(()=>{S.screen='list';S.form=ef();S.msg=null;setHeader();render();},1500);
+    setTimeout(()=>{S.screen='list';S.cForm=efC();S.msg=null;setHeader();render();},1500);
+  }catch(e){
+    S.msg={t:'e',m:e.message||'שגיאה בשמירה'};
+    S.saving=false;render();
+  }
+}
+
+async function saveReceipt(){
+  if(!S.rForm.C?.trim()){S.msg={t:'e',m:'סכום התשלום הוא שדה חובה'};render();return;}
+  S.saving=true;S.msg=null;render();
+  try{
+    await apiPost({action:'addReceipt',data:{...S.rForm}});
+    S.receipts.push({...S.rForm,_id:S.receipts.length,_bg:'#ffffff'});
+    S.msg={t:'s',m:'הקבלה נשמרה בהצלחה!'};
+    S.saving=false;render();
+    setTimeout(()=>{S.screen='list';S.rForm=efR();S.msg=null;setHeader();render();},1500);
   }catch(e){
     S.msg={t:'e',m:e.message||'שגיאה בשמירה'};
     S.saving=false;render();
@@ -929,7 +1069,8 @@ async function saveCust(){
 
 // ── Init ──
 window.addEventListener('DOMContentLoaded',()=>{
-  S.form=ef();setHeader();
+  S.cForm=efC();S.rForm=efR();
+  setHeader();
   if(S.scriptUrl){render();pingSheets().then(()=>loadCustomers());}
   else{render();}
 });
