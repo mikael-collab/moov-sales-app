@@ -50,17 +50,16 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
 .slabel{font-size:13px;color:#444;font-weight:500;}
 .sval{font-size:11px;color:#aaa;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;}
 .sbtn{background:none;border:none;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;white-space:nowrap;}
-.sbtn.red{color:#c62828;} .sbtn.blue{color:#1a73e8;} .sbtn.grn{color:#1e8e3e;}
+.sbtn.red{color:#c62828;}.sbtn.blue{color:#1a73e8;}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle;}
-/* Diag box */
+/* Diag */
 .diag-box{background:#111827;border-radius:10px;padding:12px;margin-top:10px;direction:ltr;text-align:left;}
 .diag-sheet{margin-bottom:14px;}
 .diag-name{font-size:12px;font-weight:600;color:#60a5fa;margin-bottom:6px;}
 .diag-grid{display:flex;flex-wrap:wrap;gap:4px;}
 .dcell{background:#1e3a5f;border-radius:4px;padding:2px 7px;font-size:10px;font-family:monospace;}
-.dk{color:#93c5fd;} .dv{color:#86efac;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
-.derr{color:#f87171;font-size:11px;font-family:monospace;}
-.dempty{color:#6b7280;font-size:11px;font-family:monospace;}
+.dk{color:#93c5fd;}.dv{color:#86efac;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
+.derr{color:#f87171;font-size:11px;}.dempty{color:#6b7280;font-size:11px;}
 /* URL inputs */
 .url-input{width:100%;padding:12px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:inherit;background:#f8f8f8;outline:none;direction:ltr;text-align:left;-webkit-appearance:none;margin-bottom:10px;transition:border-color .2s;}
 .url-input:focus{border-color:#1a73e8;background:#fff;}
@@ -163,7 +162,6 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
     </button>
   </div>
 </div>
-
 <script>
 const STORAGE_KEY='moov_url_v4';
 
@@ -174,11 +172,6 @@ const TABS={
   tax:      {label:'חשבוניות/קבלות',  color:'#7b1fa2',bg:'#f3e5f5'},
 };
 
-// ── EXACT sheet tab names from your Google Sheet ──
-// customers = "לקוחות"
-// invoices  = "חשבוניות"
-// receipts  = "קבלות"
-// tax       = "חשבוניות/קבלות"   ← was wrong before (was "חשבוניות מס קבלה")
 const SHEETS={
   customers:'לקוחות',
   invoices: 'חשבוניות',
@@ -200,17 +193,57 @@ const CF=[
   {k:'K',label:'מספר חשבון',    mode:'num', bank:true},
 ];
 
+// ── CORRECTED product columns based on diagnostic ──
+// Diagnostic revealed 11 products (D-Y for names, E-Y for quantities):
+// D=Blueberry Mint 10 name, E=qty
+// F=Blueberry Mint 6 name,  G=qty   ← extra product discovered
+// H=Jalapeno Lime 14 name,  I=qty
+// J=Jalapeno Lime 6 name,   K=qty
+// L=Peppermint 20 name,     M=qty
+// N=Peppermint 10 name,     O=qty
+// P=Peppermint 3 name,      Q=qty
+// R=Raspberry Soda 10 name, S=qty
+// T=Watermelon 20 name,     U=qty
+// V=Watermelon 14 name,     W=qty
+// X=Banana 3 name,          Y=qty
+// Z=price per unit (confirmed Z:13.00 in diagnostic)
+// AA=סה"כ לפני מע"מ, AB=הנחה, AC=סה"כ אחר הנחה
 const PRODS=[
-  {qk:'E',label:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
-  {qk:'G',label:'Jalapeno Lime 14',  heb:'חלפיניו ליים',nic:14,em:'🌶'},
-  {qk:'I',label:'Jalapeno Lime 6',   heb:'חלפיניו ליים',nic:6, em:'🌶'},
-  {qk:'K',label:'Peppermint 20',     heb:'מנטה',        nic:20,em:'🌿'},
-  {qk:'M',label:'Peppermint 10',     heb:'מנטה',        nic:10,em:'🌿'},
-  {qk:'O',label:'Peppermint 3',      heb:'מנטה',        nic:3, em:'🌿'},
-  {qk:'Q',label:'Raspberry Soda 10', heb:'פטל',         nic:10,em:'🍓'},
-  {qk:'S',label:'Watermelon 20',     heb:'אבטיח',       nic:20,em:'🍉'},
-  {qk:'U',label:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
-  {qk:'W',label:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
+  {qk:'E', label:'Blueberry Mint 10', heb:'אוכמניות',     nic:10, em:'🫐'},
+  {qk:'G', label:'Blueberry Mint 6',  heb:'אוכמניות',     nic:6,  em:'🫐'},
+  {qk:'I', label:'Jalapeno Lime 14',  heb:'חלפיניו ליים', nic:14, em:'🌶'},
+  {qk:'K', label:'Jalapeno Lime 6',   heb:'חלפיניו ליים', nic:6,  em:'🌶'},
+  {qk:'M', label:'Peppermint 20',     heb:'מנטה',         nic:20, em:'🌿'},
+  {qk:'O', label:'Peppermint 10',     heb:'מנטה',         nic:10, em:'🌿'},
+  {qk:'Q', label:'Peppermint 3',      heb:'מנטה',         nic:3,  em:'🌿'},
+  {qk:'S', label:'Raspberry Soda 10', heb:'פטל',          nic:10, em:'🍓'},
+  {qk:'U', label:'Watermelon 20',     heb:'אבטיח',        nic:20, em:'🍉'},
+  {qk:'W', label:'Watermelon 14',     heb:'אבטיח',        nic:14, em:'🍉'},
+  {qk:'Y', label:'Banana 3',          heb:'בננה',         nic:3,  em:'🍌'},
+];
+
+// Pricing: Z=price/unit, AA=total, AB=discount%, AC=after discount
+// חשבוניות tail: AD=תנאי תשלום, AE=total+VAT, AF=invoice#, AG=payment type...
+// חשמ"ק tail:    AD=total+VAT, AE=payment type, AF=amount...
+const INV_TAIL=[
+  {k:'AD',label:'תנאי תשלום'},
+  {k:'AE',label:'סה"כ כולל מע"מ',money:true,hi:true},
+  {k:'AF',label:'מספר חשבונית'},
+  {k:'AG',label:'סוג תשלום'},
+  {k:'AH',label:'סכום התשלום',money:true},
+  {k:'AI',label:'תאריך תשלום / תאריך פרעון שיק'},
+  {k:'AJ',label:'מספר שיק'},
+  {k:'AK',label:'הערות',wide:true},
+];
+const TAX_TAIL=[
+  {k:'AD',label:'סה"כ כולל מע"מ',money:true,hi:true},
+  {k:'AE',label:'סוג תשלום'},
+  {k:'AF',label:'סכום התשלום',money:true},
+  {k:'AG',label:'תאריך תשלום / תאריך פרעון שיק'},
+  {k:'AH',label:'מספר שיק'},
+  {k:'AI',label:'צילום שיק'},
+  {k:'AJ',label:'הערות',wide:true},
+  {k:'AK',label:'מספר חשבונית מס / קבלה'},
 ];
 
 const RF=[
@@ -224,28 +257,6 @@ const RF=[
   {k:'H',label:'שם לקוח',                       icon:'👤'},
   {k:'I',label:'ת"ז / ח"פ',                     icon:'🪪'},
   {k:'J',label:'מספר קבלה',                     icon:'🔢'},
-];
-
-const INV_TAIL=[
-  {k:'AD',label:'תנאי תשלום'},
-  {k:'AE',label:'סה"כ כולל מע"מ',money:true,hi:true},
-  {k:'AF',label:'מספר חשבונית'},
-  {k:'AG',label:'סוג תשלום'},
-  {k:'AH',label:'סכום התשלום',money:true},
-  {k:'AI',label:'תאריך תשלום / תאריך פרעון שיק'},
-  {k:'AJ',label:'מספר שיק'},
-  {k:'AK',label:'הערות',wide:true},
-];
-
-const TAX_TAIL=[
-  {k:'AD',label:'סה"כ כולל מע"מ',money:true,hi:true},
-  {k:'AE',label:'סוג תשלום'},
-  {k:'AF',label:'סכום התשלום',money:true},
-  {k:'AG',label:'תאריך תשלום / תאריך פרעון שיק'},
-  {k:'AH',label:'מספר שיק'},
-  {k:'AI',label:'צילום שיק'},
-  {k:'AJ',label:'הערות',wide:true},
-  {k:'AK',label:'מספר חשבונית מס / קבלה'},
 ];
 
 const S={
@@ -266,9 +277,10 @@ const S={
 const tc=()=>TABS[S.tab].color;
 function ef(){const o={};CF.forEach(f=>o[f.k]='');return o;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function val(v){return v&&v!=='0'&&v!=='0.00'?v:'';}
 function fmt(v){
   const n=parseFloat((v||'').toString().replace(/[^0-9.]/g,''));
-  if(isNaN(n))return v||'';
+  if(isNaN(n)||n===0)return v||'';
   return '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2});
 }
 function fmtPhone(v){
@@ -294,7 +306,7 @@ async function apiFetch(params){
   const r=await fetch(S.scriptUrl+'?'+new URLSearchParams(params));
   if(!r.ok)throw new Error('HTTP '+r.status);
   const d=await r.json();
-  if(d.error)throw new Error(d.error+(d.available?' | Available: '+d.available.join(', '):''));
+  if(d.error)throw new Error(d.error+(d.available?' | '+d.available.join(', '):''));
   return d;
 }
 async function apiPost(body){
@@ -306,35 +318,29 @@ async function apiPost(body){
   return d;
 }
 
-// Ping — verify connection and auto-correct sheet names if needed
 async function pingSheets(){
   try{
     const d=await apiFetch({});
     if(d.sheets){
       S.availableSheets=d.sheets;
-      // Smart mapping: exact match first, then partial
-      // Key insight: "חשבוניות/קבלות" (with slash) = tax, plain "חשבוניות" = invoices
       d.sheets.forEach(name=>{
         const n=name.trim();
-        if(n==='לקוחות')              SHEETS.customers=n;
-        else if(n.includes('/'))      SHEETS.tax=n;        // חשבוניות/קבלות
-        else if(/^חשבוניות$/.test(n)) SHEETS.invoices=n;  // exact: חשבוניות only
-        else if(/^קבלות$/.test(n))    SHEETS.receipts=n;  // exact: קבלות only
+        if(n==='לקוחות')         SHEETS.customers=n;
+        else if(n.includes('/')) SHEETS.tax=n;
+        else if(/^חשבוניות$/.test(n)) SHEETS.invoices=n;
+        else if(/^קבלות$/.test(n))    SHEETS.receipts=n;
       });
-      console.log('Sheet mapping:', JSON.stringify(SHEETS));
     }
   }catch(e){console.error('ping',e);}
 }
 
-// Diagnose: fetch 1 row from each sheet
 async function runDiagnose(){
   S.diagRunning=true;render();
   S.diagData={};
   for(const tab of['customers','invoices','receipts','tax']){
     try{
       const d=await apiFetch({sheet:SHEETS[tab],limit:1});
-      const rows=d.data||[];
-      S.diagData[tab]={sheetName:SHEETS[tab],firstRow:rows[0]||null};
+      S.diagData[tab]={sheetName:SHEETS[tab],firstRow:(d.data||[])[0]||null};
     }catch(e){
       S.diagData[tab]={sheetName:SHEETS[tab],error:e.message};
     }
@@ -456,17 +462,15 @@ function renderSettings(){
     </div>`;
 
   if(connected){
-    // Sheet mapping status
-    h+=`<div class="stitle">מיפוי גיליונות</div>
+    h+=`<div class="stitle">גיליונות ← מיפוי</div>
     <div class="scard">
       ${Object.entries(SHEETS).map(([k,v],i)=>`<div class="srow"${i===0?' style="border-top:none"':''}>
         <span class="slabel" style="font-size:12px">${TABS[k]?.label||k}</span>
-        <span class="sval" style="color:#1e8e3e">← ${esc(v)}</span>
+        <span class="sval" style="color:#1e8e3e">${esc(v)}</span>
       </div>`).join('')}
-    </div>`;
+    </div>
 
-    // Counts
-    h+=`<div class="stitle">נתונים טעונים</div>
+    <div class="stitle">נתונים טעונים</div>
     <div class="scard">
       ${[['customers','לקוחות','csState'],['invoices','חשבוניות','isState'],['receipts','קבלות','rsState'],['tax','חשמ"ק','tsState']]
         .map(([k,lbl,sk],i)=>{
@@ -476,14 +480,12 @@ function renderSettings(){
             <span style="font-size:11px;color:${st==='ok'?(cnt>0?'#1e8e3e':'#f59e0b'):st==='error'?'#c62828':'#aaa'}">
               ${st==='ok'?cnt+' שורות':st==='error'?'❌ שגיאה':st==='loading'?'טוען...':'לא טעון'}
             </span>
-          </div>${err?`<div style="padding:4px 14px 8px;font-size:10px;color:#c62828;direction:ltr;text-align:left">${esc(err)}</div>`:''}`;
+          </div>${err?`<div style="padding:3px 14px 8px;font-size:10px;color:#c62828;direction:ltr;text-align:left">${esc(err)}</div>`:''}`;
         }).join('')}
-    </div>`;
+    </div>
 
-    // Diagnose
-    h+=`<div class="stitle">אבחון עמודות</div>
+    <div class="stitle">אבחון עמודות</div>
     <div class="scard" style="padding:14px">
-      <div style="font-size:12px;color:#666;margin-bottom:10px;line-height:1.6">מציג את השורה הראשונה מכל גיליון לאימות מבנה העמודות.</div>
       <button class="save-url-btn" style="background:${S.diagRunning?'#ccc':'#37474f'}" ${S.diagRunning?'disabled':''} onclick="runDiagnose()">
         ${S.diagRunning?'⏳ מאבחן...':'🔬 הרץ אבחון'}</button>`;
 
@@ -496,23 +498,15 @@ function renderSettings(){
         else if(!d.firstRow){h+=`<div class="dempty">📭 ריק</div>`;}
         else{
           const entries=Object.entries(d.firstRow).filter(([k,v])=>k!=='_bg'&&v&&String(v).trim());
-          if(!entries.length){h+=`<div class="dempty">⚠️ שורה ריקה</div>`;}
-          else{
-            h+=`<div class="diag-grid">`;
-            entries.slice(0,25).forEach(([k,v])=>{
-              h+=`<div class="dcell"><span class="dk">${esc(k)}:</span><span class="dv">${esc(String(v).slice(0,16))}</span></div>`;
-            });
-            h+=`</div>`;
-          }
+          h+=entries.length?`<div class="diag-grid">${entries.slice(0,25).map(([k,v])=>`<div class="dcell"><span class="dk">${esc(k)}:</span><span class="dv">${esc(String(v).slice(0,16))}</span></div>`).join('')}</div>`:`<div class="dempty">⚠️ שורה ריקה</div>`;
         }
         h+=`</div>`;
       });
       h+=`</div>`;
     }
-    h+=`</div>`;
+    h+=`</div>
 
-    // Actions
-    h+=`<div class="stitle">פעולות</div>
+    <div class="stitle">פעולות</div>
     <div class="scard">
       <div class="srow"><span class="slabel">רענן הכל</span>
         <button class="sbtn blue" onclick="refreshAll()">↻ טען מחדש</button></div>
@@ -520,26 +514,24 @@ function renderSettings(){
         <button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-
-  h+=`<div style="text-align:center;margin-top:16px;font-size:11px;color:#ccc">MOOV Sales App v1.4</div></div>`;
+  h+=`<div style="text-align:center;margin-top:16px;font-size:11px;color:#ccc">MOOV Sales App v1.5</div></div>`;
   return h;
 }
 
 function saveUrl(inputId,errId){
   const inp=document.getElementById(inputId);
   const errEl=document.getElementById(errId);
-  const val=(inp?.value||'').trim();
-  if(!val||!val.startsWith('https://script.google.com')){
+  const v=(inp?.value||'').trim();
+  if(!v||!v.startsWith('https://script.google.com')){
     if(inp)inp.classList.add('err');
     if(errEl){errEl.textContent='URL לא תקין';errEl.style.display='block';}
     return;
   }
-  S.scriptUrl=val;localStorage.setItem(STORAGE_KEY,val);
+  S.scriptUrl=v;localStorage.setItem(STORAGE_KEY,v);
   resetAll();S.screen='list';S.tab='customers';
   document.getElementById('bnav').style.display='flex';
   setHeader();pingSheets().then(()=>loadCustomers());
 }
-
 function clearUrl(){
   if(!confirm('למחוק את ה-URL השמור?'))return;
   S.scriptUrl='';localStorage.removeItem(STORAGE_KEY);
@@ -547,13 +539,11 @@ function clearUrl(){
   document.getElementById('bnav').style.display='none';
   setHeader();render();
 }
-
 function resetAll(){
   S.csState='idle';S.isState='idle';S.rsState='idle';S.tsState='idle';
   S.customers=[];S.invoices=[];S.receipts=[];S.tax=[];
   S.availableSheets=[];S.diagData={};S.errors={};
 }
-
 function refreshAll(){resetAll();S.screen='list';setHeader();pingSheets().then(()=>loadCustomers());}
 
 // ── Customer List ──
@@ -562,7 +552,6 @@ function filteredC(){
   const q=S.search.toLowerCase();
   return S.customers.filter(c=>['A','B','C','D','E','F','G'].some(k=>(c[k]||'').toLowerCase().includes(q)));
 }
-
 function renderCustList(){
   const st=S.csState;const fc=filteredC();const color=tc();
   let h=`<div class="sbar">
@@ -654,7 +643,6 @@ function renderForm(){
     ${S.saving?'⏳ שומר...':'💾 שמור לקוח'}</button></div>`;
   return h;
 }
-
 function fField(f){
   const v=esc(S.form[f.k]||'');
   if(f.k==='B')return`<div class="field">
@@ -674,20 +662,21 @@ function fField(f){
   </div>`;
 }
 
-// ── Document List (Invoices + Tax/חשמ"ק) ──
+// ── Invoice / Tax List ──
 function renderDocList(data,state,isTax){
   const label=isTax?'חשבוניות/קבלות':'חשבוניות';
   const reload=isTax?'loadTax()':'loadInvoices()';
   const color=tc();
   const errMsg=S.errors[isTax?'tax':'invoices'];
+  // totalKey: AE for invoices, AD for tax (confirmed from diagnostic)
   const totalKey=isTax?'AD':'AE';
   const numKey=isTax?'AK':'AF';
   const tail=isTax?TAX_TAIL:INV_TAIL;
 
   if(state==='error')return`<div class="status">
     <p style="font-size:30px;margin-bottom:12px">⚠️</p>
-    <p style="font-weight:600;color:#c62828;font-size:15px;margin-bottom:8px">שגיאה בטעינת ${label}</p>
-    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;text-align:left;word-break:break-all">${esc(errMsg)}</div>`:''}
+    <p style="font-weight:600;color:#c62828;font-size:15px;margin-bottom:8px">שגיאה: ${label}</p>
+    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;word-break:break-all">${esc(errMsg)}</div>`:''}
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
       <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">↻ נסה שוב</button>
       <button onclick="openSettings()" style="background:#37474f;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">⚙️ אבחון</button>
@@ -697,7 +686,11 @@ function renderDocList(data,state,isTax){
   if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין ${label}</p>
     <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
 
-  const grand=data.reduce((s,r)=>{const v=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));return s+(isNaN(v)?0:v);},0);
+  const grand=data.reduce((s,r)=>{
+    const v=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));
+    return s+(isNaN(v)?0:v);
+  },0);
+
   let h=`<div style="padding-bottom:24px">
     <div class="sumbar" style="background:${color}">
       <span>${data.length} ${isTax?'חשמ"ק':'חשבוניות'} אחרונות</span>
@@ -708,19 +701,23 @@ function renderDocList(data,state,isTax){
     const id=`${isTax?'t':'v'}-${r._id}`;
     const isE=S.expId===id;
     const bg=rowBg(r,isE);
-    const totVAT=r[totalKey];const invNum=r[numKey];
-    const prods=PRODS.filter(p=>parseFloat(r[p.qk])>0);
+    const totVAT=val(r[totalKey]);
+    const invNum=val(r[numKey]);
+    const bizName=val(r.B); // שם העסק
+    const custId=val(r.A);  // ת"ז / ח"פ
+    const date=val(r.C);    // תאריך
+    const prods=PRODS.filter(p=>{const q=parseFloat(r[p.qk]);return !isNaN(q)&&q>0;});
     const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
 
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1">
           ${invNum?`<span class="nbadge" style="background:${color}">#${esc(invNum)}</span>`:''}
-          <span style="font-weight:600;font-size:14px;color:#222;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.B||r.A||r.C||'—')}</span>
+          <span style="font-weight:600;font-size:14px;color:#222;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(bizName||custId||'—')}</span>
           ${totVAT?`<span style="font-size:15px;font-weight:700;color:${color};flex-shrink:0">${fmt(totVAT)}</span>`:''}
         </div>
         <div class="r2">
-          ${r.C?`<span>📅 ${esc(r.C)}</span>`:''}
+          ${date?`<span>📅 ${esc(date)}</span>`:''}
           ${prods.slice(0,3).map(p=>`<span class="tag">${p.em} ×${r[p.qk]}</span>`).join('')}
           ${prods.length>3?`<span style="font-size:11px;color:#888">+${prods.length-3}</span>`:''}
           ${totItems>0?`<span style="font-size:11px;color:#aaa;margin-right:auto">${totItems} יח'</span>`:''}
@@ -733,9 +730,9 @@ function renderDocList(data,state,isTax){
     if(isE){
       h+=`<div class="card-body">
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-          ${r.A?`<span class="id-badge">${esc(r.A)}</span>`:''}
-          ${r.B?`<span style="font-size:13px;font-weight:600">${esc(r.B)}</span>`:''}
-          ${r.C?`<span style="font-size:12px;color:#888;margin-right:auto">📅 ${esc(r.C)}</span>`:''}
+          ${custId?`<span class="id-badge">${esc(custId)}</span>`:''}
+          ${bizName?`<span style="font-size:13px;font-weight:600">${esc(bizName)}</span>`:''}
+          ${date?`<span style="font-size:12px;color:#888;margin-right:auto">📅 ${esc(date)}</span>`:''}
         </div>`;
 
       if(prods.length){
@@ -753,11 +750,12 @@ function renderDocList(data,state,isTax){
         h+=`</div>`;
       }
 
+      // Pricing — Z=price, AA=total, AB=discount, AC=after discount
       const pricing=[
-        r.X&&{l:'מחיר ליחידה (לפני מע"מ)',v:fmt(r.X)},
-        r.Y&&{l:'סה"כ לפני מע"מ',v:fmt(r.Y)},
-        r.Z&&{l:'הנחה',v:r.Z+'%',disc:true},
-        r.AA&&{l:'סה"כ אחר הנחה (לפני מע"מ)',v:fmt(r.AA)},
+        val(r.Z)&&{l:'מחיר ליחידה (לפני מע"מ)',v:fmt(r.Z)},
+        val(r.AA)&&{l:'סה"כ לפני מע"מ',v:fmt(r.AA)},
+        val(r.AB)&&{l:'הנחה',v:r.AB+'%',disc:true},
+        val(r.AC)&&{l:'סה"כ אחר הנחה (לפני מע"מ)',v:fmt(r.AC)},
         totVAT&&{l:'סה"כ כולל מע"מ',v:fmt(totVAT),hi:true},
       ].filter(Boolean);
       if(pricing.length){
@@ -771,7 +769,7 @@ function renderDocList(data,state,isTax){
         h+=`</div>`;
       }
 
-      const payFields=tail.filter(f=>r[f.k]);
+      const payFields=tail.filter(f=>val(r[f.k]));
       if(payFields.length){
         h+=`<div class="dtable"><div style="padding:7px 12px;background:#f5f5f5;border-bottom:.5px solid #ebebeb;font-size:12px;font-weight:600;color:#666">פרטי תשלום</div>`;
         payFields.filter(f=>!f.wide).forEach((f,fi)=>{
@@ -799,11 +797,10 @@ function renderRecList(){
   const {receipts:data,rsState:state}=S;
   const color=tc();
   const errMsg=S.errors['receipts'];
-
   if(state==='error')return`<div class="status">
     <p style="font-size:30px;margin-bottom:12px">⚠️</p>
     <p style="font-weight:600;color:#c62828;font-size:15px;margin-bottom:8px">שגיאה בטעינת קבלות</p>
-    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;text-align:left;word-break:break-all">${esc(errMsg)}</div>`:''}
+    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;word-break:break-all">${esc(errMsg)}</div>`:''}
     <div style="display:flex;gap:8px;justify-content:center">
       <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">↻ נסה שוב</button>
       <button onclick="openSettings()" style="background:#37474f;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">⚙️ אבחון</button>
@@ -822,21 +819,24 @@ function renderRecList(){
 
   [...data].reverse().forEach((r,i)=>{
     const id=`rec-${r._id}`;const isE=S.expId===id;
-    const bg=rowBg(r,isE);const num=r.J||r.A||`#${i+1}`;
+    const bg=rowBg(r,isE);
+    const num=val(r.J)||val(r.A)||`#${i+1}`;
+    const custName=val(r.H);
+    const amount=val(r.C);
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1" style="justify-content:space-between">
           <div style="display:flex;align-items:center;gap:7px">
             <span class="nbadge" style="background:${color}">קבלה ${esc(num)}</span>
-            ${r.H?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(r.H)}</span>`:''}
+            ${custName?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(custName)}</span>`:''}
           </div>
-          ${r.C?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(r.C)}</span>`:''}
+          ${amount?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(amount)}</span>`:''}
         </div>
         <div class="r2">
-          ${r.B?`<span class="tag">${esc(r.B)}</span>`:''}
-          ${r.D?`<span>📅 ${esc(r.D)}</span>`:''}
-          ${r.A?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
-          ${r.E?`<span class="tag blue">🏦 שיק</span>`:''}
+          ${val(r.B)?`<span class="tag">${esc(r.B)}</span>`:''}
+          ${val(r.D)?`<span>📅 ${esc(r.D)}</span>`:''}
+          ${val(r.A)?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
+          ${val(r.E)?`<span class="tag blue">🏦 שיק</span>`:''}
         </div>
         <div class="r3" style="justify-content:flex-end">
           <span class="toggle-hint" style="color:${isE?color:'#bbb'}">${isE?'▲ סגור':'▼ פרטים'}</span>
@@ -844,16 +844,16 @@ function renderRecList(){
       </div>`;
     if(isE){
       h+=`<div class="card-body"><div class="g2" style="margin-bottom:8px">`;
-      RF.filter(f=>!f.wide&&r[f.k]).forEach(f=>{
+      RF.filter(f=>!f.wide&&val(r[f.k])).forEach(f=>{
         h+=`<div class="gcell"><div class="glabel">${f.icon} ${f.label}</div>
           <div class="gval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
       });
       h+=`</div>`;
-      RF.filter(f=>f.wide&&r[f.k]).forEach(f=>{
+      RF.filter(f=>f.wide&&val(r[f.k])).forEach(f=>{
         h+=`<div class="gcell wide" style="margin-bottom:8px"><div class="glabel">${f.icon} ${f.label}</div>
           <div class="gval">${esc(r[f.k])}</div></div>`;
       });
-      if(r.F)h+=`<div style="background:#e8f0fe;border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:8px">
+      if(val(r.F))h+=`<div style="background:#e8f0fe;border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:8px">
         <span>📷</span><span style="font-size:12px;color:#1a73e8;font-weight:500">יש קובץ צילום שיק מצורף</span></div>`;
       h+=`</div>`;
     }
