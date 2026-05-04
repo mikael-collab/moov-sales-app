@@ -174,8 +174,8 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <div id="app">
   <div class="hdr" id="hdr">
     <div class="hdr-row">
-      <button class="hdr-btn hidden" id="back-btn" onclick="goBack()">←</button>
-      <div class="hdr-mid"><h1 id="hdr-title">לקוחות</h1><p>מיקאל קולמן | MOOV</p></div>
+      <button class="hdr-btn" id="back-btn"></button>
+      <div class="hdr-mid"><h1 id="hdr-title">לקוחות</h1><p id="hdr-sub">מיקאל קולמן | MOOV</p></div>
       <button class="hdr-btn hidden" id="right-btn"></button>
     </div>
   </div>
@@ -426,6 +426,7 @@ function setHeader(){
   const hdr=document.getElementById('hdr');
   const back=document.getElementById('back-btn');
   const right=document.getElementById('right-btn');
+  const sub=document.getElementById('hdr-sub');
   const isList=S.screen==='list';
   const tab=S.tab;const color=tc();
 
@@ -441,12 +442,32 @@ function setHeader(){
   };
   document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[tab]?.label||'';
 
-  back.classList.toggle('hidden',isList);
+  // Subtitle — show live totals in invoice/tax form, otherwise name
+  if(S.screen==='new-invoice'||S.screen==='new-tax'){
+    const calc=calcInv(S.iForm);
+    sub.textContent=calc.totalQty>0&&parseFloat(S.iForm.Z)>0
+      ? `${calc.totalQty} יח' | ₪${fmtNum(calc.withVat)} כולל מע"מ`
+      : 'הזן כמויות ומחיר';
+  }else{
+    sub.textContent='מיקאל קולמן | MOOV';
+  }
 
-  // Right button
+  // LEFT button: ⚙️ on list screens, ← on form/settings screens
+  back.classList.remove('hidden');
+  if(isList){
+    back.textContent='⚙️';
+    back.style.fontSize='16px';
+    back.onclick=openSettings;
+  }else{
+    back.textContent='←';
+    back.style.fontSize='20px';
+    back.onclick=goBack;
+  }
+
+  // RIGHT button: + on list screens (except settings), hidden in settings
   if(S.screen==='settings'){
     right.classList.add('hidden');
-  }else if(isList&&['customers','receipts','invoices','tax'].includes(tab)){
+  }else if(isList){
     right.classList.remove('hidden');
     right.textContent='+';
     right.style.fontSize='24px';
@@ -457,10 +478,7 @@ function setHeader(){
       else openNewInvoice(true);
     };
   }else{
-    right.classList.remove('hidden');
-    right.textContent='⚙️';
-    right.style.fontSize='18px';
-    right.onclick=openSettings;
+    right.classList.add('hidden');
   }
 }
 
@@ -1089,15 +1107,18 @@ function addDashC(){S.cForm.B=(S.cForm.B||'')+'-';const i=document.getElementByI
 
 function refreshCalc(){
   const calc=calcInv(S.iForm);
-  // Update stored values for saving
   S.iForm.AA=calc.aa>0?fmtNum(calc.aa):'';
   S.iForm.AC=calc.ac>0?fmtNum(calc.ac):'';
-  // AE for invoice, AD for tax
   if(S.screen==='new-invoice')S.iForm.AE=calc.withVat>0?fmtNum(calc.withVat):'';
   else S.iForm.AD=calc.withVat>0?fmtNum(calc.withVat):'';
-  // re-render the calc preview only
-  const calc_block=document.querySelector('[style*="background:#f8f8f8;border-radius:10px;padding:4px"]');
-  if(calc_block)render();// full re-render to show updated calc
+  // Update header subtitle live without full re-render
+  const sub=document.getElementById('hdr-sub');
+  if(sub&&(S.screen==='new-invoice'||S.screen==='new-tax')){
+    sub.textContent=calc.totalQty>0&&parseFloat(S.iForm.Z)>0
+      ?`${calc.totalQty} יח' | ₪${fmtNum(calc.withVat)} כולל מע"מ`
+      :'הזן כמויות ומחיר';
+  }
+  render();
 }
 
 function updProd(qk,val){
@@ -1196,7 +1217,31 @@ window.addEventListener('DOMContentLoaded',()=>{
   S.cForm=efC();S.rForm=efR();S.tab='customers';S.screen='list';
   setHeader();
   syncNav();
-  requestAnimationFrame(syncNav); // ensure nav colors paint correctly
+  requestAnimationFrame(syncNav);
+
+  // Prevent accidental exit — desktop (refresh/close tab)
+  window.addEventListener('beforeunload',e=>{
+    e.preventDefault();
+    return e.returnValue='האם אתה בטוח שברצונך לצאת מהאפליקציה?';
+  });
+
+  // Prevent accidental exit — Android hardware back button
+  history.pushState(null,'',location.href);
+  window.addEventListener('popstate',()=>{
+    if(S.screen!=='list'){
+      // If in a sub-screen, go back within app
+      history.pushState(null,'',location.href);
+      goBack();
+    }else{
+      // On main list — ask to exit
+      if(confirm('האם אתה בטוח שברצונך לצאת מהאפליקציה?')){
+        history.back();
+      }else{
+        history.pushState(null,'',location.href);
+      }
+    }
+  });
+
   if(S.scriptUrl){render();pingSheets().then(()=>loadCustomers());}
   else render();
 });
