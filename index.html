@@ -31,99 +31,108 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
 .bnav-btn .ico{font-size:18px;margin-bottom:2px;}
 .bnav-btn .lbl{font-size:9px;font-weight:500;white-space:nowrap;}
 
-/* Setup / Settings screen */
-.setup-screen{padding:0;display:flex;flex-direction:column;height:100%;}
+/* Setup */
+.setup-screen{display:flex;flex-direction:column;height:100%;}
 .setup-hero{background:linear-gradient(135deg,#1a73e8,#0d47a1);padding:36px 24px 32px;text-align:center;color:#fff;flex-shrink:0;}
 .setup-hero .logo{font-size:48px;margin-bottom:10px;}
 .setup-hero h2{font-size:22px;font-weight:700;margin-bottom:4px;}
 .setup-hero p{font-size:13px;opacity:.8;line-height:1.5;}
-.setup-body{flex:1;overflow-y:auto;padding:24px 16px 30px;}
-.setup-card{background:#fff;border-radius:14px;padding:20px;margin-bottom:14px;border:.5px solid #e8e8e8;box-shadow:0 1px 4px rgba(0,0,0,.06);}
-.setup-card h3{font-size:14px;font-weight:600;color:#222;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.step-row{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+.setup-body{flex:1;overflow-y:auto;padding:20px 14px 30px;}
+.setup-card{background:#fff;border-radius:14px;padding:18px;margin-bottom:12px;border:.5px solid #e8e8e8;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.setup-card h3{font-size:14px;font-weight:600;color:#222;margin-bottom:12px;}
+.step-row{display:flex;gap:10px;margin-bottom:9px;align-items:flex-start;}
 .step-num{background:#1a73e8;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
 .step-txt{font-size:13px;color:#444;line-height:1.6;flex:1;}
 .step-txt b{color:#222;}
-.url-input{width:100%;padding:13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:inherit;background:#f8f8f8;outline:none;transition:border-color .2s;direction:ltr;text-align:left;-webkit-appearance:none;margin-bottom:10px;}
+.url-input{width:100%;padding:12px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:inherit;background:#f8f8f8;outline:none;direction:ltr;text-align:left;-webkit-appearance:none;margin-bottom:10px;}
 .url-input:focus{border-color:#1a73e8;background:#fff;}
 .url-input.err{border-color:#c62828;}
-.save-url-btn{width:100%;padding:13px;border-radius:10px;background:#1a73e8;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;-webkit-appearance:none;display:flex;align-items:center;justify-content:center;gap:8px;}
-.save-url-btn:disabled{background:#ccc;}
-.url-hint{font-size:11px;color:#aaa;text-align:center;margin-top:8px;line-height:1.6;}
 .url-err{font-size:12px;color:#c62828;margin-bottom:8px;display:none;}
+.save-url-btn{width:100%;padding:13px;border-radius:10px;background:#1a73e8;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;-webkit-appearance:none;}
+.url-hint{font-size:11px;color:#aaa;text-align:center;margin-top:8px;line-height:1.6;}
 
-/* Settings screen (when already configured) */
+/* Settings */
 .settings-screen{padding:20px 14px 30px;}
-.settings-title{font-size:12px;font-weight:600;color:#aaa;margin-bottom:10px;letter-spacing:.5px;}
-.settings-card{background:#fff;border-radius:12px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:16px;}
+.settings-title{font-size:12px;font-weight:600;color:#aaa;margin-bottom:8px;letter-spacing:.5px;}
+.settings-card{background:#fff;border-radius:12px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:14px;}
 .settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-top:.5px solid #f0f0f0;}
 .settings-row:first-child{border-top:none;}
 .settings-label{font-size:13px;color:#444;font-weight:500;}
-.settings-val{font-size:11px;color:#aaa;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:left;}
-.settings-btn{background:none;border:none;color:#1a73e8;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;white-space:nowrap;}
+.settings-val{font-size:11px;color:#aaa;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;}
+.settings-btn{background:none;border:none;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;}
 .settings-btn.red{color:#c62828;}
-.connected-dot{width:8px;height:8px;border-radius:50%;background:#1e8e3e;display:inline-block;margin-left:6px;}
+.settings-btn.blue{color:#1a73e8;}
+.dot-green{width:8px;height:8px;border-radius:50%;background:#1e8e3e;display:inline-block;margin-left:4px;vertical-align:middle;}
 
-/* Search bar */
+/* Search */
 .sbar{background:#fff;border-bottom:1px solid #ebebeb;padding:10px 12px;position:sticky;top:0;z-index:10;}
 .swrap{position:relative;}
-.sinput{width:100%;padding:10px 36px 10px 30px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:inherit;background:#f8f8f8;outline:none;transition:border-color .2s;direction:rtl;-webkit-appearance:none;}
+.sinput{width:100%;padding:10px 36px 10px 30px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:inherit;background:#f8f8f8;outline:none;direction:rtl;-webkit-appearance:none;}
 .sinput:focus{border-color:var(--tc,#1a73e8);background:#fff;}
 .sico{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
-.sclr{position:absolute;left:9px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;padding:0;line-height:1;}
+.sclr{position:absolute;left:9px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;line-height:1;}
 .smeta{display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:#aaa;}
 .sref{background:none;border:none;font-size:11px;font-family:inherit;cursor:pointer;}
 
-/* Cards */
-.card{margin:0 10px 8px;border-radius:12px;overflow:hidden;border:1.5px solid transparent;transition:border-color .2s,box-shadow .2s;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+/* Cards — row colors match tab */
+.card{margin:0 10px 6px;border-radius:12px;overflow:hidden;border:1.5px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,.05);}
 .card.exp{border-color:var(--tc);box-shadow:0 3px 12px rgba(0,0,0,.1);}
+.card.row-odd{background:var(--row-odd);}
+.card.row-even{background:#fff;}
 .card-hdr{padding:12px 14px;cursor:pointer;user-select:none;}
 .r1{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap;}
-.r2{display:flex;gap:9px;font-size:12px;color:#666;flex-wrap:wrap;align-items:center;}
-.r3{margin-top:4px;display:flex;justify-content:space-between;align-items:center;}
-.card-body{border-top:1.5px solid rgba(0,0,0,.05);padding:12px 14px 14px;}
-.cust-name{font-weight:600;font-size:15px;color:#222;flex-shrink:0;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.r2{display:flex;gap:9px;font-size:12px;color:#555;flex-wrap:wrap;align-items:center;}
+.r3{margin-top:5px;display:flex;justify-content:space-between;align-items:center;}
+.card-body{border-top:1.5px solid rgba(0,0,0,.06);padding:12px 14px 14px;}
+
+.cust-name{font-weight:600;font-size:15px;color:#1a1a1a;flex-shrink:0;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .biz-name{font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.toggle-hint{font-size:11px;transition:color .2s;}
-.id-badge{font-size:12px;color:#555;background:#f0f0f0;border-radius:6px;padding:2px 8px;font-family:monospace;letter-spacing:1px;flex-shrink:0;}
-.copy-btn{border:1px solid #ddd;border-radius:6px;padding:2px 8px;font-size:11px;background:transparent;color:#666;cursor:pointer;transition:all .2s;font-family:inherit;flex-shrink:0;}
-.copy-btn.done{background:var(--tc);border-color:var(--tc);color:#fff;}
-.tag{font-size:11px;background:#f0f0f0;border-radius:5px;padding:1px 7px;color:#555;white-space:nowrap;}
+.toggle-hint{font-size:11px;}
+.id-badge{font-size:12px;color:#555;background:rgba(0,0,0,.07);border-radius:6px;padding:2px 8px;font-family:monospace;letter-spacing:1px;flex-shrink:0;}
+.copy-btn{border:1px solid rgba(0,0,0,.15);border-radius:6px;padding:2px 8px;font-size:11px;background:transparent;color:#555;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.copy-btn.done{color:#fff;}
+.tag{font-size:11px;background:rgba(0,0,0,.07);border-radius:5px;padding:1px 7px;color:#555;white-space:nowrap;}
 .tag.blue{background:#e3f0ff;color:#1a73e8;}
+.nbadge{color:#fff;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;}
+
+/* Detail grids */
 .sec-title{font-size:11px;font-weight:600;color:#aaa;margin-bottom:8px;letter-spacing:.5px;}
-.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
 .gcell{background:#fff;border-radius:8px;padding:8px 10px;border:.5px solid #ebebeb;}
 .gcell.wide{grid-column:span 2;}
 .glabel{font-size:10px;color:#aaa;margin-bottom:2px;}
 .gval{font-size:13px;font-weight:500;color:#222;word-break:break-all;}
 .dtable{background:#fff;border-radius:10px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:10px;}
-.dthead{padding:8px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;justify-content:space-between;align-items:center;}
+.dthead{padding:8px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;justify-content:space-between;}
 .dtrow{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-top:.5px solid #f0f0f0;}
 .dtlabel{font-size:12px;color:#666;}
 .dtval{font-size:13px;font-weight:500;color:#222;}
-.nbadge{display:inline-block;color:#fff;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;}
-.sumbar{margin:10px 10px 8px;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;color:#fff;}
+
+/* Products */
 .prod-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:.5px solid #f0f0f0;}
 .prod-em{font-size:20px;margin-left:8px;}
 .prod-name{font-size:13px;font-weight:500;color:#222;}
 .prod-sub{font-size:10px;color:#aaa;}
 .prod-qty{font-size:15px;font-weight:700;}
 
+/* Summary */
+.sumbar{margin:10px 10px 8px;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;color:#fff;}
+
 /* Form */
-.fwrap{padding:14px 14px 30px;overflow-y:auto;}
+.fwrap{padding:14px 14px 30px;}
 .divider{display:flex;align-items:center;gap:10px;margin:18px 0 14px;}
 .divider hr{flex:1;border:none;border-top:.5px solid #ddd;}
 .divider span{font-size:12px;font-weight:600;color:#aaa;white-space:nowrap;}
 .field{margin-bottom:13px;}
 .field label{display:block;font-size:13px;font-weight:500;color:#555;margin-bottom:5px;}
 .field label small{font-size:11px;color:#bbb;font-weight:400;}
-.field input{display:block;width:100%;padding:11px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;font-family:inherit;background:#f8f8f8;outline:none;transition:border-color .2s;direction:rtl;-webkit-appearance:none;}
+.field input{display:block;width:100%;padding:11px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;font-family:inherit;background:#f8f8f8;outline:none;direction:rtl;-webkit-appearance:none;}
 .field input:focus{border-color:var(--tc);background:#fff;}
 .field input.num{direction:ltr;text-align:right;font-family:monospace;letter-spacing:1px;}
 .irow{display:flex;gap:8px;}
 .dash-btn{padding:11px 17px;border-radius:10px;border:1.5px solid var(--tc);background:transparent;color:var(--tc);font-size:22px;font-weight:700;line-height:1;cursor:pointer;flex-shrink:0;}
-.save-btn{width:100%;padding:14px;border-radius:10px;background:var(--tc);color:#fff;border:none;font-size:16px;font-weight:600;margin-top:10px;cursor:pointer;-webkit-appearance:none;}
-.save-btn:disabled{background:#ccc;cursor:wait;}
+.save-btn{width:100%;padding:14px;border-radius:10px;color:#fff;border:none;font-size:16px;font-weight:600;margin-top:10px;cursor:pointer;-webkit-appearance:none;}
+.save-btn:disabled{background:#ccc !important;cursor:wait;}
 .alert{padding:12px 14px;border-radius:10px;font-weight:500;text-align:center;font-size:14px;margin-bottom:14px;}
 .alert.ok{background:#e6f4ea;color:#1e8e3e;}
 .alert.err{background:#fce8e6;color:#c62828;}
@@ -146,7 +155,7 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
         <h1 id="hdr-title">לקוחות</h1>
         <p>מיקאל קולמן | MOOV</p>
       </div>
-      <button class="hdr-btn" id="right-btn" onclick="openSettings()" title="הגדרות">⚙️</button>
+      <button class="hdr-btn" id="right-btn" onclick="openSettings()">⚙️</button>
     </div>
   </div>
 
@@ -169,14 +178,13 @@ body{font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:#f0f0f0;}
 </div>
 
 <script>
-// ════════ CONFIG ════════
 const STORAGE_KEY = 'moov_script_url';
 
 const TABS = {
-  customers:{ label:'לקוחות',           color:'#1a73e8', bg:'#e8f0fe' },
-  invoices: { label:'חשבוניות',          color:'#d67000', bg:'#fff3e0' },
-  receipts: { label:'קבלות',             color:'#1e8e3e', bg:'#e6f4ea' },
-  tax:      { label:'חשבוניות מס קבלה', color:'#7b1fa2', bg:'#f3e5f5' },
+  customers:{ label:'לקוחות',           color:'#1a73e8', bg:'#dce8fd', sheet:'לקוחות' },
+  invoices: { label:'חשבוניות',          color:'#d67000', bg:'#fde9c8', sheet:'חשבוניות' },
+  receipts: { label:'קבלות',             color:'#1e8e3e', bg:'#c8edda', sheet:'קבלות' },
+  tax:      { label:'חשבוניות מס קבלה', color:'#7b1fa2', bg:'#ead5f5', sheet:'חשבוניות מס קבלה' },
 };
 
 const CF = [
@@ -207,16 +215,16 @@ const PRODS = [
 ];
 
 const RF = [
-  {k:'A',label:'מספר חשבונית',                   icon:'🧾'},
-  {k:'B',label:'סוג תשלום',                       icon:'💳'},
-  {k:'C',label:'סכום התשלום',                     icon:'₪', money:true},
-  {k:'D',label:'תאריך תשלום / תאריך פרעון שיק',  icon:'📅'},
-  {k:'E',label:'מספר שיק',                        icon:'#'},
-  {k:'F',label:'צילום שיק',                       icon:'📷'},
-  {k:'G',label:'הערות',                           icon:'📝', wide:true},
-  {k:'H',label:'שם לקוח',                         icon:'👤'},
-  {k:'I',label:'ת"ז / ח"פ',                       icon:'🪪'},
-  {k:'J',label:'מספר קבלה',                       icon:'🔢'},
+  {k:'A',label:'מספר חשבונית',                  icon:'🧾'},
+  {k:'B',label:'סוג תשלום',                      icon:'💳'},
+  {k:'C',label:'סכום התשלום',                    icon:'₪', money:true},
+  {k:'D',label:'תאריך תשלום / תאריך פרעון שיק', icon:'📅'},
+  {k:'E',label:'מספר שיק',                       icon:'#'},
+  {k:'F',label:'צילום שיק',                      icon:'📷'},
+  {k:'G',label:'הערות',                          icon:'📝', wide:true},
+  {k:'H',label:'שם לקוח',                        icon:'👤'},
+  {k:'I',label:'ת"ז / ח"פ',                      icon:'🪪'},
+  {k:'J',label:'מספר קבלה',                      icon:'🔢'},
 ];
 
 const INV_TAIL = [
@@ -241,7 +249,6 @@ const TAX_TAIL = [
   {k:'AK',label:'מספר חשבונית מס / קבלה'},
 ];
 
-// ════════ State ════════
 const S = {
   tab:'customers', screen:'list',
   customers:[], csState:'idle',
@@ -255,19 +262,36 @@ const S = {
 };
 
 const tc  = ()=> TABS[S.tab].color;
+const tbg = ()=> TABS[S.tab].bg;
+
 function ef(){ const o={}; CF.forEach(f=>o[f.k]=''); return o; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
 function fmt(v){
   const n=parseFloat((v||'').toString().replace(/[^0-9.]/g,''));
-  if(isNaN(n))return v||'';
+  if(isNaN(n)) return v||'';
   return '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2});
 }
+
+// Format Israeli phone: 0545600265 → 054-5600265
+function formatPhone(v){
+  if(!v) return v;
+  const d=v.replace(/\D/g,'');
+  if(d.length===10 && d.startsWith('0')){
+    return d.substring(0,3)+'-'+d.substring(3);
+  }
+  if(d.length===9 && d.startsWith('0')){
+    return d.substring(0,2)+'-'+d.substring(2);
+  }
+  return v;
+}
+
 function isBusy(e){
   const m=(e?.message||e?.error||'').toLowerCase();
   return m.includes('quota')||m.includes('rate')||m.includes('limit')||m.includes('429');
 }
 
-// ════════ API ════════
+// ── API ──
 async function apiFetch(params){
   if(!S.scriptUrl) throw new Error('NO_URL');
   const url=S.scriptUrl+'?'+new URLSearchParams(params);
@@ -286,45 +310,29 @@ async function apiPost(body){
   return d;
 }
 
-// ════════ Load ════════
-async function loadCustomers(){
-  S.csState='loading'; render();
+// ── Loaders ──
+async function loadSheet(tab, stateKey, limit){
+  S[stateKey]='loading'; render();
   try{
-    const d=await apiFetch({sheet:'לקוחות'});
-    S.customers=(d.data||[]).map((r,i)=>({...r,_id:i}));
-    S.csState='ok';
-  }catch(e){ S.csState=isBusy(e)?'busy':'error'; }
-  render();
-}
-async function loadInvoices(){
-  S.isState='loading'; render();
-  try{
-    const d=await apiFetch({sheet:'חשבוניות',limit:20});
-    S.invoices=(d.data||[]).map((r,i)=>({...r,_id:i}));
-    S.isState='ok';
-  }catch(e){ S.isState=isBusy(e)?'busy':'error'; }
-  render();
-}
-async function loadReceipts(){
-  S.rsState='loading'; render();
-  try{
-    const d=await apiFetch({sheet:'קבלות',limit:20});
-    S.receipts=(d.data||[]).map((r,i)=>({...r,_id:i}));
-    S.rsState='ok';
-  }catch(e){ S.rsState=isBusy(e)?'busy':'error'; }
-  render();
-}
-async function loadTax(){
-  S.tsState='loading'; render();
-  try{
-    const d=await apiFetch({sheet:'חשבוניות מס קבלה',limit:20});
-    S.tax=(d.data||[]).map((r,i)=>({...r,_id:i}));
-    S.tsState='ok';
-  }catch(e){ S.tsState=isBusy(e)?'busy':'error'; }
+    const params={sheet: TABS[tab].sheet};
+    if(limit) params.limit=limit;
+    const d=await apiFetch(params);
+    const arrKey={customers:'customers',invoices:'invoices',receipts:'receipts',tax:'tax'}[tab];
+    S[arrKey]=(d.data||[]).map((r,i)=>({...r,_id:i}));
+    S[stateKey]='ok';
+  }catch(e){
+    S[stateKey]=isBusy(e)?'busy':'error';
+    console.error(tab, e.message);
+  }
   render();
 }
 
-// ════════ Navigation ════════
+const loadCustomers=()=>loadSheet('customers','csState',0);
+const loadInvoices =()=>loadSheet('invoices', 'isState',20);
+const loadReceipts =()=>loadSheet('receipts', 'rsState',20);
+const loadTax      =()=>loadSheet('tax',       'tsState',20);
+
+// ── Navigation ──
 function switchTab(tab){
   S.tab=tab; S.screen='list'; S.search=''; S.expId=null; S.msg=null;
   document.querySelectorAll('.bnav-btn').forEach(b=>{
@@ -337,77 +345,57 @@ function switchTab(tab){
   if(tab==='tax'&&S.tsState==='idle') loadTax();
   setHeader(); render();
 }
-function goBack(){
-  S.screen='list'; S.msg=null; S.form=ef();
-  setHeader(); render();
-}
-function openNewCustomer(){
-  S.screen='new-customer'; S.form=ef(); S.msg=null;
-  setHeader(); render();
-}
-function openSettings(){
-  S.screen='settings';
-  setHeader(); render();
-}
+function goBack(){ S.screen='list'; S.msg=null; S.form=ef(); setHeader(); render(); }
+function openNewCustomer(){ S.screen='new-customer'; S.form=ef(); S.msg=null; setHeader(); render(); }
+function openSettings(){ S.screen='settings'; setHeader(); render(); }
+
 function setHeader(){
   const isSetup=!S.scriptUrl&&S.screen!=='settings';
   document.getElementById('hdr').style.background=
     S.screen==='settings'?'#37474f':isSetup?'#1a73e8':tc();
-
-  const titles={
-    'list': TABS[S.tab]?.label||'',
-    'new-customer':'+ לקוח חדש',
-    'settings':'⚙️ הגדרות',
-    'setup':'התחברות',
-  };
+  const titles={'list':TABS[S.tab]?.label,'new-customer':'+ לקוח חדש','settings':'⚙️ הגדרות'};
   document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[S.tab]?.label||'';
-
   const back=document.getElementById('back-btn');
   const right=document.getElementById('right-btn');
-
+  back.classList.toggle('hidden', S.screen==='list');
   if(S.screen==='settings'){
-    back.classList.remove('hidden');
     right.classList.add('hidden');
-  } else if(S.screen==='new-customer'){
-    back.classList.remove('hidden');
-    right.textContent='⚙️';
-    right.onclick=openSettings;
-    right.classList.remove('hidden');
   } else {
-    back.classList.add('hidden');
+    right.classList.remove('hidden');
     right.textContent='⚙️';
     right.onclick=openSettings;
-    right.classList.remove('hidden');
+  }
+  // Show + button on customers list
+  if(S.tab==='customers'&&S.screen==='list'){
+    right.textContent='+';
+    right.onclick=openNewCustomer;
+  } else if(S.screen!=='settings'){
+    right.textContent='⚙️';
+    right.onclick=openSettings;
   }
 }
 
-// ════════ Render ════════
+// ── Render ──
 function render(){
   const el=document.getElementById('content');
   const pos=el.scrollTop;
-
-  if(!S.scriptUrl && S.screen!=='settings'){
+  if(!S.scriptUrl&&S.screen!=='settings'){
     el.innerHTML=renderSetup();
     document.getElementById('bnav').style.display='none';
-    return;
+    el.scrollTop=pos; bindInputs(); return;
   }
   document.getElementById('bnav').style.display='flex';
-
-  if(S.screen==='settings') el.innerHTML=renderSettings();
-  else if(S.tab==='customers')
-    el.innerHTML=S.screen==='list'?renderCustList():renderForm();
-  else if(S.tab==='invoices') el.innerHTML=renderInvList(S.invoices,S.isState,'inv');
-  else if(S.tab==='receipts') el.innerHTML=renderRecList();
-  else el.innerHTML=renderInvList(S.tax,S.tsState,'tax');
-
-  el.scrollTop=pos;
-  bindInputs();
+  if(S.screen==='settings')          el.innerHTML=renderSettings();
+  else if(S.tab==='customers')       el.innerHTML=S.screen==='list'?renderCustList():renderForm();
+  else if(S.tab==='invoices')        el.innerHTML=renderInvList(S.invoices,S.isState,false);
+  else if(S.tab==='receipts')        el.innerHTML=renderRecList();
+  else                               el.innerHTML=renderInvList(S.tax,S.tsState,true);
+  el.scrollTop=pos; bindInputs();
 }
 
-// ════════ Setup Screen (first launch) ════════
+// ── Setup Screen ──
 function renderSetup(){
-  return `
-  <div class="setup-screen">
+  return `<div class="setup-screen">
     <div class="setup-hero">
       <div class="logo">📊</div>
       <h2>MOOV Sales App</h2>
@@ -416,130 +404,86 @@ function renderSetup(){
     <div class="setup-body">
       <div class="setup-card">
         <h3>🔗 הדבק את ה-URL של ה-Apps Script</h3>
-        <div class="url-err" id="url-err">URL לא תקין — ודא שהוא מתחיל ב-https://script.google.com</div>
+        <div class="url-err" id="url-err"></div>
         <input class="url-input" id="script-url-input" type="url" inputmode="url"
-          placeholder="https://script.google.com/macros/s/.../exec"
-          value="${esc(S.scriptUrl)}">
-        <button class="save-url-btn" onclick="saveUrl()">
-          ✅ התחבר לגיליון
-        </button>
-        <div class="url-hint">הURL נשמר רק במכשיר שלך.<br>לא נשלח לאף שרת חיצוני.</div>
+          placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
+        <button class="save-url-btn" onclick="saveUrl('script-url-input','url-err')">✅ התחבר לגיליון</button>
+        <div class="url-hint">ה-URL נשמר רק במכשיר שלך בלבד.</div>
       </div>
-
       <div class="setup-card">
         <h3>📋 איך מקבלים את ה-URL?</h3>
         <div class="step-row"><div class="step-num">1</div><div class="step-txt">פתח <b>script.google.com</b> במחשב</div></div>
-        <div class="step-row"><div class="step-num">2</div><div class="step-txt">צור פרויקט חדש ← הדבק את קוד ה-<b>Apps_Script_Code.js</b></div></div>
-        <div class="step-row"><div class="step-num">3</div><div class="step-txt">לחץ <b>Deploy</b> ← <b>New deployment</b> ← בחר <b>Web app</b></div></div>
-        <div class="step-row"><div class="step-num">4</div><div class="step-txt">Execute as: <b>Me</b> | Who has access: <b>Anyone</b> ← לחץ <b>Deploy</b></div></div>
+        <div class="step-row"><div class="step-num">2</div><div class="step-txt">צור פרויקט חדש ← הדבק את קוד ה-Apps Script</div></div>
+        <div class="step-row"><div class="step-num">3</div><div class="step-txt"><b>Deploy</b> ← New deployment ← Web app</div></div>
+        <div class="step-row"><div class="step-num">4</div><div class="step-txt">Execute as: <b>Me</b> | Who has access: <b>Anyone</b></div></div>
         <div class="step-row"><div class="step-num">5</div><div class="step-txt">העתק את ה-<b>Deployment URL</b> והדבק למעלה</div></div>
       </div>
     </div>
   </div>`;
 }
 
-// ════════ Settings Screen ════════
+// ── Settings Screen ──
 function renderSettings(){
   const connected=!!S.scriptUrl;
-  const shortUrl=S.scriptUrl?S.scriptUrl.replace('https://script.google.com/macros/s/','').substring(0,28)+'...':'לא מוגדר';
-  return `
-  <div class="settings-screen">
+  const short=S.scriptUrl?('...'+S.scriptUrl.slice(-30)):'לא מוגדר';
+  return `<div class="settings-screen">
     <div class="settings-title">חיבור</div>
     <div class="settings-card">
-      <div class="settings-row" style="border-top:none">
-        <span class="settings-label">${connected?'<span class="connected-dot"></span>':''}מצב חיבור</span>
+      <div class="settings-row">
+        <span class="settings-label">${connected?'<span class="dot-green"></span>':''}מצב</span>
         <span class="settings-val" style="color:${connected?'#1e8e3e':'#c62828'}">${connected?'מחובר ✓':'לא מחובר'}</span>
       </div>
-      ${connected?`<div class="settings-row">
-        <span class="settings-label">Apps Script URL</span>
-        <span class="settings-val">${esc(shortUrl)}</span>
-      </div>`:''}
+      ${connected?`<div class="settings-row"><span class="settings-label">URL</span><span class="settings-val">${esc(short)}</span></div>`:''}
     </div>
 
     <div class="settings-title">${connected?'עדכן URL':'הגדר URL'}</div>
     <div class="settings-card" style="padding:14px">
       <div class="url-err" id="url-err2"></div>
       <input class="url-input" id="script-url-input2" type="url" inputmode="url"
-        placeholder="https://script.google.com/macros/s/.../exec"
-        value="${esc(S.scriptUrl)}" style="margin-bottom:10px">
-      <button class="save-url-btn" onclick="saveUrl2()">
-        ${connected?'🔄 עדכן URL':'✅ התחבר'}
-      </button>
+        placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
+      <button class="save-url-btn" onclick="saveUrl('script-url-input2','url-err2')">${connected?'🔄 עדכן':'✅ התחבר'}</button>
     </div>
 
     ${connected?`
-    <div class="settings-title" style="margin-top:6px">נתונים</div>
+    <div class="settings-title" style="margin-top:4px">נתונים</div>
     <div class="settings-card">
-      <div class="settings-row" style="border-top:none">
-        <span class="settings-label">לקוחות טעונים</span>
-        <span class="settings-val">${S.customers.length} רשומות</span>
-      </div>
-      <div class="settings-row">
-        <span class="settings-label">רענן הכל</span>
-        <button class="settings-btn" onclick="refreshAll()">↻ טען מחדש</button>
-      </div>
+      <div class="settings-row"><span class="settings-label">לקוחות</span><span class="settings-val">${S.customers.length} רשומות</span></div>
+      <div class="settings-row"><span class="settings-label">רענן הכל</span>
+        <button class="settings-btn blue" onclick="refreshAll()">↻ טען מחדש</button></div>
     </div>
-
-    <div class="settings-title" style="margin-top:6px">אחר</div>
+    <div class="settings-title" style="margin-top:4px">אחר</div>
     <div class="settings-card">
-      <div class="settings-row" style="border-top:none">
-        <span class="settings-label">נקה חיבור</span>
-        <button class="settings-btn red" onclick="clearUrl()">🗑 נקה URL</button>
-      </div>
+      <div class="settings-row"><span class="settings-label">נקה חיבור</span>
+        <button class="settings-btn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`:''}
-
-    <div style="text-align:center;margin-top:20px;font-size:11px;color:#ccc">
-      MOOV Sales App v1.0<br>mikael-collab
-    </div>
+    <div style="text-align:center;margin-top:20px;font-size:11px;color:#ccc">MOOV Sales App v1.1</div>
   </div>`;
 }
 
-function saveUrl(){
-  const inp=document.getElementById('script-url-input');
-  const errEl=document.getElementById('url-err');
+function saveUrl(inputId, errId){
+  const inp=document.getElementById(inputId);
+  const errEl=document.getElementById(errId);
   const val=(inp?.value||'').trim();
   if(!val||!val.startsWith('https://script.google.com')){
-    inp.classList.add('err');
-    errEl.style.display='block';
-    return;
-  }
-  inp.classList.remove('err');
-  errEl.style.display='none';
-  S.scriptUrl=val;
-  localStorage.setItem(STORAGE_KEY,val);
-  // Reset states so data loads fresh
-  S.csState='idle'; S.isState='idle'; S.rsState='idle'; S.tsState='idle';
-  S.screen='list';
-  document.getElementById('bnav').style.display='flex';
-  setHeader();
-  loadCustomers();
-}
-
-function saveUrl2(){
-  const inp=document.getElementById('script-url-input2');
-  const errEl=document.getElementById('url-err2');
-  const val=(inp?.value||'').trim();
-  if(!val||!val.startsWith('https://script.google.com')){
-    inp.classList.add('err');
-    errEl.textContent='URL לא תקין — ודא שהוא מתחיל ב-https://script.google.com';
-    errEl.style.display='block';
+    if(inp) inp.classList.add('err');
+    if(errEl){errEl.textContent='URL לא תקין — חייב להתחיל ב-https://script.google.com';errEl.style.display='block';}
     return;
   }
   S.scriptUrl=val;
   localStorage.setItem(STORAGE_KEY,val);
   S.csState='idle'; S.isState='idle'; S.rsState='idle'; S.tsState='idle';
+  S.customers=[]; S.invoices=[]; S.receipts=[]; S.tax=[];
   S.screen='list'; S.tab='customers';
+  document.getElementById('bnav').style.display='flex';
   setHeader(); loadCustomers();
 }
 
 function clearUrl(){
   if(!confirm('למחוק את ה-URL השמור?')) return;
-  S.scriptUrl='';
-  localStorage.removeItem(STORAGE_KEY);
+  S.scriptUrl=''; localStorage.removeItem(STORAGE_KEY);
   S.csState='idle'; S.isState='idle'; S.rsState='idle'; S.tsState='idle';
   S.customers=[]; S.invoices=[]; S.receipts=[]; S.tax=[];
-  S.screen='list';
-  document.getElementById('bnav').style.display='none';
+  S.screen='list'; document.getElementById('bnav').style.display='none';
   setHeader(); render();
 }
 
@@ -549,19 +493,23 @@ function refreshAll(){
   S.screen='list'; setHeader(); loadCustomers();
 }
 
-// ════════ Customer List ════════
+// ── Customer List ──
 function filteredC(){
   if(!S.search.trim()) return S.customers;
   const q=S.search.toLowerCase();
   return S.customers.filter(c=>['A','B','C','D','E','F','G'].some(k=>(c[k]||'').toLowerCase().includes(q)));
 }
+
+function rowClass(i, isExp){
+  if(isExp) return 'card exp';
+  return i%2===0 ? 'card row-even' : 'card row-odd';
+}
+
 function renderCustList(){
-  const st=S.csState;
-  const fc=filteredC();
-  let h=`
-  <div class="sbar">
+  const st=S.csState; const fc=filteredC();
+  let h=`<div class="sbar" style="--tc:${tc()}">
     <div class="swrap">
-      <input class="sinput" id="sinput" type="text" placeholder='חיפוש: שם, ת"ז, טלפון, עיר...' value="${esc(S.search)}">
+      <input class="sinput" id="sinput" type="text" placeholder='חיפוש: שם, ת"ז, טלפון, עיר...' value="${esc(S.search)}" style="--tc:${tc()}">
       <span class="sico">🔍</span>
       ${S.search?`<button class="sclr" onclick="clearSearch()">×</button>`:''}
     </div>
@@ -572,12 +520,11 @@ function renderCustList(){
   </div>`;
   if(st!=='ok') return h+statusHtml(st,'loadCustomers()','לקוחות');
   if(!fc.length){
-    if(!S.customers.length)
-      return h+`<div class="status"><div style="font-size:14px;color:#999;margin-bottom:16px">אין לקוחות עדיין</div>
-        <button onclick="openNewCustomer()" style="background:${tc()};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">+ הוסף לקוח</button></div>`;
-    return h+`<div class="status"><div style="font-size:14px;color:#999">אין תוצאות עבור "${esc(S.search)}"</div></div>`;
+    if(!S.customers.length) return h+`<div class="status"><p style="color:#999;margin-bottom:16px">אין לקוחות עדיין</p>
+      <button onclick="openNewCustomer()" style="background:${tc()};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">+ הוסף לקוח</button></div>`;
+    return h+`<div class="status"><p style="color:#999">אין תוצאות עבור "${esc(S.search)}"</p></div>`;
   }
-  h+=`<div style="padding:8px 0 20px">`;
+  h+=`<div style="padding:8px 0 20px;--row-odd:${tbg()}">`;
   fc.forEach((c,i)=>{ h+=cCard(c,i); });
   h+=`</div>`;
   return h;
@@ -585,22 +532,21 @@ function renderCustList(){
 
 function cCard(c,i){
   const isE=S.expId===c._id;
-  const bg=i%2===0?'#fff':'#f5f8ff';
-  const bank=c.H||c.I||c.J||c.K;
   const cpd=S.copied===`${c._id}-B`;
-  return `
-  <div class="card${isE?' exp':''}" style="background:${isE?'#fff':bg};${isE?`--tc:${tc()}`:''}">
+  const bank=c.H||c.I||c.J||c.K;
+  return `<div class="${rowClass(i,isE)}" style="${isE?`background:#fff;--tc:${tc()}`:`--row-odd:${tbg()}`}">
     <div class="card-hdr" onclick="tog(${c._id})">
       <div class="r1">
         <span class="cust-name">${esc(c.A||'—')}</span>
         ${c.B?`<span class="id-badge">${esc(c.B)}</span>
           <button class="copy-btn${cpd?' done':''}" onclick="event.stopPropagation();cp('${esc(c.B)}','${c._id}-B')"
-            ${cpd?`style="background:${tc()};border-color:${tc()}"`:''}>${cpd?'✓ הועתק':'📋 העתק'}</button>`:''}
+            style="${cpd?`background:${tc()};border-color:${tc()};color:#fff`:''}">
+            ${cpd?'✓ הועתק':'📋 העתק'}</button>`:''}
         ${c.C?`<span class="biz-name" style="color:${tc()}">${esc(c.C)}</span>`:''}
       </div>
       <div class="r2">
         ${c.D?`<span>📱 ${esc(c.D)}</span>`:''}
-        ${c.E?`<span style="overflow:hidden;text-overflow:ellipsis;max-width:160px;direction:ltr">✉ ${esc(c.E)}</span>`:''}
+        ${c.E?`<span style="direction:ltr;overflow:hidden;text-overflow:ellipsis;max-width:160px">✉ ${esc(c.E)}</span>`:''}
         ${(c.F||c.G)?`<span>📍 ${esc([c.F,c.G].filter(Boolean).join(', '))}</span>`:''}
       </div>
       <div class="r3">
@@ -613,21 +559,19 @@ function cCard(c,i){
 }
 
 function cCardBody(c){
-  const bank=CF.filter(f=>f.bank&&c[f.k]);
-  let h=`<div class="card-body" style="background:${tc()}08">
-    <div class="sec-title">פרטי קשר</div>
-    <div class="g2" style="margin-bottom:12px">`;
+  let h=`<div class="card-body" style="background:${tc()}0a">
+    <div class="sec-title">פרטי קשר</div><div class="g2" style="margin-bottom:12px">`;
   CF.filter(f=>!f.bank&&c[f.k]).forEach(f=>{
-    const wide=['E','F'].includes(f.k);
-    h+=`<div class="gcell${wide?' wide':''}">
+    h+=`<div class="gcell${['E','F'].includes(f.k)?' wide':''}">
       <div class="glabel">${f.label}</div>
       <div class="gval" style="direction:${f.mode==='email'?'ltr':'rtl'}">${esc(c[f.k])}</div>
     </div>`;
   });
   h+=`</div>`;
-  if(bank.length){
+  const bankFields=CF.filter(f=>f.bank&&c[f.k]);
+  if(bankFields.length){
     h+=`<div class="sec-title">🏦 פרטי בנק</div><div class="dtable">`;
-    bank.forEach((f,i)=>{
+    bankFields.forEach((f,i)=>{
       h+=`<div class="dtrow"${i===0?' style="border-top:none"':''}>
         <span class="dtlabel">${f.label}</span>
         <span class="dtval" style="${['J','K'].includes(f.k)?'font-family:monospace;letter-spacing:1px':''}">${esc(c[f.k])}</span>
@@ -635,78 +579,74 @@ function cCardBody(c){
     });
     h+=`</div>`;
   }
-  h+=`</div>`;
-  return h;
+  return h+`</div>`;
 }
 
-// ════════ New Customer Form ════════
+// ── New Customer Form ──
 function renderForm(){
-  let h=`<div class="fwrap">`;
+  let h=`<div class="fwrap" style="--tc:${tc()}">`;
   if(S.msg) h+=`<div class="alert ${S.msg.t==='s'?'ok':'err'}">${S.msg.t==='s'?'✅ ':'❌ '}${esc(S.msg.m)}</div>`;
   h+=`<div class="sec-title">פרטי לקוח</div>`;
   CF.filter(f=>!f.bank).forEach(f=>{ h+=fField(f); });
   h+=`<div class="divider"><hr><span>🏦 פרטי בנק</span><hr></div>`;
   CF.filter(f=>f.bank).forEach(f=>{ h+=fField(f); });
   h+=`<button class="save-btn" style="background:${S.saving?'#ccc':tc()}" ${S.saving?'disabled':''} onclick="saveCust()">
-    ${S.saving?'⏳ שומר...':'💾 שמור לקוח'}
-  </button></div>`;
+    ${S.saving?'⏳ שומר...':'💾 שמור לקוח'}</button></div>`;
   return h;
 }
 
 function fField(f){
   const v=esc(S.form[f.k]||'');
-  if(f.k==='B') return `
-    <div class="field">
-      <label>${f.label} <small>(עמודה B${f.req?' *':''})</small></label>
-      <div class="irow">
-        <input type="text" inputmode="numeric" id="f-B" class="num" value="${v}" oninput="uf('B',this.value.replace(/[^0-9-]/g,''))">
-        <button class="dash-btn" style="border-color:${tc()};color:${tc()}" onclick="addDash()">-</button>
-      </div>
-    </div>`;
+  if(f.k==='B') return `<div class="field">
+    <label>${f.label} <small>(עמודה B${f.req?' *':''})</small></label>
+    <div class="irow">
+      <input type="text" inputmode="numeric" id="f-B" class="num" value="${v}"
+        oninput="uf('B',this.value.replace(/[^0-9-]/g,''))">
+      <button class="dash-btn" onclick="addDash()">-</button>
+    </div></div>`;
   const im=f.mode==='num'?'numeric':f.mode==='tel'?'tel':f.mode==='email'?'email':'text';
-  const isNum=f.mode==='num';
-  return `
-    <div class="field">
-      <label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
-      <input type="${f.mode==='email'?'email':f.mode==='tel'?'tel':'text'}" inputmode="${im}"
-        id="f-${f.k}" value="${v}" ${isNum?'class="num"':''}
-        style="direction:${f.mode==='email'?'ltr':'rtl'}"
-        oninput="uf('${f.k}',this.value)">
-    </div>`;
+  return `<div class="field">
+    <label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
+    <input type="${f.mode==='email'?'email':f.mode==='tel'?'tel':'text'}" inputmode="${im}"
+      id="f-${f.k}" value="${v}" ${f.mode==='num'?'class="num"':''}
+      style="direction:${f.mode==='email'?'ltr':'rtl'}"
+      oninput="uf('${f.k}',this.value)">
+  </div>`;
 }
 
-// ════════ Invoice / Tax List ════════
-function renderInvList(data, state, type){
-  const isInv=type==='inv';
-  const reload=isInv?'loadInvoices()':'loadTax()';
-  const label=isInv?'חשבוניות':'חשבוניות מס קבלה';
-  const shortLabel=isInv?'חשבוניות':'חשמ"ק';
-  const totalKey=isInv?'AE':'AD';
-  const numKey=isInv?'AF':'AK';
-  const tail=isInv?INV_TAIL:TAX_TAIL;
+// ── Invoice / Tax List ──
+function renderInvList(data, state, isTax){
+  const label=isTax?'חשבוניות מס קבלה':'חשבוניות';
+  const reload=isTax?'loadTax()':'loadInvoices()';
+  const totalKey=isTax?'AD':'AE';
+  const numKey=isTax?'AK':'AF';
+  const tail=isTax?TAX_TAIL:INV_TAIL;
+  const color=tc(); const bg=tbg();
+
   if(state!=='ok') return statusHtml(state,reload,label);
-  if(!data.length) return `<div class="status"><div style="font-size:14px;color:#999;margin-bottom:16px">אין ${label}</div>
-    <button onclick="${reload}" style="background:${tc()};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען נתונים</button></div>`;
+  if(!data.length) return `<div class="status"><p style="color:#999;margin-bottom:16px">אין ${label}</p>
+    <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
+
   const grand=data.reduce((s,r)=>{const v=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));return s+(isNaN(v)?0:v);},0);
-  let h=`<div style="padding-bottom:20px">
-    <div class="sumbar" style="background:${tc()}">
-      <span style="font-size:13px;font-weight:500">${data.length} ${shortLabel} אחרונות</span>
+  let h=`<div style="padding-bottom:20px;--row-odd:${bg}">
+    <div class="sumbar" style="background:${color}">
+      <span>${data.length} ${isTax?'חשמ"ק':'חשבוניות'} אחרונות</span>
       <span style="font-size:16px;font-weight:700">${fmt(grand.toString())}</span>
     </div>`;
+
   [...data].reverse().forEach((r,i)=>{
-    const id=`${type}-${r._id}`;
+    const id=`${isTax?'t':'v'}-${r._id}`;
     const isE=S.expId===id;
-    const bg=i%2===0?'#fff':(isInv?'#fffbf5':'#fdf8ff');
-    const invNum=r[numKey];
-    const totVAT=r[totalKey];
+    const totVAT=r[totalKey]; const invNum=r[numKey];
     const prods=PRODS.filter(p=>parseFloat(r[p.qk])>0);
     const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
-    h+=`<div class="card${isE?' exp':''}" style="background:${isE?'#fff':bg};${isE?`--tc:${tc()}`:''}">
+
+    h+=`<div class="${rowClass(i,isE)}" style="${isE?`background:#fff;--tc:${color}`:`--row-odd:${bg}`}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1">
-          ${invNum?`<span class="nbadge" style="background:${tc()}">#${esc(invNum)}</span>`:''}
+          ${invNum?`<span class="nbadge" style="background:${color}">#${esc(invNum)}</span>`:''}
           <span style="font-weight:600;font-size:14px;color:#222;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.B||r.A||'—')}</span>
-          ${totVAT?`<span style="font-size:15px;font-weight:700;color:${tc()};flex-shrink:0">${fmt(totVAT)}</span>`:''}
+          ${totVAT?`<span style="font-size:15px;font-weight:700;color:${color};flex-shrink:0">${fmt(totVAT)}</span>`:''}
         </div>
         <div class="r2">
           ${r.C?`<span>📅 ${esc(r.C)}</span>`:''}
@@ -715,26 +655,27 @@ function renderInvList(data, state, type){
           ${totItems>0?`<span style="font-size:11px;color:#bbb;margin-right:auto">${totItems} יח'</span>`:''}
         </div>
         <div class="r3" style="justify-content:flex-end">
-          <span class="toggle-hint" style="color:${isE?tc():'#ccc'}">${isE?'▲ סגור':'▼ פרטים'}</span>
+          <span class="toggle-hint" style="color:${isE?color:'#ccc'}">${isE?'▲ סגור':'▼ פרטים'}</span>
         </div>
       </div>`;
+
     if(isE){
-      h+=`<div class="card-body" style="background:${tc()}08">
+      h+=`<div class="card-body" style="background:${color}0a">
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
           ${r.A?`<span class="id-badge">${esc(r.A)}</span>`:''}
-          ${r.B?`<span style="font-size:13px;font-weight:600;color:#222">${esc(r.B)}</span>`:''}
+          ${r.B?`<span style="font-size:13px;font-weight:600">${esc(r.B)}</span>`:''}
           ${r.C?`<span style="font-size:12px;color:#888;margin-right:auto">📅 ${esc(r.C)}</span>`:''}
         </div>`;
       if(prods.length){
         h+=`<div class="dtable" style="margin-bottom:10px">
-          <div class="dthead" style="background:${tc()}"><span>פירוט הזמנה</span><span>${totItems} יח'</span></div>`;
+          <div class="dthead" style="background:${color}"><span>פירוט הזמנה</span><span>${totItems} יח'</span></div>`;
         prods.forEach(p=>{
           h+=`<div class="prod-row">
             <div style="display:flex;align-items:center">
               <span class="prod-em">${p.em}</span>
-              <div><div class="prod-name">${p.label}</div><div class="prod-sub">${p.heb} • ניקוטין ${p.nic}mg</div></div>
+              <div><div class="prod-name">${p.label}</div><div class="prod-sub">${p.heb} • ${p.nic}mg</div></div>
             </div>
-            <span class="prod-qty" style="color:${tc()}">${r[p.qk]} יח'</span>
+            <span class="prod-qty" style="color:${color}">${r[p.qk]} יח'</span>
           </div>`;
         });
         h+=`</div>`;
@@ -749,60 +690,56 @@ function renderInvList(data, state, type){
       if(pricing.length){
         h+=`<div class="dtable" style="margin-bottom:10px">`;
         pricing.forEach((row,ri)=>{
-          h+=`<div class="dtrow" style="${ri===0?'border-top:none;':''}${row.hi?`background:${tc()}12`:''}" >
+          h+=`<div class="dtrow" style="${ri===0?'border-top:none;':''}${row.hi?`background:${color}12`:''}">
             <span class="dtlabel">${row.l}</span>
-            <span class="dtval" style="color:${row.hi?tc():row.disc?'#c62828':'#222'};font-size:${row.hi?15:13}px;font-weight:${row.hi?700:500}">${row.v}</span>
+            <span class="dtval" style="color:${row.hi?color:row.disc?'#c62828':'#222'};font-size:${row.hi?15:13}px;font-weight:${row.hi?700:500}">${row.v}</span>
           </div>`;
         });
         h+=`</div>`;
       }
-      h+=`<div class="dtable">
-        <div style="padding:6px 12px;background:#f8f8f8;border-bottom:.5px solid #f0f0f0;font-size:12px;font-weight:600;color:#666">פרטי תשלום</div>`;
+      h+=`<div class="dtable"><div style="padding:7px 12px;background:#f5f5f5;border-bottom:.5px solid #f0f0f0;font-size:12px;font-weight:600;color:#666">פרטי תשלום</div>`;
       tail.filter(f=>r[f.k]&&!f.wide).forEach((f,fi)=>{
         h+=`<div class="dtrow"${fi===0?' style="border-top:none"':''}>
           <span class="dtlabel">${f.label}</span>
-          <span class="dtval" style="color:${f.money||f.hi?tc():'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</span>
+          <span class="dtval" style="color:${f.money||f.hi?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</span>
         </div>`;
       });
       tail.filter(f=>r[f.k]&&f.wide).forEach(f=>{
         h+=`<div style="padding:8px 12px;border-top:.5px solid #f0f0f0">
           <div class="glabel">${f.label}</div>
-          <div style="font-size:13px;color:#222;margin-top:2px">${esc(r[f.k])}</div>
-        </div>`;
+          <div style="font-size:13px;color:#222;margin-top:2px">${esc(r[f.k])}</div></div>`;
       });
       h+=`</div></div>`;
     }
     h+=`</div>`;
   });
-  h+=`</div>`;
-  return h;
+  return h+`</div>`;
 }
 
-// ════════ Receipt List ════════
+// ── Receipt List ──
 function renderRecList(){
   const {receipts:data,rsState:state}=S;
+  const color=tc(); const bg=tbg();
   if(state!=='ok') return statusHtml(state,'loadReceipts()','קבלות');
-  if(!data.length) return `<div class="status"><div style="font-size:14px;color:#999;margin-bottom:16px">אין קבלות</div>
-    <button onclick="loadReceipts()" style="background:${tc()};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען קבלות</button></div>`;
+  if(!data.length) return `<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
+    <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
   const total=data.reduce((s,r)=>{const v=parseFloat((r.C||'').replace(/[^0-9.]/g,''));return s+(isNaN(v)?0:v);},0);
-  let h=`<div style="padding-bottom:20px">
-    <div class="sumbar" style="background:${tc()}">
-      <span style="font-size:13px;font-weight:500">${data.length} קבלות אחרונות</span>
+  let h=`<div style="padding-bottom:20px;--row-odd:${bg}">
+    <div class="sumbar" style="background:${color}">
+      <span>${data.length} קבלות אחרונות</span>
       <span style="font-size:16px;font-weight:700">${fmt(total.toString())}</span>
     </div>`;
   [...data].reverse().forEach((r,i)=>{
-    const id=`rec-${r._id}`;
-    const isE=S.expId===id;
-    const bg=i%2===0?'#fff':'#f0faf4';
+    const id=`rec-${r._id}`; const isE=S.expId===id;
     const num=r.J||r.A||`#${i+1}`;
-    h+=`<div class="card${isE?' exp':''}" style="background:${isE?'#fff':bg};${isE?`--tc:${tc()}`:''}">
+    h+=`<div class="${rowClass(i,isE)}" style="${isE?`background:#fff;--tc:${color}`:`--row-odd:${bg}`}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1" style="justify-content:space-between">
           <div style="display:flex;align-items:center;gap:7px">
-            <span class="nbadge" style="background:${tc()}">קבלה ${esc(num)}</span>
+            <span class="nbadge" style="background:${color}">קבלה ${esc(num)}</span>
             ${r.H?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(r.H)}</span>`:''}
           </div>
-          ${r.C?`<span style="font-size:15px;font-weight:700;color:${tc()}">${fmt(r.C)}</span>`:''}
+          ${r.C?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(r.C)}</span>`:''}
         </div>
         <div class="r2">
           ${r.B?`<span class="tag">${esc(r.B)}</span>`:''}
@@ -811,45 +748,44 @@ function renderRecList(){
           ${r.E?`<span class="tag blue">🏦 שיק</span>`:''}
         </div>
         <div class="r3" style="justify-content:flex-end">
-          <span class="toggle-hint" style="color:${isE?tc():'#ccc'}">${isE?'▲ סגור':'▼ פרטים'}</span>
+          <span class="toggle-hint" style="color:${isE?color:'#ccc'}">${isE?'▲ סגור':'▼ פרטים'}</span>
         </div>
       </div>`;
     if(isE){
-      h+=`<div class="card-body" style="background:${tc()}08"><div class="g2" style="margin-bottom:8px">`;
+      h+=`<div class="card-body" style="background:${color}0a"><div class="g2" style="margin-bottom:8px">`;
       RF.filter(f=>!f.wide&&r[f.k]).forEach(f=>{
         h+=`<div class="gcell"><div class="glabel">${f.icon} ${f.label}</div>
-          <div class="gval" style="color:${f.money?tc():'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
+          <div class="gval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
       });
       h+=`</div>`;
       RF.filter(f=>f.wide&&r[f.k]).forEach(f=>{
         h+=`<div class="gcell wide" style="margin-bottom:8px"><div class="glabel">${f.icon} ${f.label}</div>
           <div class="gval">${esc(r[f.k])}</div></div>`;
       });
-      if(r.F) h+=`<div style="background:#e8f0fe;border-radius:8px;padding:9px 12px;border:.5px solid #b3c9f5;display:flex;align-items:center;gap:8px">
+      if(r.F) h+=`<div style="background:#e8f0fe;border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:8px">
         <span>📷</span><span style="font-size:12px;color:#1a73e8;font-weight:500">יש קובץ צילום שיק מצורף</span></div>`;
       h+=`</div>`;
     }
     h+=`</div>`;
   });
-  h+=`</div>`;
-  return h;
+  return h+`</div>`;
 }
 
-// ════════ Status ════════
+// ── Status ──
 function statusHtml(state,reload,label){
   if(state==='loading'||state==='idle')
-    return `<div class="status"><div class="spinner"></div><div style="color:#999;font-size:14px">טוען ${label}...</div></div>`;
+    return `<div class="status"><div class="spinner"></div><p style="color:#999;font-size:14px">טוען ${label}...</p></div>`;
   if(state==='busy')
-    return `<div class="status"><div style="font-size:36px;margin-bottom:12px">🔄</div>
-      <div style="font-weight:600;color:#e65100;font-size:16px;margin-bottom:8px">השרת עמוס</div>
-      <div style="font-size:13px;color:#888;margin-bottom:16px;line-height:1.7">חריגה ממגבלת ה-API.<br>המתן דקה ונסה שוב.</div>
-      <button onclick="${reload}" style="background:#e65100;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:500;cursor:pointer">↻ נסה שוב</button></div>`;
-  return `<div class="status"><div style="font-size:36px;margin-bottom:12px">⚠️</div>
-    <div style="font-weight:500;color:#c62828;font-size:15px;margin-bottom:16px">שגיאה בטעינה</div>
+    return `<div class="status"><p style="font-size:36px;margin-bottom:12px">🔄</p>
+      <p style="font-weight:600;color:#e65100;font-size:16px;margin-bottom:8px">השרת עמוס</p>
+      <p style="font-size:13px;color:#888;margin-bottom:16px;line-height:1.7">חריגה ממגבלת ה-API.<br>המתן דקה ונסה שוב.</p>
+      <button onclick="${reload}" style="background:#e65100;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">↻ נסה שוב</button></div>`;
+  return `<div class="status"><p style="font-size:36px;margin-bottom:12px">⚠️</p>
+    <p style="font-weight:500;color:#c62828;font-size:15px;margin-bottom:16px">שגיאה בטעינה</p>
     <button onclick="${reload}" style="background:#c62828;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">נסה שוב</button></div>`;
 }
 
-// ════════ Event Handlers ════════
+// ── Event Handlers ──
 function bindInputs(){
   const si=document.getElementById('sinput');
   if(si){
@@ -861,12 +797,15 @@ function bindInputs(){
     });
   }
 }
-function clearSearch(){ S.search=''; render(); setTimeout(()=>{ const si=document.getElementById('sinput'); if(si)si.focus(); },50); }
+
+function clearSearch(){ S.search=''; render(); setTimeout(()=>document.getElementById('sinput')?.focus(),50); }
+
 function tog(id){
   S.expId=S.expId===id?null:id;
   render();
-  setTimeout(()=>{ const exp=document.querySelector('.card.exp'); if(exp)exp.scrollIntoView({behavior:'smooth',block:'nearest'}); },50);
+  setTimeout(()=>document.querySelector('.card.exp')?.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
 }
+
 async function cp(text,key){
   try{ await navigator.clipboard.writeText(text); }
   catch{
@@ -879,18 +818,27 @@ async function cp(text,key){
   S.copied=key; render();
   S.copiedTimer=setTimeout(()=>{ S.copied=null; render(); },2000);
 }
+
 function uf(k,v){ S.form[k]=v; }
+
 function addDash(){
   S.form['B']=(S.form['B']||'')+'-';
   const inp=document.getElementById('f-B');
   if(inp){ inp.value=S.form['B']; inp.focus(); }
 }
+
 async function saveCust(){
-  if(!S.form.A||!S.form.A.trim()){ S.msg={t:'e',m:'שם לקוח הוא שדה חובה'}; render(); return; }
+  if(!S.form.A?.trim()){ S.msg={t:'e',m:'שם לקוח הוא שדה חובה'}; render(); return; }
+
+  // Auto-format phone: 0545600265 → 054-5600265
+  if(S.form.D) S.form.D = formatPhone(S.form.D);
+  // Preserve B as string (ת"ז / ח"פ)
+  const dataToSave={...S.form};
+
   S.saving=true; S.msg=null; render();
   try{
-    await apiPost({action:'addCustomer',data:S.form});
-    S.customers.push({...S.form,_id:S.customers.length});
+    await apiPost({action:'addCustomer', data:dataToSave});
+    S.customers.push({...dataToSave, _id:S.customers.length});
     S.msg={t:'s',m:'הלקוח נשמר בהצלחה!'};
     S.saving=false; render();
     setTimeout(()=>{ S.screen='list'; S.form=ef(); S.msg=null; setHeader(); render(); },1500);
@@ -900,15 +848,14 @@ async function saveCust(){
   }
 }
 
-// ════════ Init ════════
+// ── Init ──
 window.addEventListener('DOMContentLoaded',()=>{
   S.form=ef();
   setHeader();
-  if(!S.scriptUrl){
-    render(); // show setup screen
+  if(S.scriptUrl){
+    render(); loadCustomers();
   } else {
     render();
-    loadCustomers();
   }
 });
 </script>
