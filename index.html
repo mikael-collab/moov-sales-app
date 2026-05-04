@@ -711,7 +711,7 @@ function renderInvForm(isTax){
     <div class="field-wrap">
       <input type="text" id="inv-B" class="finput" value="${esc(f.B)}" placeholder="הקלד לחיפוש לקוח..."
         oninput="onInvCustSearch(this.value)" autocomplete="off">
-      ${S.showSuggest&&S.suggest.length?suggestHtml():''}
+      ${S.showSuggest&&S.suggest.length?suggestHtmlInv():''}
     </div>
   </div>
   <div class="field"><label>ת"ז / ח"פ <small>(עמודה A)</small></label>
@@ -815,11 +815,21 @@ function renderInvForm(isTax){
   return h;
 }
 
-function suggestHtml(){
+// Suggest box for RECEIPT form: pick שם לקוח → H, ת"ז/ח"פ → I
+function suggestHtmlReceipt(){
   return`<div class="suggest-box" id="suggest-box">
-    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onclick="pickInvCust('${esc(c.A)}','${esc(c.B)}','${esc(c.C)}')">
+    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
+      <div>${esc(c.A||'—')}</div>
+      <div class="sug-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
+    </div>`).join('')}
+  </div>`;
+}
+// Suggest box for INVOICE/TAX form: pick ת"ז/ח"פ → iForm.A, שם עסק → iForm.B
+function suggestHtmlInv(){
+  return`<div class="suggest-box" id="suggest-box">
+    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onclick="pickInvCust('${esc(c.B)}','${esc(c.C)}')">
       <div>${esc(c.C||c.A||'—')}</div>
-      <div class="sug-sub">${c.A?esc(c.A):''}</div>
+      <div class="sug-sub">${c.A?esc(c.A)+' · ':''}${c.B?esc(c.B):''}</div>
     </div>`).join('')}
   </div>`;
 }
@@ -834,11 +844,7 @@ function renderReceiptForm(){
     <div class="field-wrap">
       <input type="text" id="r-H" class="finput" value="${esc(rf.H)}" placeholder="הקלד לחיפוש לקוח..."
         oninput="onCustSearch(this.value)" autocomplete="off">
-      ${S.showSuggest&&S.suggest.length?`<div class="suggest-box" id="suggest-box">
-        ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
-          <div>${esc(c.A)}</div><div class="sug-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
-        </div>`).join('')}
-      </div>`:''}
+      ${S.showSuggest&&S.suggest.length?suggestHtmlReceipt():''}
     </div>
   </div>
   <div class="field"><label>ת"ז / ח"פ <small>(עמודה I)</small></label>
@@ -1099,31 +1105,38 @@ function updProd(qk,val){
   refreshCalc();
 }
 
-// Customer search for receipt form
+// Customer search for RECEIPT form → fills rForm.H (שם לקוח) and rForm.I (ת"ז/ח"פ)
 function onCustSearch(val){
   S.rForm.H=val;
-  updateSuggest(val,c=>(c.A||'').toLowerCase());
+  if(val.length<2){S.suggest=[];S.showSuggest=false;}
+  else{
+    const q=val.toLowerCase();
+    S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
+    S.showSuggest=S.suggest.length>0;
+  }
+  render();
 }
+// Customer search for INVOICE/TAX form → fills iForm.B (שם עסק display)
 function onInvCustSearch(val){
   S.iForm.B=val;
-  updateSuggest(val,c=>(c.C||c.A||'').toLowerCase());
+  if(val.length<2){S.suggest=[];S.showSuggest=false;}
+  else{
+    const q=val.toLowerCase();
+    S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
+    S.showSuggest=S.suggest.length>0;
+  }
+  render();
 }
-function updateSuggest(val,getKey){
-  if(val.length<2){S.suggest=[];S.showSuggest=false;
-    const b=document.getElementById('suggest-box');if(b)b.remove();return;}
-  const q=val.toLowerCase();
-  S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
-  S.showSuggest=S.suggest.length>0;
-  const wrap=document.querySelector('.field-wrap');
-  const existing=document.getElementById('suggest-box');
-  if(S.showSuggest&&wrap){
-    const html=suggestHtml();
-    if(existing)existing.outerHTML=html;else wrap.insertAdjacentHTML('beforeend',html);
-  }else if(existing)existing.remove();
+// Pick customer for RECEIPT: c.A=שם לקוח→H, c.B=ת"ז/ח"פ→I
+function pickCustomer(name,id){
+  S.rForm.H=name;
+  S.rForm.I=id;
+  S.showSuggest=false;S.suggest=[];render();
 }
-function pickCustomer(name,id){S.rForm.H=name;S.rForm.I=id;S.showSuggest=false;S.suggest=[];render();}
-function pickInvCust(id,biz,name){
-  S.iForm.A=id;S.iForm.B=name||biz;
+// Pick customer for INVOICE/TAX: c.B=ת"ז/ח"פ→iForm.A, c.C=שם עסק→iForm.B
+function pickInvCust(custId,bizName){
+  S.iForm.A=custId;
+  S.iForm.B=bizName||'';
   S.showSuggest=false;S.suggest=[];render();
 }
 
