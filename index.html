@@ -444,8 +444,8 @@ function setHeader(){
 
   // Subtitle — show live totals in invoice/tax form, otherwise name
   if(S.screen==='new-invoice'||S.screen==='new-tax'){
-    const calc=calcInv(S.iForm);
-    sub.textContent=calc.totalQty>0&&parseFloat(S.iForm.Z)>0
+    const calc=calcInv(S.iForm||{});
+    sub.textContent=calc.totalQty>0&&parseFloat((S.iForm||{}).Z)>0
       ? `${calc.totalQty} יח' | ₪${fmtNum(calc.withVat)} כולל מע"מ`
       : 'הזן כמויות ומחיר';
   }else{
@@ -765,12 +765,14 @@ function renderInvForm(isTax){
   </div>`;
 
   if(calc.totalQty>0&&parseFloat(f.Z)>0){
-    h+=`<div style="background:#f8f8f8;border-radius:10px;padding:4px;margin-bottom:12px">
+    h+=`<div id="calc-preview" style="background:#f8f8f8;border-radius:10px;padding:4px;margin-bottom:12px">
       <div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
       <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
     if(calc.disc>0)h+=`<div class="calc-row"><span class="calc-label">אחרי הנחה ${calc.disc}%</span><span class="calc-val">₪${fmtNum(calc.ac)}</span></div>`;
     h+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 17%</span><span class="calc-val hi" style="--tc:${color}">₪${fmtNum(calc.withVat)}</span></div>
     </div>`;
+  }else{
+    h+=`<div id="calc-preview"></div>`;
   }
 
   h+=`<div class="field"><label>הנחה % <small>(עמודה AB)</small></label>
@@ -1106,59 +1108,89 @@ function uf(formKey,k,val){S[formKey][k]=val;}
 function addDashC(){S.cForm.B=(S.cForm.B||'')+'-';const i=document.getElementById('f-B');if(i){i.value=S.cForm.B;i.focus();}}
 
 function refreshCalc(){
-  const calc=calcInv(S.iForm);
+  const f=S.iForm;const calc=calcInv(f);const color=tc();
+  // Store computed values for save
   S.iForm.AA=calc.aa>0?fmtNum(calc.aa):'';
   S.iForm.AC=calc.ac>0?fmtNum(calc.ac):'';
   if(S.screen==='new-invoice')S.iForm.AE=calc.withVat>0?fmtNum(calc.withVat):'';
   else S.iForm.AD=calc.withVat>0?fmtNum(calc.withVat):'';
-  // Update header subtitle live without full re-render
+  // Update header subtitle — targeted, no render()
   const sub=document.getElementById('hdr-sub');
-  if(sub&&(S.screen==='new-invoice'||S.screen==='new-tax')){
-    sub.textContent=calc.totalQty>0&&parseFloat(S.iForm.Z)>0
+  if(sub){
+    sub.textContent=calc.totalQty>0&&parseFloat(f.Z)>0
       ?`${calc.totalQty} יח' | ₪${fmtNum(calc.withVat)} כולל מע"מ`
       :'הזן כמויות ומחיר';
   }
-  render();
+  // Update calc preview in-place — targeted, no render()
+  const preview=document.getElementById('calc-preview');
+  if(!preview)return;
+  if(calc.totalQty>0&&parseFloat(f.Z)>0){
+    let inner=`<div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
+    <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
+    if(calc.disc>0)inner+=`<div class="calc-row"><span class="calc-label">אחרי הנחה ${calc.disc}%</span><span class="calc-val">₪${fmtNum(calc.ac)}</span></div>`;
+    inner+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 17%</span><span class="calc-val hi" style="--tc:${color}">₪${fmtNum(calc.withVat)}</span></div>`;
+    preview.style.cssText='background:#f8f8f8;border-radius:10px;padding:4px;margin-bottom:12px';
+    preview.innerHTML=inner;
+  }else{
+    preview.style.cssText='';preview.innerHTML='';
+  }
 }
 
 function updProd(qk,val){
   S.iForm[qk]=val.replace(/[^0-9]/g,'')||'0';
-  refreshCalc();
+  refreshCalc(); // targeted only — focus preserved
 }
 
-// Customer search for RECEIPT form → fills rForm.H (שם לקוח) and rForm.I (ת"ז/ח"פ)
+// Customer search for RECEIPT form → updates suggest box only, no render
 function onCustSearch(val){
   S.rForm.H=val;
-  if(val.length<2){S.suggest=[];S.showSuggest=false;}
-  else{
-    const q=val.toLowerCase();
-    S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
-    S.showSuggest=S.suggest.length>0;
-  }
-  render();
+  const wrap=document.querySelector('#r-H')?.parentElement;
+  const existing=document.getElementById('suggest-box');
+  if(val.length<2){S.suggest=[];S.showSuggest=false;if(existing)existing.remove();return;}
+  const q=val.toLowerCase();
+  S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
+  S.showSuggest=S.suggest.length>0;
+  if(S.showSuggest&&wrap){
+    const html=suggestHtmlReceipt();
+    if(existing)existing.outerHTML=html;else wrap.insertAdjacentHTML('beforeend',html);
+  }else if(existing)existing.remove();
 }
-// Customer search for INVOICE/TAX form → fills iForm.B (שם עסק display)
+
+// Customer search for INVOICE form → updates suggest box only, no render
 function onInvCustSearch(val){
   S.iForm.B=val;
-  if(val.length<2){S.suggest=[];S.showSuggest=false;}
-  else{
-    const q=val.toLowerCase();
-    S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
-    S.showSuggest=S.suggest.length>0;
-  }
-  render();
+  const wrap=document.querySelector('#inv-B')?.parentElement;
+  const existing=document.getElementById('suggest-box');
+  if(val.length<2){S.suggest=[];S.showSuggest=false;if(existing)existing.remove();return;}
+  const q=val.toLowerCase();
+  S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
+  S.showSuggest=S.suggest.length>0;
+  if(S.showSuggest&&wrap){
+    const html=suggestHtmlInv();
+    if(existing)existing.outerHTML=html;else wrap.insertAdjacentHTML('beforeend',html);
+  }else if(existing)existing.remove();
 }
 // Pick customer for RECEIPT: c.A=שם לקוח→H, c.B=ת"ז/ח"פ→I
 function pickCustomer(name,id){
-  S.rForm.H=name;
-  S.rForm.I=id;
-  S.showSuggest=false;S.suggest=[];render();
+  S.rForm.H=name;S.rForm.I=id;
+  S.showSuggest=false;S.suggest=[];
+  // Update input field value in-place, then re-render the form to show filled ID field
+  const inp=document.getElementById('r-H');
+  if(inp)inp.value=name;
+  document.getElementById('suggest-box')?.remove();
+  render();
 }
 // Pick customer for INVOICE/TAX: c.B=ת"ז/ח"פ→iForm.A, c.C=שם עסק→iForm.B
 function pickInvCust(custId,bizName){
-  S.iForm.A=custId;
-  S.iForm.B=bizName||'';
-  S.showSuggest=false;S.suggest=[];render();
+  S.iForm.A=custId;S.iForm.B=bizName||'';
+  S.showSuggest=false;S.suggest=[];
+  // Update input field value in-place without full re-render
+  const inp=document.getElementById('inv-B');
+  if(inp)inp.value=bizName||'';
+  document.getElementById('suggest-box')?.remove();
+  // Update the ת"ז field display — need small re-render just for that field
+  const idField=document.getElementById('inv-A');
+  if(idField)idField.value=custId||'';
 }
 
 async function saveCust(){
