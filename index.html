@@ -287,7 +287,7 @@ function efR(){return{A:'',B:'מזומן',C:'',D:tod(),E:'',F:'',G:'',H:'',I:'',
 function efI(isTax){
   const o={A:'',B:'',C:tod()};
   PRODS.forEach(p=>{o[p.nk]=p.name;o[p.qk]='0';});
-  o.Z='';o.AA='';o.AB='';o.AC='';
+  o.Z='13.00';o.AA='';o.AB='';o.AC='';  // default price ₪13
   if(!isTax){o.AD='';o.AE='';o.AF='';o.AG='מזומן';o.AH='';o.AI='';o.AJ='';o.AK='';}
   else{o.AD='';o.AE='מזומן';o.AF='';o.AG='';o.AH='';o.AI='';o.AJ='';o.AK='';}
   return o;
@@ -445,9 +445,14 @@ function setHeader(){
   // Subtitle — show live totals in invoice/tax form, otherwise name
   if(S.screen==='new-invoice'||S.screen==='new-tax'){
     const calc=calcInv(S.iForm||{});
-    sub.textContent=calc.totalQty>0&&parseFloat((S.iForm||{}).Z)>0
-      ? `${calc.totalQty} יח' | ₪${fmtNum(calc.withVat)} כולל מע"מ`
-      : 'הזן כמויות ומחיר';
+    const price=parseFloat((S.iForm||{}).Z)||0;
+    if(price>0){
+      sub.textContent=calc.totalQty>0
+        ?`${calc.totalQty} יח' | ₪${fmtNum(calc.withVat)} כולל מע"מ`
+        :`מחיר ₪${fmtNum(price)} | הזן כמויות`;
+    }else{
+      sub.textContent='הזן מחיר וכמויות';
+    }
   }else{
     sub.textContent='מיקאל קולמן | MOOV';
   }
@@ -1117,9 +1122,14 @@ function refreshCalc(){
   // Update header subtitle — targeted, no render()
   const sub=document.getElementById('hdr-sub');
   if(sub){
-    sub.textContent=calc.totalQty>0&&parseFloat(f.Z)>0
-      ?`${calc.totalQty} יח' | ₪${fmtNum(calc.withVat)} כולל מע"מ`
-      :'הזן כמויות ומחיר';
+    const price=parseFloat(f.Z)||0;
+    if(price>0){
+      sub.textContent=calc.totalQty>0
+        ?`${calc.totalQty} יח' | ₪${fmtNum(calc.withVat)} כולל מע"מ`
+        :`מחיר ₪${fmtNum(price)} | הזן כמויות`;
+    }else{
+      sub.textContent='הזן מחיר וכמויות';
+    }
   }
   // Update calc preview in-place — targeted, no render()
   const preview=document.getElementById('calc-preview');
