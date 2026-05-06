@@ -835,19 +835,19 @@ function renderInvForm(isTax){
   return h;
 }
 
-// Suggest box for RECEIPT form: pick שם לקוח → H, ת"ז/ח"פ → I
+// Suggest box for RECEIPT form — onmousedown prevents input blur before pick
 function suggestHtmlReceipt(){
   return`<div class="suggest-box" id="suggest-box">
-    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
+    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
       <div>${esc(c.A||'—')}</div>
       <div class="sug-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
     </div>`).join('')}
   </div>`;
 }
-// Suggest box for INVOICE/TAX form: pick ת"ז/ח"פ → iForm.A, שם עסק → iForm.B
+// Suggest box for INVOICE/TAX form
 function suggestHtmlInv(){
   return`<div class="suggest-box" id="suggest-box">
-    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onclick="pickInvCust('${esc(c.B)}','${esc(c.C)}')">
+    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c.B)}','${esc(c.C)}')">
       <div>${esc(c.C||c.A||'—')}</div>
       <div class="sug-sub">${c.A?esc(c.A)+' · ':''}${c.B?esc(c.B):''}</div>
     </div>`).join('')}
@@ -1144,31 +1144,59 @@ function updProd(qk,val){
 // Customer search for RECEIPT form → updates suggest box only, no render
 function onCustSearch(val){
   S.rForm.H=val;
-  const wrap=document.querySelector('#r-H')?.parentElement;
-  const existing=document.getElementById('suggest-box');
-  if(val.length<2){S.suggest=[];S.showSuggest=false;if(existing)existing.remove();return;}
+  const inp=document.getElementById('r-H');
+  const wrap=inp?.parentElement;
+  let box=document.getElementById('suggest-box');
+  if(val.length<2){
+    S.suggest=[];S.showSuggest=false;
+    if(box)box.remove();
+    return;
+  }
   const q=val.toLowerCase();
   S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
   S.showSuggest=S.suggest.length>0;
   if(S.showSuggest&&wrap){
-    const html=suggestHtmlReceipt();
-    if(existing)existing.outerHTML=html;else wrap.insertAdjacentHTML('beforeend',html);
-  }else if(existing)existing.remove();
+    const inner=S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
+      <div>${esc(c.A||'—')}</div><div class="sug-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
+    </div>`).join('');
+    if(box){box.innerHTML=inner;}
+    else{
+      const el=document.createElement('div');
+      el.className='suggest-box';el.id='suggest-box';
+      el.innerHTML=inner;wrap.appendChild(el);
+    }
+  }else if(box){box.remove();}
+  // Always keep focus on the input
+  inp?.focus();
 }
 
 // Customer search for INVOICE form → updates suggest box only, no render
 function onInvCustSearch(val){
   S.iForm.B=val;
-  const wrap=document.querySelector('#inv-B')?.parentElement;
-  const existing=document.getElementById('suggest-box');
-  if(val.length<2){S.suggest=[];S.showSuggest=false;if(existing)existing.remove();return;}
+  const inp=document.getElementById('inv-B');
+  const wrap=inp?.parentElement;
+  let box=document.getElementById('suggest-box');
+  if(val.length<2){
+    S.suggest=[];S.showSuggest=false;
+    if(box)box.remove();
+    return;
+  }
   const q=val.toLowerCase();
   S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
   S.showSuggest=S.suggest.length>0;
   if(S.showSuggest&&wrap){
-    const html=suggestHtmlInv();
-    if(existing)existing.outerHTML=html;else wrap.insertAdjacentHTML('beforeend',html);
-  }else if(existing)existing.remove();
+    const inner=S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c.B)}','${esc(c.C)}')">
+      <div>${esc(c.C||c.A||'—')}</div><div class="sug-sub">${c.A?esc(c.A)+' · ':''}${c.B?esc(c.B):''}</div>
+    </div>`).join('');
+    if(box){box.innerHTML=inner;}
+    else{
+      const el=document.createElement('div');
+      el.className='suggest-box';el.id='suggest-box';
+      el.innerHTML=inner;wrap.appendChild(el);
+    }
+  }else if(box){box.remove();}
+  // Always keep focus on the input
+  inp?.focus();
 }
 // Pick customer for RECEIPT: c.A=שם לקוח→H, c.B=ת"ז/ח"פ→I
 function pickCustomer(name,id){
