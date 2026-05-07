@@ -85,8 +85,15 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .prod-sub{font-size:10px;color:#aaa;}
 .prod-qty{font-size:15px;font-weight:700;}
 .sumbar{margin:10px 10px 8px;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;color:#fff;}
-/* Form */
-.fwrap{padding:14px 14px 40px;}
+/* Sticky totals bar inside invoice form */
+.sticky-totals{
+  position:sticky;top:0;z-index:20;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 16px;margin:-14px -14px 14px;
+  color:#fff;font-weight:700;
+  border-bottom:1.5px solid rgba(255,255,255,.2);
+  backdrop-filter:blur(4px);
+}
 .fdivider{display:flex;align-items:center;gap:10px;margin:16px 0 13px;}
 .fdivider hr{flex:1;border:none;border-top:.5px solid #ddd;}
 .fdivider span{font-size:12px;font-weight:600;color:#aaa;white-space:nowrap;}
@@ -336,7 +343,13 @@ async function apiFetch(params){
 }
 async function apiPost(body){
   if(!S.scriptUrl)throw new Error('NO_URL');
-  const r=await fetch(S.scriptUrl,{method:'POST',body:JSON.stringify(body)});
+  // Google Apps Script blocks preflight OPTIONS for application/json.
+  // Sending as text/plain avoids the preflight while the body is still valid JSON.
+  const r=await fetch(S.scriptUrl,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(body)
+  });
   if(!r.ok)throw new Error('HTTP '+r.status);
   const d=await r.json();
   if(d.error)throw new Error(d.error);
@@ -727,8 +740,29 @@ function custField(f){
 function renderInvForm(isTax){
   const color=tc();const f=S.iForm;
   const calc=calcInv(f);
+  const price=parseFloat(f.Z)||0;
+
+  // Build sticky totals text
+  let totText,totSub;
+  if(price>0&&calc.totalQty>0){
+    totText=`${calc.totalQty} יח'`;
+    totSub=`₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`;
+  }else if(price>0){
+    totText=`מחיר ₪${fmtNum(price)}`;
+    totSub='הזן כמויות';
+  }else{
+    totText='הזן מחיר';
+    totSub='וכמויות';
+  }
 
   let h=`<div class="fwrap" style="--tc:${color}">`;
+
+  // Sticky totals bar — stays visible while scrolling
+  h+=`<div class="sticky-totals" id="sticky-totals" style="background:${color}">
+    <div style="font-size:22px;font-weight:800;letter-spacing:-.5px" id="st-cans">${esc(totText)}</div>
+    <div style="font-size:18px;font-weight:700" id="st-total">${esc(totSub)}</div>
+  </div>`;
+
   if(S.msg)h+=alertHtml(S.msg);
 
   // Customer
@@ -1135,7 +1169,21 @@ function refreshCalc(){
       sub.textContent='הזן מחיר וכמויות';
     }
   }
-  // Update calc preview in-place — targeted, no render()
+  // Update sticky totals bar in-place
+  const stCans=document.getElementById('st-cans');
+  const stTotal=document.getElementById('st-total');
+  if(stCans&&stTotal){
+    if(price>0&&calc.totalQty>0){
+      stCans.textContent=`${calc.totalQty} יח'`;
+      stTotal.textContent=`₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`;
+    }else if(price>0){
+      stCans.textContent=`מחיר ₪${fmtNum(price)}`;
+      stTotal.textContent='הזן כמויות';
+    }else{
+      stCans.textContent='הזן מחיר';
+      stTotal.textContent='וכמויות';
+    }
+  }
   const preview=document.getElementById('calc-preview');
   if(!preview)return;
   if(calc.totalQty>0&&parseFloat(f.Z)>0){
