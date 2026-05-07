@@ -187,6 +187,10 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
       <button class="hdr-btn hidden" id="right-btn"></button>
     </div>
   </div>
+  <div id="inv-bar" style="display:none;flex-shrink:0;padding:8px 16px;color:#fff;display:none;justify-content:space-between;align-items:center;">
+    <span id="inv-bar-cans" style="font-size:22px;font-weight:800;letter-spacing:-.5px"></span>
+    <span id="inv-bar-total" style="font-size:18px;font-weight:700"></span>
+  </div>
   <div id="content"></div>
   <div class="bnav" id="bnav">
     <button class="bnav-btn" data-tab="customers" onclick="switchTab('customers')"><span class="ico">👥</span><span class="lbl">לקוחות</span></button>
@@ -343,13 +347,14 @@ async function apiFetch(params){
 }
 async function apiPost(body){
   if(!S.scriptUrl)throw new Error('NO_URL');
-  // Google Apps Script blocks preflight OPTIONS for application/json.
-  // Sending as text/plain avoids the preflight while the body is still valid JSON.
-  const r=await fetch(S.scriptUrl,{
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(body)
+  // Use GET with encoded params — Google Apps Script has full CORS support for GET
+  // POST triggers preflight OPTIONS which GAS doesn't handle
+  const params=new URLSearchParams({
+    write:'1',
+    action:body.action||'',
+    payload:JSON.stringify(body)
   });
+  const r=await fetch(S.scriptUrl+'?'+params);
   if(!r.ok)throw new Error('HTTP '+r.status);
   const d=await r.json();
   if(d.error)throw new Error(d.error);
@@ -456,21 +461,16 @@ function setHeader(){
   };
   document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[tab]?.label||'';
 
-  // Subtitle — show live totals in invoice/tax form, otherwise name
-  if(S.screen==='new-invoice'||S.screen==='new-tax'){
-    const calc=calcInv(S.iForm||{});
-    const price=parseFloat((S.iForm||{}).Z)||0;
-    sub.className='inv-totals';
-    if(price>0){
-      sub.textContent=calc.totalQty>0
-        ?`${calc.totalQty} יח' · ₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`
-        :`מחיר ₪${fmtNum(price)} · הזן כמויות`;
+  // Show/hide fixed invoice totals bar
+  const invBar=document.getElementById('inv-bar');
+  if(invBar){
+    if(S.screen==='new-invoice'||S.screen==='new-tax'){
+      invBar.style.display='flex';
+      invBar.style.background=color;
+      updateInvBar();
     }else{
-      sub.textContent='הזן מחיר וכמויות';
+      invBar.style.display='none';
     }
-  }else{
-    sub.className='';
-    sub.textContent='מיקאל קולמן | MOOV';
   }
 
   // LEFT button: ⚙️ on list screens, ← on form/settings screens
@@ -756,13 +756,6 @@ function renderInvForm(isTax){
   }
 
   let h=`<div class="fwrap" style="--tc:${color}">`;
-
-  // Sticky totals bar — stays visible while scrolling
-  h+=`<div class="sticky-totals" id="sticky-totals" style="background:${color}">
-    <div style="font-size:22px;font-weight:800;letter-spacing:-.5px" id="st-cans">${esc(totText)}</div>
-    <div style="font-size:18px;font-weight:700" id="st-total">${esc(totSub)}</div>
-  </div>`;
-
   if(S.msg)h+=alertHtml(S.msg);
 
   // Customer
@@ -1149,48 +1142,48 @@ async function cp(text,key){
 function uf(formKey,k,val){S[formKey][k]=val;}
 function addDashC(){S.cForm.B=(S.cForm.B||'')+'-';const i=document.getElementById('f-B');if(i){i.value=S.cForm.B;i.focus();}}
 
+function updateInvBar(){
+  const f=S.iForm||{};
+  const calc=calcInv(f);
+  const price=parseFloat(f.Z)||0;
+  const cansEl=document.getElementById('inv-bar-cans');
+  const totEl=document.getElementById('inv-bar-total');
+  const subEl=document.getElementById('hdr-sub');
+  if(!cansEl)return;
+  if(price>0&&calc.totalQty>0){
+    cansEl.textContent=`${calc.totalQty} יח'`;
+    totEl.textContent=`₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`;
+  }else if(price>0){
+    cansEl.textContent=`מחיר ₪${fmtNum(price)}`;
+    totEl.textContent='הזן כמויות';
+  }else{
+    cansEl.textContent='הזן מחיר';
+    totEl.textContent='וכמויות';
+  }
+  // Also keep header subtitle in sync (smaller, still useful)
+  if(subEl){
+    subEl.className='';
+    subEl.textContent='מיקאל קולמן | MOOV';
+  }
+}
+
 function refreshCalc(){
   const f=S.iForm;const calc=calcInv(f);const color=tc();
   // Store computed values for save
   S.iForm.AA=calc.aa>0?fmtNum(calc.aa):'';
   S.iForm.AC=calc.ac>0?fmtNum(calc.ac):'';
-  if(S.screen==='new-invoice')S.iForm.AE=calc.withVat>0?fmtNum(calc.withVat):'';
-  else S.iForm.AD=calc.withVat>0?fmtNum(calc.withVat):'';
-  // Update header subtitle — targeted, no render()
-  const sub=document.getElementById('hdr-sub');
-  if(sub){
-    const price=parseFloat(f.Z)||0;
-    sub.className='inv-totals';
-    if(price>0){
-      sub.textContent=calc.totalQty>0
-        ?`${calc.totalQty} יח' · ₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`
-        :`מחיר ₪${fmtNum(price)} · הזן כמויות`;
-    }else{
-      sub.textContent='הזן מחיר וכמויות';
-    }
-  }
-  // Update sticky totals bar in-place
-  const stCans=document.getElementById('st-cans');
-  const stTotal=document.getElementById('st-total');
-  if(stCans&&stTotal){
-    if(price>0&&calc.totalQty>0){
-      stCans.textContent=`${calc.totalQty} יח'`;
-      stTotal.textContent=`₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`;
-    }else if(price>0){
-      stCans.textContent=`מחיר ₪${fmtNum(price)}`;
-      stTotal.textContent='הזן כמויות';
-    }else{
-      stCans.textContent='הזן מחיר';
-      stTotal.textContent='וכמויות';
-    }
-  }
+  if(S.screen==='new-invoice')S.iForm.AE=calc.withVat>0?String(Math.round(calc.withVat)):'';
+  else S.iForm.AD=calc.withVat>0?String(Math.round(calc.withVat)):'';
+  // Update fixed bar
+  updateInvBar();
+  // Update calc preview in-place — targeted, no render()
   const preview=document.getElementById('calc-preview');
   if(!preview)return;
   if(calc.totalQty>0&&parseFloat(f.Z)>0){
     let inner=`<div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
     <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
     if(calc.disc>0)inner+=`<div class="calc-row"><span class="calc-label">אחרי הנחה ${calc.disc}%</span><span class="calc-val">₪${fmtNum(calc.ac)}</span></div>`;
-    inner+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 18%</span><span class="calc-val hi" style="--tc:${color}">₪${fmtNum(calc.withVat)}</span></div>`;
+    inner+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 18%</span><span class="calc-val hi" style="--tc:${color}">₪${Math.round(calc.withVat).toLocaleString('he-IL')}</span></div>`;
     preview.style.cssText='background:#f8f8f8;border-radius:10px;padding:4px;margin-bottom:12px';
     preview.innerHTML=inner;
   }else{
