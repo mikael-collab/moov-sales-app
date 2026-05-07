@@ -186,10 +186,10 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
       <div class="hdr-mid"><h1 id="hdr-title">לקוחות</h1><p id="hdr-sub">מיקאל קולמן | MOOV</p></div>
       <button class="hdr-btn hidden" id="right-btn"></button>
     </div>
-  </div>
-  <div id="inv-bar" style="display:none;flex-shrink:0;padding:8px 16px;color:#fff;display:none;justify-content:space-between;align-items:center;">
-    <span id="inv-bar-cans" style="font-size:22px;font-weight:800;letter-spacing:-.5px"></span>
-    <span id="inv-bar-total" style="font-size:18px;font-weight:700"></span>
+    <div id="inv-totals-row" style="display:none;justify-content:space-between;align-items:baseline;padding:4px 4px 0;margin-top:2px;border-top:1px solid rgba(255,255,255,.25);">
+      <span id="inv-bar-cans" style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.5px;"></span>
+      <span id="inv-bar-total" style="font-size:17px;font-weight:700;color:#fff;"></span>
+    </div>
   </div>
   <div id="content"></div>
   <div class="bnav" id="bnav">
@@ -347,14 +347,11 @@ async function apiFetch(params){
 }
 async function apiPost(body){
   if(!S.scriptUrl)throw new Error('NO_URL');
-  // application/x-www-form-urlencoded is a "simple" CORS request — no preflight needed.
-  // Google Apps Script always responds with Access-Control-Allow-Origin: * for these.
-  const encoded='data='+encodeURIComponent(JSON.stringify(body));
-  const r=await fetch(S.scriptUrl,{
-    method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:encoded
-  });
+  // GAS does 302 redirect on POST → browser drops body → e.postData is always null.
+  // GET requests have no redirect issue and GAS sets CORS headers correctly.
+  // Payload fits in URL now that product NAME columns are stripped from invoice saves.
+  const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify(body));
+  const r=await fetch(url);
   if(!r.ok)throw new Error('HTTP '+r.status);
   const d=await r.json();
   if(d.error)throw new Error(d.error);
@@ -461,12 +458,11 @@ function setHeader(){
   };
   document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[tab]?.label||'';
 
-  // Show/hide fixed invoice totals bar
-  const invBar=document.getElementById('inv-bar');
+  // Show/hide fixed invoice totals bar (inside hdr — never affected by keyboard/scroll)
+  const invBar=document.getElementById('inv-totals-row');
   if(invBar){
     if(S.screen==='new-invoice'||S.screen==='new-tax'){
       invBar.style.display='flex';
-      invBar.style.background=color;
       updateInvBar();
     }else{
       invBar.style.display='none';
