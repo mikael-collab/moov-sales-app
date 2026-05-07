@@ -2,7 +2,7 @@
 <html dir="rtl" lang="he">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -22,7 +22,7 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
   max-width:480px;margin:0 auto;
   background:#f5f5f5;overflow:hidden;
 }
-/* Header */
+/* Header — fixed so keyboard resize never moves it */
 .hdr{flex-shrink:0;padding:12px 14px 10px;color:#fff;transition:background .25s;}
 .hdr-row{display:flex;align-items:center;justify-content:space-between;}
 .hdr-mid{text-align:center;flex:1;}
@@ -33,7 +33,7 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .hdr-btn.hidden{visibility:hidden;}
 /* Content — scrollable */
 #content{
-  flex:1;overflow-y:auto;overflow-x:hidden;
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-y:contain;
 }
@@ -345,17 +345,34 @@ async function apiFetch(params){
   if(d.error)throw new Error(d.error+(d.available?' | '+d.available.join(', '):''));
   return d;
 }
-async function apiPost(body){
-  if(!S.scriptUrl)throw new Error('NO_URL');
-  // GAS does 302 redirect on POST → browser drops body → e.postData is always null.
-  // GET requests have no redirect issue and GAS sets CORS headers correctly.
-  // Payload fits in URL now that product NAME columns are stripped from invoice saves.
-  const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify(body));
-  const r=await fetch(url);
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  const d=await r.json();
-  if(d.error)throw new Error(d.error);
-  return d;
+// JSONP write — uses <script> tag, immune to CORS and GAS 302 redirects
+function apiPost(body){
+  return new Promise(function(resolve,reject){
+    const cbName='_cb'+Date.now();
+    const script=document.createElement('script');
+    const timer=setTimeout(function(){
+      cleanup();reject(new Error('Timeout — check network'));
+    },30000);
+    function cleanup(){
+      clearTimeout(timer);
+      delete window[cbName];
+      script.remove();
+    }
+    window[cbName]=function(data){
+      cleanup();
+      if(data&&data.error)reject(new Error(data.error));
+      else resolve(data);
+    };
+    script.onerror=function(){
+      cleanup();reject(new Error('Script load failed'));
+    };
+    const url=S.scriptUrl
+      +'?write=1'
+      +'&callback='+cbName
+      +'&payload='+encodeURIComponent(JSON.stringify(body));
+    script.src=url;
+    document.head.appendChild(script);
+  });
 }
 
 async function pingSheets(){
