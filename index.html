@@ -364,7 +364,10 @@ function apiPost(body){
       else resolve(data);
     };
     script.onerror=function(){
-      cleanup();reject(new Error('Script load failed'));
+      cleanup();
+      // Build a diagnostic URL the user can open in browser to see raw GAS response
+      const testUrl=S.scriptUrl+'?write=1&callback=test&payload=%7B%22action%22%3A%22ping%22%7D';
+      reject(new Error('Script load failed — האם פרסת deployment חדש?\n\nפתח כדי לבדוק:\n'+testUrl));
     };
     const url=S.scriptUrl
       +'?write=1'
