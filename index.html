@@ -90,10 +90,11 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
   position:sticky;top:0;z-index:20;
   display:flex;justify-content:space-between;align-items:center;
   padding:10px 16px;margin:-14px -14px 14px;
-  color:#fff;font-weight:700;
+  color:#fff;
   border-bottom:1.5px solid rgba(255,255,255,.2);
-  backdrop-filter:blur(4px);
 }
+.sticky-totals .st-cans{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+.sticky-totals .st-total{font-size:19px;font-weight:700;}
 .fdivider{display:flex;align-items:center;gap:10px;margin:16px 0 13px;}
 .fdivider hr{flex:1;border:none;border-top:.5px solid #ddd;}
 .fdivider span{font-size:12px;font-weight:600;color:#aaa;white-space:nowrap;}
@@ -185,10 +186,6 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
       <button class="hdr-btn" id="back-btn"></button>
       <div class="hdr-mid"><h1 id="hdr-title">לקוחות</h1><p id="hdr-sub">מיקאל קולמן | MOOV</p></div>
       <button class="hdr-btn hidden" id="right-btn"></button>
-    </div>
-    <div id="inv-totals-row" style="display:none;justify-content:space-between;align-items:baseline;padding:4px 4px 0;margin-top:2px;border-top:1px solid rgba(255,255,255,.25);">
-      <span id="inv-bar-cans" style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.5px;"></span>
-      <span id="inv-bar-total" style="font-size:17px;font-weight:700;color:#fff;"></span>
     </div>
   </div>
   <div id="content"></div>
@@ -345,37 +342,14 @@ async function apiFetch(params){
   if(d.error)throw new Error(d.error+(d.available?' | '+d.available.join(', '):''));
   return d;
 }
-// JSONP write — uses <script> tag, immune to CORS and GAS 302 redirects
-function apiPost(body){
-  return new Promise(function(resolve,reject){
-    const cbName='_cb'+Date.now();
-    const script=document.createElement('script');
-    const timer=setTimeout(function(){
-      cleanup();reject(new Error('Timeout — check network'));
-    },30000);
-    function cleanup(){
-      clearTimeout(timer);
-      delete window[cbName];
-      script.remove();
-    }
-    window[cbName]=function(data){
-      cleanup();
-      if(data&&data.error)reject(new Error(data.error));
-      else resolve(data);
-    };
-    script.onerror=function(){
-      cleanup();
-      // Build a diagnostic URL the user can open in browser to see raw GAS response
-      const testUrl=S.scriptUrl+'?write=1&callback=test&payload=%7B%22action%22%3A%22ping%22%7D';
-      reject(new Error('Script load failed — האם פרסת deployment חדש?\n\nפתח כדי לבדוק:\n'+testUrl));
-    };
-    const url=S.scriptUrl
-      +'?write=1'
-      +'&callback='+cbName
-      +'&payload='+encodeURIComponent(JSON.stringify(body));
-    script.src=url;
-    document.head.appendChild(script);
-  });
+// Write via no-cors GET — simplest approach, bypasses all CORS issues.
+// The request goes through and GAS writes the data.
+// We can't read the opaque response but assume success (list reloads to verify).
+async function apiPost(body){
+  if(!S.scriptUrl)throw new Error('NO_URL');
+  const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify(body));
+  await fetch(url,{mode:'no-cors'});
+  return{status:'ok'};
 }
 
 async function pingSheets(){
@@ -478,16 +452,8 @@ function setHeader(){
   };
   document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[tab]?.label||'';
 
-  // Show/hide fixed invoice totals bar (inside hdr — never affected by keyboard/scroll)
-  const invBar=document.getElementById('inv-totals-row');
-  if(invBar){
-    if(S.screen==='new-invoice'||S.screen==='new-tax'){
-      invBar.style.display='flex';
-      updateInvBar();
-    }else{
-      invBar.style.display='none';
-    }
-  }
+  // Header subtitle — always show name (totals are now in the sticky form bar)
+  if(sub){sub.className='';sub.textContent='מיקאל קולמן | MOOV';}
 
   // LEFT button: ⚙️ on list screens, ← on form/settings screens
   back.classList.remove('hidden');
@@ -772,6 +738,24 @@ function renderInvForm(isTax){
   }
 
   let h=`<div class="fwrap" style="--tc:${color}">`;
+
+  // Sticky totals bar — stays at top of scroll area as you scroll through products
+  let cansText,totalText;
+  if(price>0&&calc.totalQty>0){
+    cansText=`${calc.totalQty} יח'`;
+    totalText=`₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`;
+  }else if(price>0){
+    cansText=`מחיר ₪${fmtNum(price)}`;
+    totalText='הזן כמויות';
+  }else{
+    cansText='הזן מחיר';
+    totalText='וכמויות';
+  }
+  h+=`<div class="sticky-totals" id="sticky-totals" style="background:${color}">
+    <span class="st-cans" id="st-cans">${esc(cansText)}</span>
+    <span class="st-total" id="st-total">${esc(totalText)}</span>
+  </div>`;
+
   if(S.msg)h+=alertHtml(S.msg);
 
   // Customer
@@ -1162,9 +1146,8 @@ function updateInvBar(){
   const f=S.iForm||{};
   const calc=calcInv(f);
   const price=parseFloat(f.Z)||0;
-  const cansEl=document.getElementById('inv-bar-cans');
-  const totEl=document.getElementById('inv-bar-total');
-  const subEl=document.getElementById('hdr-sub');
+  const cansEl=document.getElementById('st-cans');
+  const totEl=document.getElementById('st-total');
   if(!cansEl)return;
   if(price>0&&calc.totalQty>0){
     cansEl.textContent=`${calc.totalQty} יח'`;
@@ -1175,11 +1158,6 @@ function updateInvBar(){
   }else{
     cansEl.textContent='הזן מחיר';
     totEl.textContent='וכמויות';
-  }
-  // Also keep header subtitle in sync (smaller, still useful)
-  if(subEl){
-    subEl.className='';
-    subEl.textContent='מיקאל קולמן | MOOV';
   }
 }
 
