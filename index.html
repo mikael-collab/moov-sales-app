@@ -347,14 +347,14 @@ async function apiFetch(params){
 }
 async function apiPost(body){
   if(!S.scriptUrl)throw new Error('NO_URL');
-  // Use GET with encoded params — Google Apps Script has full CORS support for GET
-  // POST triggers preflight OPTIONS which GAS doesn't handle
-  const params=new URLSearchParams({
-    write:'1',
-    action:body.action||'',
-    payload:JSON.stringify(body)
+  // application/x-www-form-urlencoded is a "simple" CORS request — no preflight needed.
+  // Google Apps Script always responds with Access-Control-Allow-Origin: * for these.
+  const encoded='data='+encodeURIComponent(JSON.stringify(body));
+  const r=await fetch(S.scriptUrl,{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:encoded
   });
-  const r=await fetch(S.scriptUrl+'?'+params);
   if(!r.ok)throw new Error('HTTP '+r.status);
   const d=await r.json();
   if(d.error)throw new Error(d.error);
@@ -1302,24 +1302,29 @@ async function saveReceipt(){
 async function saveInv(isTax){
   const f=S.iForm;
   const calc=calcInv(f);
-  // Auto-fill calculated values before saving
+  // Auto-fill calculated values
   f.AA=calc.aa>0?fmtNum(calc.aa):'';
   f.AC=calc.ac>0?fmtNum(calc.ac):'';
-  if(!isTax){f.AE=calc.withVat>0?fmtNum(calc.withVat):'';}
-  else{f.AD=calc.withVat>0?fmtNum(calc.withVat):'';}
+  if(!isTax){f.AE=calc.withVat>0?String(Math.round(calc.withVat)):'';}
+  else      {f.AD=calc.withVat>0?String(Math.round(calc.withVat)):'';}
+
+  // Build lean data — exclude product NAME columns (nk) to reduce payload size.
+  // The sheet rows already inherit product names from the sheet structure.
+  const nameKeys=PRODS.map(p=>p.nk); // D,F,H,J,L,N,P,R,T,V,X
+  const data={};
+  Object.keys(f).forEach(k=>{if(!nameKeys.includes(k))data[k]=f[k]||'';});
 
   S.saving=true;S.msg=null;render();
   try{
     await apiPost({
       action:isTax?'addTax':'addInvoice',
       sheetName:SHEETS[isTax?'tax':'invoices'],
-      data:{...f}
+      data
     });
     S.msg={t:'s',m:isTax?'חשמ"ק נשמר בהצלחה!':'החשבונית נשמרה בהצלחה!'};
     S.saving=false;render();
     setTimeout(()=>{
       S.screen='list';S.iForm={};S.msg=null;
-      // Refresh the relevant list
       if(isTax){S.tsState='idle';S.tax=[];}else{S.isState='idle';S.invoices=[];}
       setHeader();
       if(isTax)loadTax();else loadInvoices();
