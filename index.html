@@ -450,7 +450,7 @@ function setHeader(){
     sub.className='inv-totals';
     if(price>0){
       sub.textContent=calc.totalQty>0
-        ?`${calc.totalQty} יח' · ₪${fmtNum(calc.withVat)} כולל מע"מ`
+        ?`${calc.totalQty} יח' · ₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`
         :`מחיר ₪${fmtNum(price)} · הזן כמויות`;
     }else{
       sub.textContent='הזן מחיר וכמויות';
@@ -1129,7 +1129,7 @@ function refreshCalc(){
     sub.className='inv-totals';
     if(price>0){
       sub.textContent=calc.totalQty>0
-        ?`${calc.totalQty} יח' · ₪${fmtNum(calc.withVat)} כולל מע"מ`
+        ?`${calc.totalQty} יח' · ₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`
         :`מחיר ₪${fmtNum(price)} · הזן כמויות`;
     }else{
       sub.textContent='הזן מחיר וכמויות';
