@@ -604,7 +604,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.1</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.2</div></div>`;
   return h;
 }
 
@@ -1373,16 +1373,14 @@ async function saveInv(isTax){
     };
     await apiPost(payload);
 
-    // Send photo separately — dedicated beacon with only photo data
+    // Upload photo via text/plain POST — separate from invoice save
     if(f._photoBase64){
-      // Fire and forget — don't await, user doesn't wait for photo upload
-      apiPost({
-        action:'uploadPhoto',
-        sheetName:SHEETS[isTax?'tax':'invoices'],
-        invDate:data.C||'',
-        invCustId:data.A||'',
-        _photoBase64:f._photoBase64
-      }).catch(()=>{});
+      uploadPhotoToGAS(
+        f._photoBase64,
+        SHEETS[isTax?'tax':'invoices'],
+        data.C||'',
+        data.A||''
+      );
     }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
@@ -1412,6 +1410,26 @@ function taxFormErrors(){
     if(!f.AI?.trim())return 'צלם את השיק';
   }
   return null;
+}
+
+// Photo upload via fetch text/plain — simple CORS request, no preflight
+// GAS receives full POST body before any redirect
+async function uploadPhotoToGAS(photoBase64, sheetName, invDate, invCustId){
+  if(!S.scriptUrl||!photoBase64)return;
+  try{
+    const body=JSON.stringify({
+      action:'uploadPhoto',
+      sheetName,invDate,invCustId,
+      _photoBase64:photoBase64
+    });
+    // text/plain is a "simple" CORS request — no preflight OPTIONS
+    // The POST body reaches GAS doPost before the 302 redirect
+    await fetch(S.scriptUrl,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body
+    });
+  }catch(e){console.warn('photo upload',e.message);}
 }
 
 function renderSaveBtn(){
