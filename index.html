@@ -305,6 +305,20 @@ function tod(){
   const d=new Date();
   return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
 }
+// DD/MM/YYYY → YYYY-MM-DD (for <input type="date">)
+function dateToISO(s){
+  if(!s)return new Date().toISOString().slice(0,10);
+  const p=s.split('/');
+  if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+  return new Date().toISOString().slice(0,10);
+}
+// YYYY-MM-DD → DD/MM/YYYY
+function isoToHeb(s){
+  if(!s)return '';
+  const p=s.split('-');
+  if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];
+  return s;
+}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
 function fmt(x){
@@ -590,7 +604,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.2</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.3</div></div>`;
   return h;
 }
 
@@ -775,7 +789,9 @@ function renderInvForm(isTax){
     </div>
   </div>
   <div class="field"><label>תאריך <small>(עמודה C)</small></label>
-    <input type="text" id="inv-C" class="finput" value="${esc(f.C)}" oninput="uf('iForm','C',this.value)">
+    <input type="date" id="inv-C" class="finput" style="direction:ltr;text-align:left"
+      value="${dateToISO(f.C)}" max="${dateToISO(tod())}"
+      oninput="uf('iForm','C',isoToHeb(this.value))">
   </div>`;
 
   // Products
@@ -1292,26 +1308,15 @@ async function saveInv(isTax){
 
   // ── Validation for חשמ"ק only ──
   if(isTax){
-    const errors=[];
-    if(!f.AE||f.AE===''){errors.push('חובה לבחור סוג תשלום');}
-    if(!f.AF?.trim()){errors.push('חובה להזין סכום תשלום');}
-    if(errors.length){S.msg={t:'e',m:errors.join(' | ')};render();return;}
+    const err=taxFormErrors();
+    if(err){S.msg={t:'e',m:err};render();return;}
 
-    // Warning if paid amount < total due (AD is calculated by sheet — use calc.withVat)
+    // Under-payment warning — user can still proceed
     const paid=parseFloat(f.AF||0);
     const total=calc.withVat;
     if(total>0&&paid<total-0.01){
       const diff=Math.round(total-paid).toLocaleString('he-IL');
-      if(!confirm(`סכום התשלום (₪${Math.round(paid).toLocaleString('he-IL')}) נמוך מהסכום לתשלום (₪${Math.round(total).toLocaleString('he-IL')}).\nהפרש: ₪${diff}\n\nלהמשיך בכל זאת?`))return;
-    }
-
-    // If שיק — require cheque number, date, and photo
-    if(f.AE==='שיק'){
-      const chkErrors=[];
-      if(!f.AH?.trim())chkErrors.push('מספר שיק');
-      if(!f.AG?.trim())chkErrors.push('תאריך פרעון שיק');
-      if(!f.AI?.trim())chkErrors.push('צילום שיק');
-      if(chkErrors.length){S.msg={t:'e',m:'שדות חובה לתשלום בשיק: '+chkErrors.join(', ')};render();return;}
+      if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nלתשלום: ₪${Math.round(total).toLocaleString('he-IL')}\nיתרה: ₪${diff}\n\nלהמשיך?`))return;
     }
   }
   // AB = discount % — user entered, keep as-is
@@ -1351,11 +1356,15 @@ async function saveInv(isTax){
   }catch(e){S.msg={t:'e',m:'שגיאה: '+e.name+' — '+e.message};S.saving=false;render();}
 }
 
-// Returns null if valid, or error string if invalid
+// Returns null if valid, or error string if not — drives save button disabled state
 function taxFormErrors(){
   const f=S.iForm;
+  const calc=calcInv(f);
   if(!f.AE)return 'בחר סוג תשלום';
   if(!f.AF?.trim())return 'הזן סכום תשלום';
+  const paid=parseFloat(f.AF||0);
+  const total=calc.withVat;
+  if(total>0&&paid>total+0.01)return `סכום גבוה מדי (מקסימום ₪${Math.round(total).toLocaleString('he-IL')})`;
   if(f.AE==='שיק'){
     if(!f.AH?.trim())return 'הזן מספר שיק';
     if(!f.AG?.trim())return 'הזן תאריך פרעון שיק';
