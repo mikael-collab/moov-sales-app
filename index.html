@@ -111,13 +111,13 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 .save-btn{width:100%;padding:13px;border-radius:10px;color:#fff;border:none;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer;-webkit-appearance:none;}
 .save-btn:disabled{background:#ccc !important;cursor:wait;}
 /* Product qty row in form */
-.prod-field{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:.5px solid #f0f0f0;}
+.prod-field{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:.5px solid #f0f0f0;direction:ltr;}
 .prod-field:last-child{border-bottom:none;}
 .pf-left{display:flex;align-items:center;gap:8px;}
-.pf-em{font-size:20px;}
+.pf-em{font-size:20px;margin-left:0;margin-right:8px;}
 .pf-name{font-size:13px;font-weight:500;color:#222;}
 .pf-sub{font-size:10px;color:#aaa;}
-.pf-input{width:72px;padding:7px 8px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:15px;font-weight:600;text-align:center;font-family:monospace;background:#f8f8f8;-webkit-appearance:none;outline:none;}
+.pf-input{width:72px;padding:7px 8px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:15px;font-weight:600;text-align:center;font-family:monospace;background:#f8f8f8;-webkit-appearance:none;outline:none;flex-shrink:0;}
 .pf-input:focus{border-color:var(--tc,#1a73e8);background:#fff;}
 /* Calc row */
 .calc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#f8f8f8;border-radius:8px;margin-bottom:6px;}
@@ -301,7 +301,10 @@ function efI(isTax){
   else{o.AD='';o.AE='מזומן';o.AF='';o.AG='';o.AH='';o.AI='';o.AJ='';o.AK='';}
   return o;
 }
-function tod(){return new Date().toLocaleDateString('he-IL');}
+function tod(){
+  const d=new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
 function fmt(x){
@@ -785,13 +788,13 @@ function renderInvForm(isTax){
   PRODS.forEach(p=>{
     const qty=parseInt(f[p.qk])||0;
     h+=`<div class="prod-field">
-      <div class="pf-left">
-        <span class="pf-em">${p.em}</span>
-        <div><div class="pf-name">${p.short}</div><div class="pf-sub">${p.heb} • ${p.nic}mg</div></div>
-      </div>
       <input type="text" inputmode="numeric" class="pf-input" value="${qty||''}"
         placeholder="0" style="--tc:${color}"
         oninput="updProd('${p.qk}',this.value)">
+      <div class="pf-left">
+        <div><div class="pf-name">${p.short}</div><div class="pf-sub">${p.heb} • ${p.nic}mg</div></div>
+        <span class="pf-em">${p.em}</span>
+      </div>
     </div>`;
   });
   h+=`</div>`;
@@ -1300,17 +1303,22 @@ async function saveReceipt(){
 async function saveInv(isTax){
   const f=S.iForm;
   const calc=calcInv(f);
-  // Auto-fill calculated values
   f.AA=calc.aa>0?fmtNum(calc.aa):'';
   f.AC=calc.ac>0?fmtNum(calc.ac):'';
   if(!isTax){f.AE=calc.withVat>0?String(Math.round(calc.withVat)):'';}
   else      {f.AD=calc.withVat>0?String(Math.round(calc.withVat)):'';}
 
-  // Build lean data — exclude product NAME columns (nk) to reduce payload size.
-  // The sheet rows already inherit product names from the sheet structure.
-  const nameKeys=PRODS.map(p=>p.nk); // D,F,H,J,L,N,P,R,T,V,X
+  // Build data — include all fields; zero quantities become '' (blank in sheet)
   const data={};
-  Object.keys(f).forEach(k=>{if(!nameKeys.includes(k))data[k]=f[k]||'';});
+  Object.keys(f).forEach(k=>{
+    const val=f[k]||'';
+    // For qty columns: write blank instead of '0' so sheet stays clean
+    const isQty=PRODS.some(p=>p.qk===k);
+    data[k]=(isQty&&val==='0')?'':val;
+  });
+
+  const qtySummary=PRODS.filter(p=>parseInt(data[p.qk])>0)
+    .map(p=>p.short+': '+data[p.qk]).join(', ');
 
   S.saving=true;S.msg=null;render();
   try{
@@ -1319,15 +1327,14 @@ async function saveInv(isTax){
       sheetName:SHEETS[isTax?'tax':'invoices'],
       data
     });
-    S.msg={t:'s',m:isTax?'חשמ"ק נשמר בהצלחה!':'החשבונית נשמרה בהצלחה!'};
+    S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
     setTimeout(()=>{
       S.screen='list';S.iForm={};S.msg=null;
       if(isTax){S.tsState='idle';S.tax=[];}else{S.isState='idle';S.invoices=[];}
-      setHeader();
-      if(isTax)loadTax();else loadInvoices();
-    },1500);
-  }catch(e){S.msg={t:'e',m:e.message||'שגיאה בשמירה'};S.saving=false;render();}
+      setHeader();if(isTax)loadTax();else loadInvoices();
+    },2500);
+  }catch(e){S.msg={t:'e',m:'שגיאה: '+e.name+' — '+e.message};S.saving=false;render();}
 }
 
 // ── Init ──
