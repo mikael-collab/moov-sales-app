@@ -604,7 +604,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.5</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.6</div></div>`;
   return h;
 }
 
@@ -1371,9 +1371,21 @@ async function saveInv(isTax){
       sheetName:SHEETS[isTax?'tax':'invoices'],
       data
     };
-    // Include compressed photo for Drive upload (GAS will save and write URL to AI)
-    if(f._photoBase64)payload._photoBase64=f._photoBase64;
     await apiPost(payload);
+
+    // Upload photo separately — POST only (small enough, no response needed)
+    if(f._photoBase64){
+      try{
+        const photoPayload=JSON.stringify({
+          action:'uploadPhoto',
+          sheetName:SHEETS[isTax?'tax':'invoices'],
+          invDate:data.C||'',
+          base64:f._photoBase64
+        });
+        // no-cors POST — GAS receives body before 302 redirect, saves to Drive
+        fetch(S.scriptUrl,{method:'POST',body:photoPayload}).catch(()=>{});
+      }catch(pe){console.warn('photo upload error',pe);}
+    }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
     setTimeout(()=>{
