@@ -604,7 +604,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.9</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.0</div></div>`;
   return h;
 }
 
@@ -1421,14 +1421,14 @@ function onPhotoChange(input){
   reader.onload=function(e){
     const img=new Image();
     img.onload=function(){
-      // 150px wide, quality 0.4 → ~3-5KB base64 → fits in one GET URL
-      const MAX=150;
+      // 400px wide, quality 0.65 — better readability for cheque details
+      const MAX=400;
       const ratio=Math.min(MAX/img.width,MAX/img.height,1);
       const c=document.createElement('canvas');
       c.width=Math.round(img.width*ratio);
       c.height=Math.round(img.height*ratio);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      const b64=c.toDataURL('image/jpeg',0.4);
+      const b64=c.toDataURL('image/jpeg',0.65);
       S.iForm._photoDataUrl=b64;
       S.iForm._photoBase64=b64;
       S.iForm.AI='📷';
