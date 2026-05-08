@@ -590,7 +590,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.0</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.1</div></div>`;
   return h;
 }
 
@@ -1267,16 +1267,18 @@ async function saveInv(isTax){
   const calc=calcInv(f);
   // AB = discount % — user entered, keep as-is
   // AA, AC, AE are formula columns in the sheet — do NOT write them
-  // Columns to never write:
-  // - nk (product name/dropdown): D,F,H,J,L,N,P,R,T,V,X
-  // - calculated by sheet formula: B (שם העסק), AA (total pre-VAT), AC (after discount), AE (total+VAT for invoices)
-  const skipCols=new Set([...PRODS.map(p=>p.nk),'B','AA','AC','AE']);
+  // Explicit allowed columns only — safer than a skip list
+  const qkCols=PRODS.map(p=>p.qk); // E,G,I,K,M,O,Q,S,U,W,Y
+  // Invoice: A(ת"ז), C(date), quantities, Z(price), AB(discount%) only
+  // Tax:     same + AE(payment type), AF(amount), AG(date paid), AH(cheque), AJ(notes), AK(invoice#)
+  const allowed=new Set(['A','C','Z','AB',...qkCols]);
+  if(isTax){['AE','AF','AG','AH','AJ','AK'].forEach(k=>allowed.add(k));}
+
   const data={};
-  Object.keys(f).forEach(k=>{
-    if(skipCols.has(k))return;
-    const val=f[k]||'';
-    // Send blank instead of '0' for qty columns
-    const isQty=PRODS.some(p=>p.qk===k);
+  allowed.forEach(k=>{
+    const val=(f[k]||'').toString();
+    const isQty=qkCols.includes(k);
+    // Write blank instead of '0' for qty columns
     data[k]=(isQty&&(val===''||val==='0'))?'':val;
   });
 
