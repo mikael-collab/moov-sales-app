@@ -765,18 +765,14 @@ function renderInvForm(isTax){
 
   if(S.msg)h+=alertHtml(S.msg);
 
-  // Customer
+  // Customer — only ת"ז/ח"פ needed (שם העסק is calculated by the sheet)
   h+=`<div class="fdivider" style="margin-top:0"><hr><span>👤 לקוח</span><hr></div>
-  <div class="field"><label>שם עסק <small>(עמודה B)</small></label>
+  <div class="field"><label>ת"ז / ח"פ <small>(עמודה A)</small></label>
     <div class="field-wrap">
       <input type="text" id="inv-B" class="finput" value="${esc(f.B)}" placeholder="הקלד לחיפוש לקוח..."
         oninput="onInvCustSearch(this.value)" autocomplete="off">
       ${S.showSuggest&&S.suggest.length?suggestHtmlInv():''}
     </div>
-  </div>
-  <div class="field"><label>ת"ז / ח"פ <small>(עמודה A)</small></label>
-    <input type="text" inputmode="numeric" id="inv-A" class="finput num" value="${esc(f.A)}"
-      oninput="uf('iForm','A',this.value)">
   </div>
   <div class="field"><label>תאריך <small>(עמודה C)</small></label>
     <input type="text" id="inv-C" class="finput" value="${esc(f.C)}" oninput="uf('iForm','C',this.value)">
@@ -822,33 +818,8 @@ function renderInvForm(isTax){
       oninput="uf('iForm','AB',this.value);refreshCalc()">
   </div>`;
 
-  // Payment tail — differs by type
-  if(!isTax){
-    h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
-    <div class="field"><label>תנאי תשלום <small>(עמודה AD)</small></label>
-      <input type="text" class="finput" value="${esc(f.AD)}" oninput="uf('iForm','AD',this.value)">
-    </div>
-    <div class="field"><label>מספר חשבונית <small>(עמודה AF)</small></label>
-      <input type="text" inputmode="numeric" class="finput num" value="${esc(f.AF)}" oninput="uf('iForm','AF',this.value)">
-    </div>
-    <div class="field"><label>סוג תשלום <small>(עמודה AG)</small></label>
-      <select class="finput" onchange="uf('iForm','AG',this.value);render()">
-        ${PAYMENT_TYPES.map(pt=>`<option${f.AG===pt?' selected':''}>${pt}</option>`).join('')}
-      </select>
-    </div>
-    <div class="field"><label>סכום התשלום ₪ <small>(עמודה AH)</small></label>
-      <input type="text" inputmode="decimal" class="finput num" value="${esc(f.AH)}" oninput="uf('iForm','AH',this.value)">
-    </div>
-    <div class="field"><label>תאריך תשלום <small>(עמודה AI)</small></label>
-      <input type="text" class="finput" value="${esc(f.AI)}" oninput="uf('iForm','AI',this.value)">
-    </div>
-    ${f.AG==='שיק'?`<div class="field"><label>מספר שיק <small>(עמודה AJ)</small></label>
-      <input type="text" inputmode="numeric" class="finput num" value="${esc(f.AJ)}" oninput="uf('iForm','AJ',this.value)">
-    </div>`:''}
-    <div class="field"><label>הערות <small>(עמודה AK)</small></label>
-      <textarea class="finput" rows="3" oninput="uf('iForm','AK',this.value)">${esc(f.AK)}</textarea>
-    </div>`;
-  }else{
+  // Payment section — חשמ"ק only (invoice payment is handled separately via receipts)
+  if(isTax){
     h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
     <div class="field"><label>מספר חשבונית מס / קבלה <small>(עמודה AK)</small></label>
       <input type="text" inputmode="numeric" class="finput num" value="${esc(f.AK)}" oninput="uf('iForm','AK',this.value)">
@@ -1256,17 +1227,16 @@ function pickCustomer(name,id){
   document.getElementById('suggest-box')?.remove();
   render();
 }
-// Pick customer for INVOICE/TAX: c.B=ת"ז/ח"פ→iForm.A, c.C=שם עסק→iForm.B
+// Pick customer for INVOICE/TAX: display שם עסק in search box, write ת"ז/ח"פ → iForm.A
 function pickInvCust(custId,bizName){
-  S.iForm.A=custId;S.iForm.B=bizName||'';
+  S.iForm.A=custId;
+  S.iForm.B=bizName||''; // display only — B is calculated in sheet, not saved
   S.showSuggest=false;S.suggest=[];
-  // Update input field value in-place without full re-render
   const inp=document.getElementById('inv-B');
   if(inp)inp.value=bizName||'';
-  document.getElementById('suggest-box')?.remove();
-  // Update the ת"ז field display — need small re-render just for that field
   const idField=document.getElementById('inv-A');
   if(idField)idField.value=custId||'';
+  document.getElementById('suggest-box')?.remove();
 }
 
 async function saveCust(){
@@ -1295,19 +1265,17 @@ async function saveReceipt(){
 async function saveInv(isTax){
   const f=S.iForm;
   const calc=calcInv(f);
-  f.AA=calc.aa>0?fmtNum(calc.aa):'';
-  f.AC=calc.ac>0?fmtNum(calc.ac):'';
-  if(!isTax){f.AE=calc.withVat>0?String(Math.round(calc.withVat)):'';}
-  else      {f.AD=calc.withVat>0?String(Math.round(calc.withVat)):'';}
-
-  // Build data — NEVER send nk (product name) columns: those cells have
-  // dropdown validation in the sheet and will reject any written value.
-  // Only send: A,B,C (customer/date), qk columns (quantities), Z,AA,AB,AC (pricing), tail cols.
-  const nkSet=new Set(PRODS.map(p=>p.nk)); // D,F,H,J,L,N,P,R,T,V,X
+  // AB = discount % — user entered, keep as-is
+  // AA, AC, AE are formula columns in the sheet — do NOT write them
+  // Columns to never write:
+  // - nk (product name/dropdown): D,F,H,J,L,N,P,R,T,V,X
+  // - calculated by sheet formula: B (שם העסק), AA (total pre-VAT), AC (after discount), AE (total+VAT for invoices)
+  const skipCols=new Set([...PRODS.map(p=>p.nk),'B','AA','AC','AE']);
   const data={};
   Object.keys(f).forEach(k=>{
-    if(nkSet.has(k))return; // skip product name columns entirely
+    if(skipCols.has(k))return;
     const val=f[k]||'';
+    // Send blank instead of '0' for qty columns
     const isQty=PRODS.some(p=>p.qk===k);
     data[k]=(isQty&&(val===''||val==='0'))?'':val;
   });
