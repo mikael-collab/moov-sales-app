@@ -604,7 +604,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.3</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.4</div></div>`;
   return h;
 }
 
@@ -837,6 +837,11 @@ function renderInvForm(isTax){
   // Payment section — חשמ"ק only
   if(isTax){
     const isChq=f.AE==='שיק';
+    const isCash=f.AE==='מזומן';
+    const paid=parseFloat(f.AF||0);
+    const total=calc.withVat;
+    const isOver=isChq&&total>0&&paid>total+0.5; // over-payment only valid for cheque
+
     h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
 
     <div class="field"><label>סוג תשלום <small>(עמודה AE) *</small></label>
@@ -851,10 +856,11 @@ function renderInvForm(isTax){
         oninput="uf('iForm','AF',this.value);renderSaveBtn()">
     </div>
 
-    <div class="field"><label>תאריך תשלום${isChq?' / תאריך פרעון שיק':''} <small>(עמודה AG)${isChq?' *':''}</small></label>
-      <input type="text" class="finput" value="${esc(f.AG||tod())}"
-        oninput="uf('iForm','AG',this.value);renderSaveBtn()">
-    </div>
+    ${isCash?`
+    <div class="field"><label>תאריך תשלום <small>(עמודה AG)</small></label>
+      <input type="text" class="finput" value="${esc(f.AG||tod())}" readonly
+        style="background:#f0f0f0;color:#888;cursor:default">
+    </div>`:''}
 
     ${isChq?`
     <div class="field"><label>מספר שיק <small>(עמודה AH) *</small></label>
@@ -868,15 +874,26 @@ function renderInvForm(isTax){
     <div class="field"><label>צילום שיק <small>(עמודה AI) *</small></label>
       <input type="file" id="cheque-photo" accept="image/*" capture="environment"
         style="display:none" onchange="onPhotoChange(this)">
-      <button type="button" class="finput" style="text-align:center;cursor:pointer;background:${f.AI?'#e6f4ea':'#f8f8f8'};color:${f.AI?'#1e8e3e':'#555'};font-size:14px;"
+      <button type="button" class="finput"
+        style="text-align:center;cursor:pointer;background:${f.AI?'#e6f4ea':'#f8f8f8'};color:${f.AI?'#1e8e3e':'#555'};font-size:14px;"
         onclick="document.getElementById('cheque-photo').click()">
         ${f.AI?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
       </button>
       ${f._photoDataUrl?`<img src="${f._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
+    </div>
+    ${isOver?`
+    <div style="background:#fff8e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
+      ⚠️ השיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} מהסכום — יש למלא מספר חשבונית
+    </div>
+    <div class="field"><label>מספר חשבונית עבור ההפרש <small>(עמודה AK) *</small></label>
+      <input type="text" inputmode="numeric" class="finput num" value="${esc(f.AK)}"
+        oninput="uf('iForm','AK',this.value);renderSaveBtn()">
     </div>`:''}
+    `:''}
 
     <div class="field"><label>הערות <small>(עמודה AJ)</small></label>
-      <textarea class="finput" rows="3" oninput="uf('iForm','AJ',this.value)">${esc(f.AJ)}</textarea>
+      <textarea class="finput" rows="3" id="inv-AJ"
+        oninput="uf('iForm','AJ',this.value)">${esc(f.AJ)}</textarea>
     </div>`;
   }
 
@@ -1311,12 +1328,19 @@ async function saveInv(isTax){
     const err=taxFormErrors();
     if(err){S.msg={t:'e',m:err};render();return;}
 
-    // Under-payment warning — user can still proceed
+    // Under-payment warning (rounding tolerance 0.5)
     const paid=parseFloat(f.AF||0);
     const total=calc.withVat;
-    if(total>0&&paid<total-0.01){
+    if(total>0&&paid<total-0.5){
       const diff=Math.round(total-paid).toLocaleString('he-IL');
       if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nלתשלום: ₪${Math.round(total).toLocaleString('he-IL')}\nיתרה: ₪${diff}\n\nלהמשיך?`))return;
+    }
+
+    // Cheque over-payment — auto-append difference note to AJ without overwriting
+    if(f.AE==='שיק'&&total>0&&paid>total+0.5&&f.AK?.trim()){
+      const diff=Math.round(paid-total).toLocaleString('he-IL');
+      const note=`ההפרש ₪${diff} שולם עבור חשבונית מספר ${f.AK.trim()}`;
+      f.AJ=f.AJ?.trim()?(f.AJ.trim()+' | '+note):note;
     }
   }
   // AB = discount % — user entered, keep as-is
@@ -1356,15 +1380,19 @@ async function saveInv(isTax){
   }catch(e){S.msg={t:'e',m:'שגיאה: '+e.name+' — '+e.message};S.saving=false;render();}
 }
 
-// Returns null if valid, or error string if not — drives save button disabled state
 function taxFormErrors(){
   const f=S.iForm;
   const calc=calcInv(f);
+  const total=calc.withVat;
   if(!f.AE)return 'בחר סוג תשלום';
   if(!f.AF?.trim())return 'הזן סכום תשלום';
   const paid=parseFloat(f.AF||0);
-  const total=calc.withVat;
-  if(total>0&&paid>total+0.01)return `סכום גבוה מדי (מקסימום ₪${Math.round(total).toLocaleString('he-IL')})`;
+  // Cash: max = rounded total (allow +0.5 for rounding)
+  if(f.AE==='מזומן'&&total>0&&paid>total+0.5)
+    return `מזומן לא יכול לעלות על ₪${Math.round(total).toLocaleString('he-IL')}`;
+  // Cheque over-payment: invoice number mandatory
+  if(f.AE==='שיק'&&total>0&&paid>total+0.5&&!f.AK?.trim())
+    return 'הזן מספר חשבונית עבור ההפרש';
   if(f.AE==='שיק'){
     if(!f.AH?.trim())return 'הזן מספר שיק';
     if(!f.AG?.trim())return 'הזן תאריך פרעון שיק';
