@@ -948,11 +948,7 @@ function renderRecList(){
   if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
     <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
   const total=data.reduce((s,r)=>{const n=parseFloat((r.C||'').replace(/[^0-9.]/g,''));return s+(isNaN(n)?0:n);},0);
-  let h=`<div style="padding-bottom:24px">
-    <div class="sumbar" style="background:${color}">
-      <span>${data.length} קבלות אחרונות</span>
-      <span style="font-size:16px;font-weight:700">${total>0?fmt(total.toString()):''}</span>
-    </div>`;
+  let h=`<div style="padding-bottom:24px">`;
   [...data].reverse().forEach((r,i)=>{
     const id=`rec-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
     const num=nz(r.J)||nz(r.A)||`#${i+1}`;
@@ -1010,11 +1006,7 @@ function renderDocList(data,state,isTax){
   </div>`;
 
   const grand=data.reduce((s,r)=>{const n=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));return s+(isNaN(n)?0:n);},0);
-  let h=`<div style="padding-bottom:24px">
-    <div class="sumbar" style="background:${color}">
-      <span>${data.length} ${isTax?'חשמ"ק':'חשבוניות'} אחרונות</span>
-      <span style="font-size:16px;font-weight:700">${grand>0?fmt(grand.toString()):''}</span>
-    </div>`;
+  let h=`<div style="padding-bottom:24px">`;
 
   [...data].reverse().forEach((r,i)=>{
     const id=`${isTax?'t':'v'}-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
@@ -1308,13 +1300,16 @@ async function saveInv(isTax){
   if(!isTax){f.AE=calc.withVat>0?String(Math.round(calc.withVat)):'';}
   else      {f.AD=calc.withVat>0?String(Math.round(calc.withVat)):'';}
 
-  // Build data — include all fields; zero quantities become '' (blank in sheet)
+  // Build data — NEVER send nk (product name) columns: those cells have
+  // dropdown validation in the sheet and will reject any written value.
+  // Only send: A,B,C (customer/date), qk columns (quantities), Z,AA,AB,AC (pricing), tail cols.
+  const nkSet=new Set(PRODS.map(p=>p.nk)); // D,F,H,J,L,N,P,R,T,V,X
   const data={};
   Object.keys(f).forEach(k=>{
+    if(nkSet.has(k))return; // skip product name columns entirely
     const val=f[k]||'';
-    // For qty columns: write blank instead of '0' so sheet stays clean
     const isQty=PRODS.some(p=>p.qk===k);
-    data[k]=(isQty&&val==='0')?'':val;
+    data[k]=(isQty&&(val===''||val==='0'))?'':val;
   });
 
   const qtySummary=PRODS.filter(p=>parseInt(data[p.qk])>0)
