@@ -604,7 +604,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.8</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v2.9</div></div>`;
   return h;
 }
 
@@ -1371,26 +1371,8 @@ async function saveInv(isTax){
       sheetName:SHEETS[isTax?'tax':'invoices'],
       data
     };
+    if(f._photoBase64)payload._photoBase64=f._photoBase64;
     await apiPost(payload);
-
-    // Upload photo in chunks via GET (each chunk ~4KB, safe URL length)
-    if(f._photoBase64){
-      try{
-        const b64=f._photoBase64;
-        const CHUNK=3000; // ~4KB URL-encoded per request
-        const key='photo_'+Date.now();
-        const total=Math.ceil(b64.length/CHUNK);
-        for(let i=0;i<total;i++){
-          const chunk=b64.slice(i*CHUNK,(i+1)*CHUNK);
-          await apiPost({
-            action:'photoChunk',
-            key,chunk,index:i,total,
-            sheetName:SHEETS[isTax?'tax':'invoices'],
-            invCustId:data.A||'',invDate:data.C||''
-          });
-        }
-      }catch(pe){console.warn('photo upload',pe);}
-    }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
     setTimeout(()=>{
@@ -1439,16 +1421,16 @@ function onPhotoChange(input){
   reader.onload=function(e){
     const img=new Image();
     img.onload=function(){
-      // 600px wide, quality 0.7 — readable but under 50KB base64
-      const MAX=600;
+      // 150px wide, quality 0.4 → ~3-5KB base64 → fits in one GET URL
+      const MAX=150;
       const ratio=Math.min(MAX/img.width,MAX/img.height,1);
-      const canvas=document.createElement('canvas');
-      canvas.width=Math.round(img.width*ratio);
-      canvas.height=Math.round(img.height*ratio);
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      const compressed=canvas.toDataURL('image/jpeg',0.7);
-      S.iForm._photoDataUrl=compressed;
-      S.iForm._photoBase64=compressed;
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*ratio);
+      c.height=Math.round(img.height*ratio);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      const b64=c.toDataURL('image/jpeg',0.4);
+      S.iForm._photoDataUrl=b64;
+      S.iForm._photoBase64=b64;
       S.iForm.AI='📷';
       render();
     };
