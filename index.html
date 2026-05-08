@@ -207,7 +207,7 @@ const TABS={
   tax:      {label:'חשבוניות/קבלות', color:'#7b1fa2',bg:'#f3e5f5'},
 };
 const SHEETS={customers:'לקוחות',invoices:'חשבוניות',receipts:'קבלות',tax:'חשבוניות/קבלות'};
-const PAYMENT_TYPES=['מזומן','שיק','העברה בנקאית','אשראי','ביט','פייבוקס'];
+const PAYMENT_TYPES=['מזומן','שיק'];
 
 const CF=[
   {k:'A',label:'שם לקוח',      mode:'text',req:true},
@@ -832,42 +832,43 @@ function renderInvForm(isTax){
 
     <div class="field"><label>סכום התשלום ₪ <small>(עמודה AF) *</small></label>
       <input type="text" inputmode="decimal" class="finput num" value="${esc(f.AF)}"
-        oninput="uf('iForm','AF',this.value)">
+        oninput="uf('iForm','AF',this.value);renderSaveBtn()">
     </div>
 
     <div class="field"><label>תאריך תשלום${isChq?' / תאריך פרעון שיק':''} <small>(עמודה AG)${isChq?' *':''}</small></label>
       <input type="text" class="finput" value="${esc(f.AG||tod())}"
-        oninput="uf('iForm','AG',this.value)">
+        oninput="uf('iForm','AG',this.value);renderSaveBtn()">
     </div>
 
     ${isChq?`
     <div class="field"><label>מספר שיק <small>(עמודה AH) *</small></label>
       <input type="text" inputmode="numeric" class="finput num" value="${esc(f.AH)}"
-        oninput="uf('iForm','AH',this.value)">
+        oninput="uf('iForm','AH',this.value);renderSaveBtn()">
+    </div>
+    <div class="field"><label>תאריך פרעון שיק <small>(עמודה AG) *</small></label>
+      <input type="text" class="finput" value="${esc(f.AG||tod())}"
+        oninput="uf('iForm','AG',this.value);renderSaveBtn()">
     </div>
     <div class="field"><label>צילום שיק <small>(עמודה AI) *</small></label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="file" id="cheque-photo" accept="image/*" capture="environment"
-          style="display:none" onchange="onPhotoChange(this)">
-        <button type="button" class="finput" style="text-align:center;cursor:pointer;background:${f.AI?'#e6f4ea':'#f8f8f8'};color:${f.AI?'#1e8e3e':'#555'};font-size:14px;"
-          onclick="document.getElementById('cheque-photo').click()">
-          ${f.AI?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
-        </button>
-      </div>
+      <input type="file" id="cheque-photo" accept="image/*" capture="environment"
+        style="display:none" onchange="onPhotoChange(this)">
+      <button type="button" class="finput" style="text-align:center;cursor:pointer;background:${f.AI?'#e6f4ea':'#f8f8f8'};color:${f.AI?'#1e8e3e':'#555'};font-size:14px;"
+        onclick="document.getElementById('cheque-photo').click()">
+        ${f.AI?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
+      </button>
+      ${f._photoDataUrl?`<img src="${f._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
     </div>`:''}
-
-    <div class="field"><label>מספר חשבונית מס / קבלה <small>(עמודה AK)</small></label>
-      <input type="text" inputmode="numeric" class="finput num" value="${esc(f.AK)}"
-        oninput="uf('iForm','AK',this.value)">
-    </div>
 
     <div class="field"><label>הערות <small>(עמודה AJ)</small></label>
       <textarea class="finput" rows="3" oninput="uf('iForm','AJ',this.value)">${esc(f.AJ)}</textarea>
     </div>`;
   }
 
-  h+=`<button class="save-btn" style="background:${S.saving?'#ccc':color}" ${S.saving?'disabled':''} onclick="saveInv(${isTax})">
-    ${S.saving?'⏳ שומר...':'💾 '+(isTax?'שמור חשמ"ק':'שמור חשבונית')}</button></div>`;
+  const validErr=isTax?taxFormErrors():null;
+  const btnDisabled=S.saving||!!validErr;
+  const btnLabel=S.saving?'⏳ שומר...':(validErr?'⛔ '+validErr:(isTax?'💾 שמור חשמ"ק':'💾 שמור חשבונית'));
+  h+=`<button class="save-btn" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveInv(${isTax})">
+    ${btnLabel}</button></div>`;
   return h;
 }
 
@@ -1350,16 +1351,39 @@ async function saveInv(isTax){
   }catch(e){S.msg={t:'e',m:'שגיאה: '+e.name+' — '+e.message};S.saving=false;render();}
 }
 
+// Returns null if valid, or error string if invalid
+function taxFormErrors(){
+  const f=S.iForm;
+  if(!f.AE)return 'בחר סוג תשלום';
+  if(!f.AF?.trim())return 'הזן סכום תשלום';
+  if(f.AE==='שיק'){
+    if(!f.AH?.trim())return 'הזן מספר שיק';
+    if(!f.AG?.trim())return 'הזן תאריך פרעון שיק';
+    if(!f.AI?.trim())return 'צלם את השיק';
+  }
+  return null;
+}
+
+function renderSaveBtn(){
+  // Targeted update of just the save button — no full re-render, preserves focus
+  const btn=document.querySelector('.save-btn[onclick^="saveInv"]');
+  if(!btn)return;
+  const isTax=S.screen==='new-tax';
+  const validErr=isTax?taxFormErrors():null;
+  const dis=S.saving||!!validErr;
+  btn.disabled=dis;
+  btn.style.background=dis?'#ccc':tc();
+  btn.textContent=S.saving?'⏳ שומר...':(validErr?'⛔ '+validErr:(isTax?'💾 שמור חשמ"ק':'💾 שמור חשבונית'));
+}
+
 function onPhotoChange(input){
   if(!input.files||!input.files[0])return;
   const file=input.files[0];
-  // Store filename in AI for the sheet — actual upload to Drive would need extra GAS work
-  S.iForm.AI=file.name;
-  // Show thumbnail
   const reader=new FileReader();
   reader.onload=function(e){
-    S.iForm._photoDataUrl=e.target.result;
-    render();
+    S.iForm._photoDataUrl=e.target.result; // base64 data URL for preview
+    S.iForm.AI=file.name;                  // filename stored in sheet col AI
+    render(); // re-render to show preview and update save button state
   };
   reader.readAsDataURL(file);
 }
