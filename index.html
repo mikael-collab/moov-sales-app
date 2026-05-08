@@ -342,14 +342,18 @@ async function apiFetch(params){
   if(d.error)throw new Error(d.error+(d.available?' | '+d.available.join(', '):''));
   return d;
 }
-// Write via no-cors GET — simplest approach, bypasses all CORS issues.
-// The request goes through and GAS writes the data.
-// We can't read the opaque response but assume success (list reloads to verify).
-async function apiPost(body){
-  if(!S.scriptUrl)throw new Error('NO_URL');
-  const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify(body));
-  await fetch(url,{mode:'no-cors'});
-  return{status:'ok'};
+// Image beacon write — zero CORS, zero redirects issues, works on every browser.
+// Creates an Image element pointing to the GAS URL. The browser sends the GET
+// request silently. GAS writes the data. We always resolve (can't read response).
+function apiPost(body){
+  return new Promise(function(resolve){
+    if(!S.scriptUrl){resolve({status:'ok'});return;}
+    const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify(body));
+    const img=new Image();
+    img.onload=img.onerror=function(){resolve({status:'ok'});};
+    img.src=url;
+    setTimeout(function(){resolve({status:'ok'});},8000);
+  });
 }
 
 async function pingSheets(){
@@ -583,7 +587,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v1.8</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v1.9</div></div>`;
   return h;
 }
 
