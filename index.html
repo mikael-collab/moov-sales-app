@@ -292,7 +292,30 @@ const S={
 // ── Helpers ──
 const tc=()=>TABS[S.tab].color;
 function efC(){const o={};CF.forEach(f=>o[f.k]='');return o;}
-function efR(){return{A:'',B:'מזומן',C:'',D:tod(),E:'',F:'',G:'',H:'',I:'',J:''};}
+function efR(){return{
+  A:'',   // מספר חשבונית
+  B:'',   // סוג תשלום (no default — user must choose)
+  C:'',   // סכום
+  D:tod(),// תאריך
+  E:'',   // מספר שיק
+  F:'',   // צילום שיק (Drive URL)
+  G:'',   // הערות
+  // H, I, J not saved — display only
+  _custName:'', _custId:'', _invTotal:'', _invDate:'',
+  _photoDataUrl:'', _photoBase64:'',
+  _openInvs:[], _showOpenInvs:false
+};}
+function receiptFormErrors(){
+  const rf=S.rForm;
+  if(!rf.B)return 'בחר סוג תשלום';
+  if(!rf.C?.trim())return 'הזן סכום תשלום';
+  if(rf.B==='שיק'){
+    if(!rf.E?.trim())return 'הזן מספר שיק';
+    if(!rf.D?.trim())return 'הזן תאריך פרעון שיק';
+    if(!rf.F?.trim())return 'צלם את השיק';
+  }
+  return null;
+}
 function efI(isTax){
   const o={A:'',B:'',C:tod()};
   PRODS.forEach(p=>{o[p.nk]=p.name;o[p.qk]='0';});
@@ -445,7 +468,42 @@ function goBack(){
   S.showSuggest=false;setHeader();render();
 }
 function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();}
-function openNewReceipt(){S.screen='new-receipt';S.rForm=efR();S.msg=null;S.showSuggest=false;setHeader();render();}
+// Invoice is "open" (unpaid) if its background is NOT greenish
+function isInvOpen(r){
+  const bg=(r._bg||'#ffffff').toLowerCase().replace(/[^0-9a-f]/g,'');
+  if(bg.length<6)return true;
+  const R=parseInt(bg.slice(0,2),16);
+  const G=parseInt(bg.slice(2,4),16);
+  const B=parseInt(bg.slice(4,6),16);
+  return!(G>R+40&&G>B+20&&G>120); // greenish = paid
+}
+function openNewReceipt(){
+  S.screen='new-receipt';S.rForm=efR();S.msg=null;S.showSuggest=false;
+  // Ensure invoices are loaded for invoice number lookup
+  if(S.isState==='idle')loadInvoices();
+  setHeader();render();
+}
+// Get open invoices for a customer ת"ז
+function openInvsFor(custId){
+  if(!custId)return[];
+  return S.invoices.filter(r=>r.A===custId&&isInvOpen(r));
+}
+// Pre-fill receipt form from a selected invoice row
+function openNewReceiptFromInv(invId){
+  const r=S.invoices.find(x=>x._id===invId);
+  if(!r)return;
+  const rf=efR();
+  rf.A=nz(r.AF)||'';      // מספר חשבונית
+  rf._custId=nz(r.A)||''; // ת"ז/ח"פ
+  rf._custName=nz(r.B)||'';// שם עסק
+  rf._invTotal=nz(r.AE)||''; // סה"כ כולל מע"מ
+  rf._invDate=nz(r.C)||'';
+  // Find open invoices for this customer
+  rf._openInvs=openInvsFor(rf._custId);
+  rf._showOpenInvs=false;
+  S.rForm=rf;S.tab='receipts';S.screen='new-receipt';S.msg=null;S.showSuggest=false;
+  syncNav();setHeader();render();
+}
 function openNewInvoice(isTax){
   S.screen=isTax?'new-tax':'new-invoice';
   S.iForm=efI(isTax);S.msg=null;S.showSuggest=false;
@@ -604,7 +662,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.2</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.3</div></div>`;
   return h;
 }
 
@@ -927,45 +985,125 @@ function suggestHtmlInv(){
 
 // ── New Receipt Form ──
 function renderReceiptForm(){
-  const color=tc();const rf=S.rForm;const isChk=rf.B==='שיק';
+  const color=tc();const rf=S.rForm;
+  const isChk=rf.B==='שיק';
+  const isCash=rf.B==='מזומן';
+  const validErr=receiptFormErrors();
+  const btnDisabled=S.saving||!!validErr;
+
   let h=`<div class="fwrap" style="--tc:${color}">`;
   if(S.msg)h+=alertHtml(S.msg);
-  h+=`
-  <div class="field"><label>שם לקוח <small>(עמודה H)</small></label>
+
+  // ── Invoice number ──
+  h+=`<div class="field"><label>מספר חשבונית <small>(עמודה A)</small></label>
+    <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.A)}"
+      placeholder="הזן מספר חשבונית לחיפוש אוטומטי"
+      oninput="onReceiptInvNumInput(this.value)">
+  </div>`;
+
+  // ── Customer search (alternative entry point) ──
+  h+=`<div class="field"><label>חיפוש לקוח</label>
     <div class="field-wrap">
-      <input type="text" id="r-H" class="finput" value="${esc(rf.H)}" placeholder="הקלד לחיפוש לקוח..."
+      <input type="text" id="r-H" class="finput" value="${esc(rf._custName)}"
+        placeholder="הקלד שם לקוח, שם עסק או ת\"ז"
         oninput="onCustSearch(this.value)" autocomplete="off">
       ${S.showSuggest&&S.suggest.length?suggestHtmlReceipt():''}
     </div>
-  </div>
-  <div class="field"><label>ת"ז / ח"פ <small>(עמודה I)</small></label>
-    <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.I)}" oninput="uf('rForm','I',this.value)">
-  </div>
-  <div class="field"><label>מספר קבלה <small>(עמודה J)</small></label>
-    <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.J)}" oninput="uf('rForm','J',this.value)">
-  </div>
-  <div class="field"><label>מספר חשבונית <small>(עמודה A)</small></label>
-    <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.A)}" oninput="uf('rForm','A',this.value)">
-  </div>
-  <div class="field"><label>סוג תשלום <small>(עמודה B)</small></label>
+  </div>`;
+
+  // ── Show resolved customer info ──
+  if(rf._custName||rf._custId){
+    h+=`<div style="background:#f0f4ff;border-radius:8px;padding:10px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#1a73e8">${esc(rf._custName||'—')}</div>
+        <div style="font-size:11px;color:#888;font-family:monospace">${esc(rf._custId||'')}</div>
+      </div>
+      <button onclick="clearReceiptCustomer()" style="background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
+    </div>`;
+  }
+
+  // ── Open invoices list for this customer ──
+  if(rf._openInvs&&rf._openInvs.length){
+    h+=`<div class="fdivider"><hr><span>📄 חשבוניות פתוחות</span><hr></div>
+    <div class="dtable" style="margin-bottom:12px">
+      <div class="dthead" style="background:${color}"><span>בחר חשבונית לתשלום</span><span>${rf._openInvs.length} פתוחות</span></div>`;
+    rf._openInvs.forEach((inv,i)=>{
+      const invNum=nz(inv.AF)||'—';
+      const invDate=nz(inv.C)||'';
+      const invTotal=nz(inv.AE)||'';
+      const selected=rf.A===invNum;
+      h+=`<div class="dtrow" style="cursor:pointer;${selected?`background:${color}15;`:''}${i===0?'border-top:none':''}"
+        onclick="pickReceiptInv('${esc(invNum)}','${esc(invTotal)}','${esc(invDate)}')">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:${selected?color:'#222'}">#${esc(invNum)}</div>
+          <div style="font-size:11px;color:#888">${esc(invDate)}</div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-size:14px;font-weight:700;color:${color}">${invTotal?fmt(invTotal):''}</div>
+          ${selected?`<div style="font-size:10px;color:${color}">✓ נבחרה</div>`:''}
+        </div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+
+  // ── Show selected invoice total ──
+  if(rf._invTotal){
+    h+=`<div style="background:#f8f8f8;border-radius:8px;padding:9px 13px;margin-bottom:12px;display:flex;justify-content:space-between">
+      <span style="font-size:13px;color:#666">סה"כ חשבונית לתשלום</span>
+      <span style="font-size:15px;font-weight:700;color:${color}">${fmt(rf._invTotal)}</span>
+    </div>`;
+  }
+
+  h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
+
+  <div class="field"><label>סוג תשלום <small>(עמודה B) *</small></label>
     <select class="finput" onchange="uf('rForm','B',this.value);render()">
+      <option value="">-- בחר --</option>
       ${PAYMENT_TYPES.map(pt=>`<option${rf.B===pt?' selected':''}>${pt}</option>`).join('')}
     </select>
   </div>
+
   <div class="field"><label>סכום התשלום ₪ <small>(עמודה C) *</small></label>
-    <input type="text" inputmode="decimal" class="finput num" value="${esc(rf.C)}" oninput="uf('rForm','C',this.value)">
-  </div>
-  <div class="field"><label>תאריך תשלום <small>(עמודה D)</small></label>
-    <input type="text" class="finput" value="${esc(rf.D)}" oninput="uf('rForm','D',this.value)">
-  </div>
-  ${isChk?`<div class="field"><label>מספר שיק <small>(עמודה E)</small></label>
-    <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.E)}" oninput="uf('rForm','E',this.value)">
-  </div>`:''}
-  <div class="field"><label>הערות <small>(עמודה G)</small></label>
+    <input type="text" inputmode="decimal" class="finput num" value="${esc(rf.C)}"
+      oninput="uf('rForm','C',this.value)">
+  </div>`;
+
+  if(isCash){
+    h+=`<div class="field"><label>תאריך תשלום <small>(עמודה D)</small></label>
+      <input type="text" class="finput" value="${esc(rf.D||tod())}" readonly
+        style="background:#f0f0f0;color:#888;cursor:default">
+    </div>`;
+  }
+
+  if(isChk){
+    h+=`<div class="field"><label>מספר שיק <small>(עמודה E) *</small></label>
+      <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.E)}"
+        oninput="uf('rForm','E',this.value)">
+    </div>
+    <div class="field"><label>תאריך פרעון שיק <small>(עמודה D) *</small></label>
+      <input type="text" class="finput" value="${esc(rf.D||tod())}"
+        oninput="uf('rForm','D',this.value)">
+    </div>
+    <div class="field"><label>צילום שיק <small>(עמודה F) *</small></label>
+      <input type="file" id="receipt-cheque-photo" accept="image/*" capture="environment"
+        style="display:none" onchange="onReceiptPhotoChange(this)">
+      <button type="button" class="finput"
+        style="text-align:center;cursor:pointer;background:${rf.F?'#e6f4ea':'#f8f8f8'};color:${rf.F?'#1e8e3e':'#555'};font-size:14px;"
+        onclick="document.getElementById('receipt-cheque-photo').click()">
+        ${rf.F?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
+      </button>
+      ${rf._photoDataUrl?`<img src="${rf._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
+    </div>`;
+  }
+
+  h+=`<div class="field"><label>הערות <small>(עמודה G)</small></label>
     <textarea class="finput" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
   </div>
-  <button class="save-btn" style="background:${S.saving?'#ccc':color}" ${S.saving?'disabled':''} onclick="saveReceipt()">
-    ${S.saving?'⏳ שומר...':'💾 שמור קבלה'}</button></div>`;
+
+  <button class="save-btn" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveReceipt()">
+    ${S.saving?'⏳ שומר...':(validErr?'⛔ '+validErr:'💾 שמור קבלה')}
+  </button></div>`;
   return h;
 }
 
@@ -1110,6 +1248,14 @@ function renderDocList(data,state,isTax){
           <div class="glabel">${f.label}</div>
           <div style="font-size:13px;color:#222;margin-top:2px">${esc(r[f.k])}</div></div>`;});
         h+=`</div>`;
+      }
+      // "Create receipt" button — only for invoice tab, open (non-green) rows
+      if(!isTax&&isInvOpen(r)){
+        h+=`<button onclick="openNewReceiptFromInv(${r._id})"
+          style="width:100%;margin-top:10px;padding:11px;border-radius:8px;border:1.5px solid ${color};
+          background:transparent;color:${color};font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">
+          🧾 צור קבלה לחשבונית זו
+        </button>`;
       }
       h+=`</div>`;
     }
@@ -1277,13 +1423,64 @@ function onInvCustSearch(val){
 }
 // Pick customer for RECEIPT: c.A=שם לקוח→H, c.B=ת"ז/ח"פ→I
 function pickCustomer(name,id){
-  S.rForm.H=name;S.rForm.I=id;
+  // Look up customer from S.customers to get business name (c.C)
+  const cust=S.customers.find(c=>c.B===id)||{A:name,B:id,C:''};
+  S.rForm._custName=cust.C||name;
+  S.rForm._custId=id;
+  S.rForm._openInvs=openInvsFor(id);
+  S.rForm._showOpenInvs=true;
+  // Auto-select if only one open invoice
+  if(S.rForm._openInvs.length===1){
+    const inv=S.rForm._openInvs[0];
+    S.rForm.A=nz(inv.AF)||'';
+    S.rForm._invTotal=nz(inv.AE)||'';
+    S.rForm._invDate=nz(inv.C)||'';
+  }
   S.showSuggest=false;S.suggest=[];
-  // Update input field value in-place, then re-render the form to show filled ID field
-  const inp=document.getElementById('r-H');
-  if(inp)inp.value=name;
   document.getElementById('suggest-box')?.remove();
+  const inp=document.getElementById('r-H');
+  if(inp)inp.value=cust.C||name;
   render();
+}
+function clearReceiptCustomer(){
+  S.rForm._custName='';S.rForm._custId='';S.rForm._openInvs=[];
+  S.rForm.A='';S.rForm._invTotal='';S.rForm._invDate='';
+  render();
+}
+function onReceiptInvNumInput(val){
+  S.rForm.A=val;
+  if(val.trim().length>=3){
+    const found=S.invoices.find(r=>nz(r.AF)===val.trim());
+    if(found){
+      S.rForm._custId=nz(found.A)||'';
+      S.rForm._custName=nz(found.B)||'';
+      S.rForm._invTotal=nz(found.AE)||'';
+      S.rForm._invDate=nz(found.C)||'';
+      S.rForm._openInvs=openInvsFor(S.rForm._custId);
+    }
+  }
+  render();
+}
+function pickReceiptInv(invNum,invTotal,invDate){
+  S.rForm.A=invNum;S.rForm._invTotal=invTotal;S.rForm._invDate=invDate;render();
+}
+function onReceiptPhotoChange(input){
+  if(!input.files||!input.files[0])return;
+  const file=input.files[0];
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      const MAX=800;const ratio=Math.min(MAX/img.width,MAX/img.height,1);
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      const b64=c.toDataURL('image/jpeg',0.8);
+      S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;S.rForm.F='📷';render();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 // Pick customer for INVOICE/TAX: display שם עסק in search box, write ת"ז/ח"פ → iForm.A
 function pickInvCust(custId,bizName){
@@ -1310,11 +1507,18 @@ async function saveCust(){
 }
 
 async function saveReceipt(){
-  if(!S.rForm.C?.trim()){S.msg={t:'e',m:'סכום התשלום הוא שדה חובה'};render();return;}
+  const err=receiptFormErrors();
+  if(err){S.msg={t:'e',m:err};render();return;}
   S.saving=true;S.msg=null;render();
+  const rf=S.rForm;
+  // Only A,B,C,D,E,F,G — never H (שם לקוח), I (ת"ז), J (מספר קבלה)
+  const data={A:rf.A||'',B:rf.B||'',C:rf.C||'',D:rf.D||tod(),E:rf.E||'',F:rf.F||'',G:rf.G||''};
   try{
-    await apiPost({action:'addReceipt',data:{...S.rForm}});
-    S.receipts.push({...S.rForm,_id:S.receipts.length,_bg:'#ffffff'});
+    await apiPost({action:'addReceipt',data});
+    if(rf._photoBase64){
+      uploadPhotoToGAS(rf._photoBase64,'קבלות',data.D,data.A).catch(()=>{});
+    }
+    S.receipts.push({...data,_id:S.receipts.length,_bg:'#ffffff'});
     S.msg={t:'s',m:'הקבלה נשמרה בהצלחה!'};S.saving=false;render();
     setTimeout(()=>{S.screen='list';S.rForm=efR();S.msg=null;setHeader();render();},1500);
   }catch(e){S.msg={t:'e',m:e.message||'שגיאה'};S.saving=false;render();}
