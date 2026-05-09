@@ -697,7 +697,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.8</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.9</div></div>`;
   return h;
 }
 
@@ -1524,19 +1524,16 @@ function pickCustomer(name,id){
 // This ensures we capture typed values before focus changes lose them
 function captureReceiptFields(){
   const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
-  const amt=g('r-C').trim();  if(amt)S.rForm.C=amt;
-  const inv=g('r-A').trim();  if(inv)S.rForm.A=inv;
-  const chq=g('r-E').trim();  if(chq)S.rForm.E=chq;
-  const dt =g('r-D').trim();  if(dt) S.rForm.D=dt;
-  const ov =g('r-overinv').trim(); if(ov)S.rForm._overInvNum=ov;
-  const gEl=document.getElementById('r-G'); if(gEl)S.rForm.G=gEl.value;
+  S.rForm.C=g('r-C').trim();
+  S.rForm.A=g('r-A').trim()||S.rForm.A;  // keep existing if field empty
+  S.rForm.E=g('r-E').trim();
+  S.rForm.D=g('r-D').trim()||S.rForm.D;
+  const ov=g('r-overinv').trim();S.rForm._overInvNum=ov||S.rForm._overInvNum;
+  const gEl=document.getElementById('r-G');if(gEl)S.rForm.G=gEl.value;
 }
 function onReceiptPayTypeChange(val){
-  // Capture all current field values from DOM BEFORE re-render
-  const grab=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
-  S.rForm.C=grab('r-C')||S.rForm.C;
-  S.rForm.A=grab('r-A')||S.rForm.A;
-  S.rForm.G=(()=>{const el=document.getElementById('r-G');return el?el.value:S.rForm.G;})();
+  // Capture ALL current field values from DOM before any re-render
+  captureReceiptFields();
   S.rForm.B=val;
   render();
 }
