@@ -309,6 +309,11 @@ function receiptFormErrors(){
   const rf=S.rForm;
   if(!rf.B)return 'בחר סוג תשלום';
   if(!rf.C?.trim())return 'הזן סכום תשלום';
+  // Invoice number — if entered, must match an existing invoice
+  if(rf.A?.trim()){
+    const found=S.invoices.find(r=>nz(r.AF)===rf.A.trim());
+    if(!found)return 'מספר חשבונית לא קיים במערכת';
+  }
   if(rf.B==='שיק'){
     if(!rf.E?.trim())return 'הזן מספר שיק';
     if(!rf.D?.trim())return 'הזן תאריך פרעון שיק';
@@ -662,7 +667,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.7</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.8</div></div>`;
   return h;
 }
 
@@ -1084,11 +1089,11 @@ function renderReceiptForm(){
 
   <div id="receipt-chk-fields" style="display:${isChk?'block':'none'}">
     <div class="field"><label>מספר שיק <small>(עמודה E) *</small></label>
-      <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.E)}"
+      <input type="text" inputmode="numeric" id="r-E" class="finput num" value="${esc(rf.E)}"
         oninput="uf('rForm','E',this.value)" onchange="uf('rForm','E',this.value)">
     </div>
     <div class="field"><label>תאריך פרעון שיק <small>(עמודה D) *</small></label>
-      <input type="text" class="finput" value="${esc(rf.D||tod())}"
+      <input type="text" id="r-D" class="finput" value="${esc(rf.D||tod())}"
         oninput="uf('rForm','D',this.value)" onchange="uf('rForm','D',this.value)">
     </div>
     <div class="field"><label>צילום שיק <small>(עמודה F) *</small></label>
@@ -1107,7 +1112,7 @@ function renderReceiptForm(){
     <textarea class="finput" id="r-G" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
   </div>
 
-  <button class="save-btn" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveReceipt()">
+  <button class="save-btn" onmousedown="captureReceiptFields()" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveReceipt()">
     ${S.saving?'⏳ שומר...':(validErr?'⛔ '+validErr:'💾 שמור קבלה')}
   </button></div>`;
   return h;
@@ -1438,9 +1443,18 @@ function pickCustomer(name,id){
   if(inp)inp.value=cust.C||name;
   render();
 }
+// Called onmousedown on the save button — fires BEFORE blur on any focused input
+// This ensures we capture typed values before focus changes lose them
+function captureReceiptFields(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  const amt=g('r-C').trim();  if(amt)S.rForm.C=amt;
+  const inv=g('r-A').trim();  if(inv)S.rForm.A=inv;
+  const chq=g('r-E').trim();  if(chq)S.rForm.E=chq;
+  const dt =g('r-D').trim();  if(dt) S.rForm.D=dt;
+  const gEl=document.getElementById('r-G'); if(gEl)S.rForm.G=gEl.value;
+}
 function onReceiptPayTypeChange(val){
   // Capture all current field values from DOM BEFORE re-render
-  // Samsung Browser oninput is unreliable — DOM is the source of truth
   const grab=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
   S.rForm.C=grab('r-C')||S.rForm.C;
   S.rForm.A=grab('r-A')||S.rForm.A;
