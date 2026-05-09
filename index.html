@@ -662,7 +662,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.3</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.4</div></div>`;
   return h;
 }
 
@@ -1058,32 +1058,32 @@ function renderReceiptForm(){
   h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
 
   <div class="field"><label>סוג תשלום <small>(עמודה B) *</small></label>
-    <select class="finput" onchange="uf('rForm','B',this.value);render()">
+    <select class="finput" id="r-B" onchange="onReceiptPayTypeChange(this.value)">
       <option value="">-- בחר --</option>
       ${PAYMENT_TYPES.map(pt=>`<option${rf.B===pt?' selected':''}>${pt}</option>`).join('')}
     </select>
   </div>
 
   <div class="field"><label>סכום התשלום ₪ <small>(עמודה C) *</small></label>
-    <input type="text" inputmode="decimal" class="finput num" value="${esc(rf.C)}"
-      oninput="uf('rForm','C',this.value)">
+    <input type="text" inputmode="decimal" class="finput num" id="r-C" value="${esc(rf.C)}"
+      oninput="uf('rForm','C',this.value)" onchange="uf('rForm','C',this.value)">
   </div>`;
 
-  if(isCash){
-    h+=`<div class="field"><label>תאריך תשלום <small>(עמודה D)</small></label>
+  h+=`<div id="receipt-cash-date" style="display:${isCash?'block':'none'}">
+    <div class="field"><label>תאריך תשלום <small>(עמודה D)</small></label>
       <input type="text" class="finput" value="${esc(rf.D||tod())}" readonly
         style="background:#f0f0f0;color:#888;cursor:default">
-    </div>`;
-  }
+    </div>
+  </div>
 
-  if(isChk){
-    h+=`<div class="field"><label>מספר שיק <small>(עמודה E) *</small></label>
+  <div id="receipt-chk-fields" style="display:${isChk?'block':'none'}">
+    <div class="field"><label>מספר שיק <small>(עמודה E) *</small></label>
       <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.E)}"
-        oninput="uf('rForm','E',this.value)">
+        oninput="uf('rForm','E',this.value)" onchange="uf('rForm','E',this.value)">
     </div>
     <div class="field"><label>תאריך פרעון שיק <small>(עמודה D) *</small></label>
       <input type="text" class="finput" value="${esc(rf.D||tod())}"
-        oninput="uf('rForm','D',this.value)">
+        oninput="uf('rForm','D',this.value)" onchange="uf('rForm','D',this.value)">
     </div>
     <div class="field"><label>צילום שיק <small>(עמודה F) *</small></label>
       <input type="file" id="receipt-cheque-photo" accept="image/*" capture="environment"
@@ -1094,8 +1094,8 @@ function renderReceiptForm(){
         ${rf.F?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
       </button>
       ${rf._photoDataUrl?`<img src="${rf._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
-    </div>`;
-  }
+    </div>
+  </div>`;
 
   h+=`<div class="field"><label>הערות <small>(עמודה G)</small></label>
     <textarea class="finput" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
@@ -1366,30 +1366,20 @@ function updProd(qk,val){
 
 // Customer search for RECEIPT form → updates suggest box only, no render
 function onCustSearch(val){
-  S.rForm.H=val;
+  // Do NOT update S.rForm on every keystroke — just update the suggest box
   const inp=document.getElementById('r-H');
   const wrap=inp?.parentElement;
   let box=document.getElementById('suggest-box');
-  if(val.length<2){
-    S.suggest=[];S.showSuggest=false;
-    if(box)box.remove();
-    return;
-  }
+  if(val.length<2){S.suggest=[];if(box)box.remove();inp?.focus();return;}
   const q=val.toLowerCase();
   S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
-  S.showSuggest=S.suggest.length>0;
-  if(S.showSuggest&&wrap){
+  if(S.suggest.length&&wrap){
     const inner=S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
-      <div>${esc(c.A||'—')}</div><div class="sug-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
+      <div>${esc(c.C||c.A||'—')}</div><div class="sug-sub">${c.B?esc(c.B):''}</div>
     </div>`).join('');
-    if(box){box.innerHTML=inner;}
-    else{
-      const el=document.createElement('div');
-      el.className='suggest-box';el.id='suggest-box';
-      el.innerHTML=inner;wrap.appendChild(el);
-    }
-  }else if(box){box.remove();}
-  // Always keep focus on the input
+    if(box)box.innerHTML=inner;
+    else{const el=document.createElement('div');el.className='suggest-box';el.id='suggest-box';el.innerHTML=inner;wrap.appendChild(el);}
+  }else if(box)box.remove();
   inp?.focus();
 }
 
@@ -1442,6 +1432,15 @@ function pickCustomer(name,id){
   if(inp)inp.value=cust.C||name;
   render();
 }
+function onReceiptPayTypeChange(val){
+  uf('rForm','B',val);
+  // Show/hide cheque-specific fields without full re-render
+  const isChk=val==='שיק';
+  const chkFields=document.getElementById('receipt-chk-fields');
+  const cashDate=document.getElementById('receipt-cash-date');
+  if(chkFields)chkFields.style.display=isChk?'block':'none';
+  if(cashDate)cashDate.style.display=val==='מזומן'?'block':'none';
+}
 function clearReceiptCustomer(){
   S.rForm._custName='';S.rForm._custId='';S.rForm._openInvs=[];
   S.rForm.A='';S.rForm._invTotal='';S.rForm._invDate='';
@@ -1462,7 +1461,11 @@ function onReceiptInvNumInput(val){
   render();
 }
 function pickReceiptInv(invNum,invTotal,invDate){
-  S.rForm.A=invNum;S.rForm._invTotal=invTotal;S.rForm._invDate=invDate;render();
+  S.rForm.A=invNum;
+  S.rForm._invTotal=invTotal;
+  S.rForm._invDate=invDate;
+  S.rForm._openInvs=[];  // collapse list — user has chosen
+  render();
 }
 function onReceiptPhotoChange(input){
   if(!input.files||!input.files[0])return;
@@ -1507,6 +1510,12 @@ async function saveCust(){
 }
 
 async function saveReceipt(){
+  // Read directly from DOM inputs as fallback — Samsung Browser oninput can be unreliable
+  const amtEl=document.getElementById('r-C');
+  const payEl=document.getElementById('r-B');
+  if(amtEl&&amtEl.value)uf('rForm','C',amtEl.value);
+  if(payEl&&payEl.value)uf('rForm','B',payEl.value);
+
   const err=receiptFormErrors();
   if(err){S.msg={t:'e',m:err};render();return;}
   S.saving=true;S.msg=null;render();
