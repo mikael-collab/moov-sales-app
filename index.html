@@ -503,16 +503,17 @@ function openNewReceipt(){
   if(S.rsState==='idle')loadReceipts();
   setHeader();render();
 }
-// Calculate current balance for an invoice number
-// Balance = invoice total (AE) minus sum of all receipts (col C) referencing that invoice (col A)
+// Parse money string — handles "1,590.04", "₪590", "1,234.56" etc.
+function parseMoney(v){return parseFloat((v||'').toString().replace(/[^0-9.]/g,''))||0;}
+
 function getInvBalance(invNum){
   if(!invNum)return 0;
   const inv=S.invoices.find(r=>nz(r.AF)===invNum);
   if(!inv)return 0;
-  const total=parseFloat(nz(inv.AE))||0;
+  const total=parseMoney(inv.AE);
   const paid=S.receipts
     .filter(r=>nz(r.A)===invNum)
-    .reduce((s,r)=>s+(parseFloat(nz(r.C))||0),0);
+    .reduce((s,r)=>s+parseMoney(r.C),0);
   return Math.max(0,total-paid);
 }
 // Get open invoices for a customer ת"ז
@@ -694,7 +695,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.3</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.4</div></div>`;
   return h;
 }
 
@@ -759,12 +760,12 @@ function cCard(c,i){
   return`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
     <div class="card-hdr" onclick="tog(${c._id})">
       <div class="r1">
-        <span class="cust-name">${esc(c.A||'—')}</span>
+        <span class="cust-name">${esc(c.C||c.A||'—')}</span>
         ${c.B?`<span class="id-badge">${esc(c.B)}</span>
           <button class="copy-btn${cpd?' done':''}" onclick="event.stopPropagation();cp('${esc(c.B)}','${c._id}-B')"
             style="${cpd?`background:${color};border-color:${color};color:#fff`:''}">
             ${cpd?'✓ הועתק':'📋 העתק'}</button>`:''}
-        ${c.C?`<span class="biz-name" style="color:${color}">${esc(c.C)}</span>`:''}
+        ${c.A&&c.C?`<span class="biz-name" style="color:#888;font-size:12px">${esc(c.A)}</span>`:''}
       </div>
       <div class="r2">
         ${c.D?`<span>📱 ${esc(c.D)}</span>`:''}
@@ -1652,7 +1653,7 @@ async function saveReceipt(){
 
   // Build receipt 1 (this invoice — amount = balance, excess goes to notes)
   const g1Notes=isOverpay
-    ?`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2||'—'}${rf.G?.trim()?' | '+rf.G.trim():''}`
+    ?`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה חשבונית זו ₪${Math.round(balance).toLocaleString('he-IL')}. ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2||'—'}${rf.G?.trim()?' | '+rf.G.trim():''}`
     :rf.G||'';
   const data1={
     A:rf.A||'',B:rf.B||'',
@@ -1668,7 +1669,7 @@ async function saveReceipt(){
 
     // Receipt 2 — created automatically for the second invoice (overpayment)
     if(isOverpay&&inv2){
-      const g2Notes=`₪${Math.round(balance).toLocaleString('he-IL')} שולמו מאותו שיק עבור חשבונית מספר ${rf.A||'—'}`;
+      const g2Notes=`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${Math.round(balance).toLocaleString('he-IL')} שולמו מאותו שיק עבור חשבונית מספר ${rf.A||'—'}`;
       const data2={
         A:inv2,B:rf.B,
         C:String(Math.round(excess*100)/100),
