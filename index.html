@@ -695,7 +695,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.4</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.5</div></div>`;
   return h;
 }
 
@@ -1602,7 +1602,13 @@ function onReceiptPhotoChange(input){
       c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
       const b64=c.toDataURL('image/jpeg',0.8);
-      S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;S.rForm.F='📷';render();
+      S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;S.rForm.F='📷';
+      render();
+      // Scroll to show the photo preview
+      setTimeout(()=>{
+        const img=document.querySelector('#receipt-chk-fields img');
+        if(img)img.scrollIntoView({behavior:'smooth',block:'nearest'});
+      },100);
     };
     img.src=e.target.result;
   };
@@ -1829,6 +1835,10 @@ function onPhotoChange(input){
       S.iForm._photoBase64=b64;
       S.iForm.AI='📷';
       render();
+      setTimeout(()=>{
+        const img=document.querySelector('img[src^="data:image"]');
+        if(img)img.scrollIntoView({behavior:'smooth',block:'nearest'});
+      },100);
     };
     img.src=e.target.result;
   };
