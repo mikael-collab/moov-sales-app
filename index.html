@@ -662,7 +662,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.6</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.7</div></div>`;
   return h;
 }
 
@@ -996,7 +996,7 @@ function renderReceiptForm(){
 
   // ── Invoice number ──
   h+=`<div class="field"><label>מספר חשבונית <small>(עמודה A)</small></label>
-    <input type="text" inputmode="numeric" class="finput num" value="${esc(rf.A)}"
+    <input type="text" inputmode="numeric" id="r-A" class="finput num" value="${esc(rf.A)}"
       placeholder="הזן מספר חשבונית לחיפוש אוטומטי"
       oninput="onReceiptInvNumInput(this.value)">
   </div>`;
@@ -1104,7 +1104,7 @@ function renderReceiptForm(){
   </div>`;
 
   h+=`<div class="field"><label>הערות <small>(עמודה G)</small></label>
-    <textarea class="finput" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
+    <textarea class="finput" id="r-G" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
   </div>
 
   <button class="save-btn" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveReceipt()">
@@ -1439,8 +1439,14 @@ function pickCustomer(name,id){
   render();
 }
 function onReceiptPayTypeChange(val){
-  S.rForm.B=val; // set directly — no uf needed
-  render(); // re-render to highlight selected button and show/hide cheque fields
+  // Capture all current field values from DOM BEFORE re-render
+  // Samsung Browser oninput is unreliable — DOM is the source of truth
+  const grab=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
+  S.rForm.C=grab('r-C')||S.rForm.C;
+  S.rForm.A=grab('r-A')||S.rForm.A;
+  S.rForm.G=(()=>{const el=document.getElementById('r-G');return el?el.value:S.rForm.G;})();
+  S.rForm.B=val;
+  render();
 }
 function clearReceiptCustomer(){
   S.rForm._custName='';S.rForm._custId='';S.rForm._openInvs=[];
