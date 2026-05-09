@@ -177,10 +177,15 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 .step-txt{font-size:13px;color:#444;line-height:1.5;flex:1;}
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:3px;}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);max-width:360px;width:calc(100% - 32px);padding:13px 16px;border-radius:12px;font-size:14px;font-weight:600;text-align:center;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:slideUp .2s ease;}
+.toast.err{background:#c62828;color:#fff;}
+.toast.ok{background:#1e8e3e;color:#fff;}
+@keyframes slideUp{from{opacity:0;bottom:60px}to{opacity:1;bottom:80px}}
 </style>
 </head>
 <body>
 <div id="app">
+  <div id="toast-container"></div>
   <div class="hdr" id="hdr">
     <div class="hdr-row">
       <button class="hdr-btn" id="back-btn"></button>
@@ -676,7 +681,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.0</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.1</div></div>`;
   return h;
 }
 
@@ -1303,6 +1308,16 @@ function renderDocList(data,state,isTax){
 }
 
 // ── Shared Helpers ──
+// Toast — shown at bottom of screen regardless of scroll position
+let _toastTimer=null;
+function showToast(msg,type,duration){
+  const c=document.getElementById('toast-container');
+  if(!c)return;
+  clearTimeout(_toastTimer);
+  c.innerHTML=`<div class="toast ${type||'err'}">${esc(msg)}</div>`;
+  _toastTimer=setTimeout(()=>{c.innerHTML='';},duration||4000);
+}
+
 function alertHtml(msg){return`<div class="alert ${msg.t==='s'?'ok':'err'}">${msg.t==='s'?'✅ ':'❌ '}${esc(msg.m)}</div>`;}
 function errScreen(errMsg,reload,label,color){
   return`<div class="status"><p style="font-size:30px;margin-bottom:10px">⚠️</p>
@@ -1499,12 +1514,14 @@ let _invLookupTimer=null;
 function onReceiptInvNumInput(val){
   S.rForm.A=val;
   clearTimeout(_invLookupTimer);
-  if(val.trim().length<3){
+  if(val.trim().length<7){
+    // Clear customer info if less than 7 digits
     S.rForm._custId='';S.rForm._custName='';
     S.rForm._invTotal='';S.rForm._invDate='';S.rForm._openInvs=[];
     updateReceiptCustomerBlock();return;
   }
-  // 600ms debounce — keyboard stays open while typing
+  // Trigger immediately at 7 digits, debounce for more
+  const delay=val.trim().length===7?0:400;
   _invLookupTimer=setTimeout(()=>{
     const found=S.invoices.find(r=>nz(r.AF)===val.trim());
     if(found){
@@ -1518,7 +1535,7 @@ function onReceiptInvNumInput(val){
       S.rForm._invTotal='';S.rForm._invDate='';S.rForm._openInvs=[];
     }
     updateReceiptCustomerBlock();
-  },600);
+  },delay);
 }
 
 function updateReceiptCustomerBlock(){
@@ -1599,7 +1616,7 @@ async function saveReceipt(){
   if(S.saving)return;
   captureReceiptFields();
   const err=receiptFormErrors();
-  if(err){S.msg={t:'e',m:err};render();return;}
+  if(err){showToast('❌ '+err,'err');return;}
 
   const rf=S.rForm;
   const paid=parseFloat(rf.C)||0;
@@ -1627,9 +1644,10 @@ async function saveReceipt(){
       uploadPhotoToGAS(rf._photoBase64,'קבלות',data.D,data.A).catch(()=>{});
     }
     S.receipts.push({...data,_id:S.receipts.length,_bg:'#ffffff'});
-    S.msg={t:'s',m:'הקבלה נשמרה בהצלחה!'};S.saving=false;render();
+    S.saving=false;
+    showToast('✅ הקבלה נשמרה בהצלחה!','ok',2000);
     setTimeout(()=>{S.screen='list';S.rForm=efR();S.msg=null;setHeader();render();},1500);
-  }catch(e){S.msg={t:'e',m:e.message||'שגיאה'};S.saving=false;render();}
+  }catch(e){showToast('❌ '+(e.message||'שגיאה'),'err');S.saving=false;render();}
 }
 
 async function saveInv(isTax){
