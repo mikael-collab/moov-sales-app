@@ -316,14 +316,14 @@ function receiptFormErrors(){
   if(!rf.B)return 'בחר סוג תשלום';
   if(!rf.C?.trim())return 'הזן סכום תשלום';
   const paid=parseFloat(rf.C)||0;
-  const total=parseFloat(rf._invTotal)||0;
-  // Cash: cannot exceed invoice total
-  if(rf.B==='מזומן'&&total>0&&paid>total+0.5)
-    return `מזומן לא יכול לעלות על ₪${Math.round(total).toLocaleString('he-IL')}`;
-  // Cheque overpayment: require invoice number for the difference
-  if(rf.B==='שיק'&&total>0&&paid>total+0.5&&!rf._overInvNum?.trim())
+  const balance=parseFloat(rf._invTotal)||0;
+  // Cash: cannot exceed current balance
+  if(rf.B==='מזומן'&&balance>0&&paid>balance+0.5)
+    return `מזומן לא יכול לעלות על יתרה: ₪${Math.round(balance).toLocaleString('he-IL')}`;
+  // Cheque overpayment: require invoice number for the excess
+  if(rf.B==='שיק'&&balance>0&&paid>balance+0.5&&!rf._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
-  // Invoice number — if entered must match existing
+  // Invoice number — must match existing
   if(rf.A?.trim()){
     const found=S.invoices.find(r=>nz(r.AF)===rf.A.trim());
     if(!found)return 'מספר חשבונית לא קיים במערכת';
@@ -502,6 +502,18 @@ function openNewReceipt(){
   if(S.isState==='idle')loadInvoices();
   setHeader();render();
 }
+// Calculate current balance for an invoice number
+// Balance = invoice total (AE) minus sum of all receipts (col C) referencing that invoice (col A)
+function getInvBalance(invNum){
+  if(!invNum)return 0;
+  const inv=S.invoices.find(r=>nz(r.AF)===invNum);
+  if(!inv)return 0;
+  const total=parseFloat(nz(inv.AE))||0;
+  const paid=S.receipts
+    .filter(r=>nz(r.A)===invNum)
+    .reduce((s,r)=>s+(parseFloat(nz(r.C))||0),0);
+  return Math.max(0,total-paid);
+}
 // Get open invoices for a customer ת"ז
 function openInvsFor(custId){
   if(!custId)return[];
@@ -515,7 +527,7 @@ function openNewReceiptFromInv(invId){
   rf.A=nz(r.AF)||'';      // מספר חשבונית
   rf._custId=nz(r.A)||''; // ת"ז/ח"פ
   rf._custName=nz(r.B)||'';// שם עסק
-  rf._invTotal=nz(r.AE)||''; // סה"כ כולל מע"מ
+  rf._invTotal=String(getInvBalance(rf.A)); // current balance not raw total
   rf._invDate=nz(r.C)||'';
   // Find open invoices for this customer
   rf._openInvs=openInvsFor(rf._custId);
@@ -681,7 +693,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.1</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.2</div></div>`;
   return h;
 }
 
@@ -1048,16 +1060,19 @@ function renderReceiptForm(){
     rf._openInvs.forEach((inv,i)=>{
       const invNum=nz(inv.AF)||'—';
       const invDate=nz(inv.C)||'';
-      const invTotal=nz(inv.AE)||'';
+      const balance=getInvBalance(invNum);
+      const rawTotal=parseFloat(nz(inv.AE))||0;
+      const hasPartial=balance<rawTotal-0.1;
       const selected=rf.A===invNum;
       h+=`<div class="dtrow" style="cursor:pointer;${selected?`background:${color}15;`:''}${i===0?'border-top:none':''}"
-        onclick="pickReceiptInv('${esc(invNum)}','${esc(invTotal)}','${esc(invDate)}')">
+        onclick="pickReceiptInv('${esc(invNum)}','${balance}','${esc(invDate)}')">
         <div>
           <div style="font-size:13px;font-weight:600;color:${selected?color:'#222'}">#${esc(invNum)}</div>
           <div style="font-size:11px;color:#888">${esc(invDate)}</div>
+          ${hasPartial?`<div style="font-size:10px;color:#e65100">שולם חלקית: ₪${Math.round(rawTotal-balance).toLocaleString('he-IL')}</div>`:''}
         </div>
         <div style="text-align:left">
-          <div style="font-size:14px;font-weight:700;color:${color}">${invTotal?fmt(invTotal):''}</div>
+          <div style="font-size:14px;font-weight:700;color:${color}">יתרה: ${fmt(String(balance))}</div>
           ${selected?`<div style="font-size:10px;color:${color}">✓ נבחרה</div>`:''}
         </div>
       </div>`;
@@ -1067,7 +1082,7 @@ function renderReceiptForm(){
 
   // ── Show selected invoice total ──
   h+=`<div id="receipt-inv-total" style="display:${rf._invTotal?'flex':'none'};background:#f8f8f8;border-radius:8px;padding:9px 13px;margin-bottom:12px;justify-content:space-between">
-    <span style="font-size:13px;color:#666">סה"כ חשבונית לתשלום</span>
+    <span style="font-size:13px;color:#666">יתרה לתשלום</span>
     <span class="rcb-total" style="font-size:15px;font-weight:700;color:${color}">${rf._invTotal?fmt(rf._invTotal):''}</span>
   </div>`;
 
@@ -1176,6 +1191,9 @@ function renderRecList(){
           ${nz(r.D)?`<span>📅 ${esc(r.D)}</span>`:''}
           ${nz(r.A)?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
           ${nz(r.E)?`<span class="tag blue">🏦 שיק ${esc(r.E)}</span>`:''}
+          ${(()=>{if(!nz(r.A))return'';const bal=getInvBalance(r.A);
+            return bal>0.5?`<span style="font-size:11px;color:#e65100">יתרה: ₪${Math.round(bal).toLocaleString('he-IL')}</span>`
+              :`<span style="font-size:11px;color:#1e8e3e">✓ שולם</span>`;})()} 
         </div>
         <div class="r3" style="justify-content:flex-end">
           <span class="toggle-hint" style="color:${isE?color:'#bbb'}">${isE?'▲ סגור':'▼ פרטים'}</span>
@@ -1476,7 +1494,7 @@ function pickCustomer(name,id){
   if(S.rForm._openInvs.length===1){
     const inv=S.rForm._openInvs[0];
     S.rForm.A=nz(inv.AF)||'';
-    S.rForm._invTotal=nz(inv.AE)||'';
+    S.rForm._invTotal=String(getInvBalance(S.rForm.A));
     S.rForm._invDate=nz(inv.C)||'';
   }
   S.showSuggest=false;S.suggest=[];
@@ -1527,7 +1545,7 @@ function onReceiptInvNumInput(val){
     if(found){
       S.rForm._custId=nz(found.A)||'';
       S.rForm._custName=nz(found.B)||'';
-      S.rForm._invTotal=nz(found.AE)||'';
+      S.rForm._invTotal=String(getInvBalance(val.trim()));
       S.rForm._invDate=nz(found.C)||'';
       S.rForm._openInvs=openInvsFor(S.rForm._custId);
     }else{
@@ -1620,24 +1638,25 @@ async function saveReceipt(){
 
   const rf=S.rForm;
   const paid=parseFloat(rf.C)||0;
-  const total=parseFloat(rf._invTotal)||0;
+  const balance=parseFloat(rf._invTotal)||0; // current balance (already calculated)
 
-  // Underpayment warning (both cash and cheque)
-  if(total>0&&paid<total-0.5){
-    const diff=Math.round(total-paid).toLocaleString('he-IL');
-    if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nלתשלום: ₪${Math.round(total).toLocaleString('he-IL')}\nיתרה: ₪${diff}\n\nלהמשיך?`))return;
+  // Underpayment warning (rounding tolerance 0.5)
+  if(balance>0&&paid<balance-0.5){
+    const diff=Math.round(balance-paid).toLocaleString('he-IL');
+    if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nיתרה: ₪${Math.round(balance).toLocaleString('he-IL')}\nנותר לתשלום: ₪${diff}\n\nלהמשיך?`))return;
   }
 
-  // Cheque overpayment — append note to G
-  if(rf.B==='שיק'&&total>0&&paid>total+0.5&&rf._overInvNum?.trim()){
-    const diff=Math.round(paid-total).toLocaleString('he-IL');
-    const note=`ההפרש ₪${diff} שולם עבור חשבונית מספר ${rf._overInvNum.trim()}`;
+  // Cheque overpayment — C = balance (current invoice), excess → notes
+  let actualC=rf.C;
+  if(rf.B==='שיק'&&balance>0&&paid>balance+0.5){
+    const excess=Math.round(paid-balance);
+    const note=`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${excess.toLocaleString('he-IL')} עבור חשבונית מספר ${rf._overInvNum?.trim()||'—'}`;
     rf.G=rf.G?.trim()?(rf.G.trim()+' | '+note):note;
+    actualC=String(balance); // save only the balance amount to THIS invoice
   }
 
   S.saving=true;S.msg=null;render();
-  // Only A,B,C,D,E,F,G — never H (שם לקוח), I (ת"ז), J (מספר קבלה)
-  const data={A:rf.A||'',B:rf.B||'',C:rf.C||'',D:rf.D||tod(),E:rf.E||'',F:rf.F||'',G:rf.G||''};
+  const data={A:rf.A||'',B:rf.B||'',C:actualC||rf.C||'',D:rf.D||tod(),E:rf.E||'',F:rf.F||'',G:rf.G||''};
   try{
     await apiPost({action:'addReceipt',data});
     if(rf._photoBase64){
