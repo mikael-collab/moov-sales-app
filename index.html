@@ -331,7 +331,7 @@ function receiptFormErrors(){
   if(rf.B==='שיק'){
     if(!rf.E?.trim())return 'הזן מספר שיק';
     if(!rf.D?.trim())return 'הזן תאריך פרעון שיק';
-    if(!rf.F?.trim())return 'צלם את השיק';
+    if(!rf._photoTaken)return 'צלם את השיק';
   }
   return null;
 }
@@ -697,7 +697,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.7</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.8</div></div>`;
   return h;
 }
 
@@ -968,9 +968,9 @@ function renderInvForm(isTax){
       <input type="file" id="cheque-photo" accept="image/*" capture="environment"
         style="display:none" onchange="onPhotoChange(this)">
       <button type="button" class="finput"
-        style="text-align:center;cursor:pointer;background:${f.AI?'#e6f4ea':'#f8f8f8'};color:${f.AI?'#1e8e3e':'#555'};font-size:14px;"
+        style="text-align:center;cursor:pointer;background:${f._photoTaken?'#e6f4ea':'#f8f8f8'};color:${f._photoTaken?'#1e8e3e':'#555'};font-size:14px;"
         onclick="document.getElementById('cheque-photo').click()">
-        ${f.AI?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
+        ${f._photoTaken?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
       </button>
       ${f._photoDataUrl?`<img src="${f._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
     </div>
@@ -1142,9 +1142,9 @@ function renderReceiptForm(){
       <input type="file" id="receipt-cheque-photo" accept="image/*" capture="environment"
         style="display:none" onchange="onReceiptPhotoChange(this)">
       <button type="button" class="finput"
-        style="text-align:center;cursor:pointer;background:${rf.F?'#e6f4ea':'#f8f8f8'};color:${rf.F?'#1e8e3e':'#555'};font-size:14px;"
+        style="text-align:center;cursor:pointer;background:${rf._photoTaken?'#e6f4ea':'#f8f8f8'};color:${rf._photoTaken?'#1e8e3e':'#555'};font-size:14px;"
         onclick="document.getElementById('receipt-cheque-photo').click()">
-        ${rf.F?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
+        ${rf._photoTaken?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
       </button>
       ${rf._photoDataUrl?`<img src="${rf._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
     </div>
@@ -1617,7 +1617,8 @@ function onReceiptPhotoChange(input){
       c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
       const b64=c.toDataURL('image/jpeg',0.6);
-      S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;S.rForm.F='pending';
+      S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;
+      S.rForm._photoTaken=true; // validation flag only — F column left empty, GAS writes the image
       render();
       // Scroll to show the photo preview
       setTimeout(()=>{
@@ -1679,7 +1680,7 @@ async function saveReceipt(){
   const data1={
     A:rf.A||'',B:rf.B||'',
     C:isOverpay?String(Math.round(balance*100)/100):rf.C,
-    D:rf.D||tod(),E:rf.E||'',F:rf.F||'',G:g1Notes
+    D:rf.D||tod(),E:rf.E||'',G:g1Notes
   };
 
   S.saving=true;S.msg=null;render();
@@ -1694,7 +1695,7 @@ async function saveReceipt(){
       const data2={
         A:inv2,B:rf.B,
         C:String(Math.round(excess*100)/100),
-        D:rf.D||tod(),E:rf.E||'',F:rf.F||'',G:g2Notes
+        D:rf.D||tod(),E:rf.E||'',G:g2Notes
       };
       await apiPost({action:'addReceipt',data:data2});
       S.receipts.push({...data2,_id:S.receipts.length,_bg:'#ffffff'});
@@ -1794,7 +1795,7 @@ function taxFormErrors(){
   if(f.AE==='שיק'){
     if(!f.AH?.trim())return 'הזן מספר שיק';
     if(!f.AG?.trim())return 'הזן תאריך פרעון שיק';
-    if(!f.AI?.trim())return 'צלם את השיק';
+    if(!f._photoTaken)return 'צלם את השיק';
   }
   return null;
 }
@@ -1857,7 +1858,7 @@ function onPhotoChange(input){
       const b64=c.toDataURL('image/jpeg',0.6);
       S.iForm._photoDataUrl=b64;
       S.iForm._photoBase64=b64;
-      S.iForm.AI='pending'; // will be replaced by Drive URL after upload
+      S.iForm._photoTaken=true; // GAS writes the image URL to AI after chunked upload
       render();
       setTimeout(()=>{
         const img=document.querySelector('img[src^="data:image"]');
