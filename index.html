@@ -662,7 +662,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.4</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.5</div></div>`;
   return h;
 }
 
@@ -1012,15 +1012,14 @@ function renderReceiptForm(){
   </div>`;
 
   // ── Show resolved customer info ──
-  if(rf._custName||rf._custId){
-    h+=`<div style="background:#f0f4ff;border-radius:8px;padding:10px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:#1a73e8">${esc(rf._custName||'—')}</div>
-        <div style="font-size:11px;color:#888;font-family:monospace">${esc(rf._custId||'')}</div>
-      </div>
-      <button onclick="clearReceiptCustomer()" style="background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
-    </div>`;
-  }
+  const showCust=!!(rf._custName||rf._custId);
+  h+=`<div id="receipt-cust-block" style="display:${showCust?'flex':'none'};background:#f0f4ff;border-radius:8px;padding:10px 13px;margin-bottom:12px;justify-content:space-between;align-items:center">
+    <div>
+      <div class="rcb-name" style="font-size:13px;font-weight:600;color:#1a73e8">${esc(rf._custName||'—')}</div>
+      <div class="rcb-id" style="font-size:11px;color:#888;font-family:monospace">${esc(rf._custId||'')}</div>
+    </div>
+    <button onmousedown="event.preventDefault()" onclick="clearReceiptCustomer()" style="background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
+  </div>`;
 
   // ── Open invoices list for this customer ──
   if(rf._openInvs&&rf._openInvs.length){
@@ -1048,12 +1047,10 @@ function renderReceiptForm(){
   }
 
   // ── Show selected invoice total ──
-  if(rf._invTotal){
-    h+=`<div style="background:#f8f8f8;border-radius:8px;padding:9px 13px;margin-bottom:12px;display:flex;justify-content:space-between">
-      <span style="font-size:13px;color:#666">סה"כ חשבונית לתשלום</span>
-      <span style="font-size:15px;font-weight:700;color:${color}">${fmt(rf._invTotal)}</span>
-    </div>`;
-  }
+  h+=`<div id="receipt-inv-total" style="display:${rf._invTotal?'flex':'none'};background:#f8f8f8;border-radius:8px;padding:9px 13px;margin-bottom:12px;justify-content:space-between">
+    <span style="font-size:13px;color:#666">סה"כ חשבונית לתשלום</span>
+    <span class="rcb-total" style="font-size:15px;font-weight:700;color:${color}">${rf._invTotal?fmt(rf._invTotal):''}</span>
+  </div>`;
 
   h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
 
@@ -1456,9 +1453,40 @@ function onReceiptInvNumInput(val){
       S.rForm._invTotal=nz(found.AE)||'';
       S.rForm._invDate=nz(found.C)||'';
       S.rForm._openInvs=openInvsFor(S.rForm._custId);
+    }else{
+      S.rForm._custId='';S.rForm._custName='';
+      S.rForm._invTotal='';S.rForm._invDate='';
+      S.rForm._openInvs=[];
+    }
+    // Update customer info block in DOM without re-rendering the whole form
+    updateReceiptCustomerBlock();
+  }
+}
+
+function updateReceiptCustomerBlock(){
+  const rf=S.rForm;
+  const block=document.getElementById('receipt-cust-block');
+  const totalBlock=document.getElementById('receipt-inv-total');
+  if(block){
+    if(rf._custName||rf._custId){
+      block.style.display='flex';
+      const nameEl=block.querySelector('.rcb-name');
+      const idEl=block.querySelector('.rcb-id');
+      if(nameEl)nameEl.textContent=rf._custName||'—';
+      if(idEl)idEl.textContent=rf._custId||'';
+    }else{
+      block.style.display='none';
     }
   }
-  render();
+  if(totalBlock){
+    if(rf._invTotal){
+      totalBlock.style.display='flex';
+      const tv=totalBlock.querySelector('.rcb-total');
+      if(tv)tv.textContent=fmt(rf._invTotal);
+    }else{
+      totalBlock.style.display='none';
+    }
+  }
 }
 function pickReceiptInv(invNum,invTotal,invDate){
   S.rForm.A=invNum;
@@ -1510,11 +1538,11 @@ async function saveCust(){
 }
 
 async function saveReceipt(){
-  // Read directly from DOM inputs as fallback — Samsung Browser oninput can be unreliable
+  // Always read directly from DOM — Samsung Browser oninput/onchange can be unreliable
   const amtEl=document.getElementById('r-C');
   const payEl=document.getElementById('r-B');
-  if(amtEl&&amtEl.value)uf('rForm','C',amtEl.value);
-  if(payEl&&payEl.value)uf('rForm','B',payEl.value);
+  if(amtEl)S.rForm.C=amtEl.value.trim();
+  if(payEl)S.rForm.B=payEl.value;
 
   const err=receiptFormErrors();
   if(err){S.msg={t:'e',m:err};render();return;}
