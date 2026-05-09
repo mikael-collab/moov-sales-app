@@ -697,7 +697,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.9</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.0</div></div>`;
   return h;
 }
 
@@ -1609,13 +1609,14 @@ function onReceiptPhotoChange(input){
   reader.onload=function(e){
     const img=new Image();
     img.onload=function(){
-      const MAX=400;const ratio=Math.min(MAX/img.width,MAX/img.height,1);
+      const MAX=300;const ratio=Math.min(MAX/img.width,MAX/img.height,1);
       const c=document.createElement('canvas');
       c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      const b64=c.toDataURL('image/jpeg',0.6);
+      const b64=c.toDataURL('image/jpeg',0.5);
+      console.log('Photo compressed: '+b64.length+' chars, ~'+Math.ceil(b64.length/1500)+' chunks');
       S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;
-      S.rForm._photoTaken=true; // validation flag only — F column left empty, GAS writes the image
+      S.rForm._photoTaken=true;
       render();
       // Scroll to show the photo preview
       setTimeout(()=>{
@@ -1808,22 +1809,27 @@ async function uploadPhotoToGAS(photoBase64, sheetName, invDate, invCustId, save
     const CHUNK=1500;
     const key='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
     const total=Math.ceil(photoBase64.length/CHUNK);
+    console.log('Uploading photo: '+total+' chunks, key='+key);
     for(let i=0;i<total;i++){
       const chunk=photoBase64.slice(i*CHUNK,(i+1)*CHUNK);
       await new Promise(res=>{
         const img=new Image();
         img.onload=img.onerror=()=>res();
-        img.src=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
+        const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
           action:'photoChunk',
           key,index:i,total,chunk,
           sheetName,invDate,invCustId,
           savedRow:savedRow||null
         }));
-        // Timeout per chunk
+        console.log('Chunk '+i+' URL length: '+url.length);
+        img.src=url;
         setTimeout(res,8000);
       });
+      // Small delay between chunks to avoid rate limiting
+      if(i<total-1)await new Promise(r=>setTimeout(r,200));
     }
-  }catch(e){console.warn('photo upload',e.message);}
+    console.log('All chunks sent');
+  }catch(e){console.warn('photo upload error:',e.message);}
 }
 
 function renderSaveBtn(){
