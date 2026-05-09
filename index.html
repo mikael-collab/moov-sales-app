@@ -294,22 +294,31 @@ const tc=()=>TABS[S.tab].color;
 function efC(){const o={};CF.forEach(f=>o[f.k]='');return o;}
 function efR(){return{
   A:'',   // מספר חשבונית
-  B:'',   // סוג תשלום (no default — user must choose)
+  B:'',   // סוג תשלום
   C:'',   // סכום
   D:tod(),// תאריך
   E:'',   // מספר שיק
-  F:'',   // צילום שיק (Drive URL)
+  F:'',   // צילום שיק
   G:'',   // הערות
-  // H, I, J not saved — display only
   _custName:'', _custId:'', _invTotal:'', _invDate:'',
   _photoDataUrl:'', _photoBase64:'',
-  _openInvs:[], _showOpenInvs:false
+  _openInvs:[], _showOpenInvs:false,
+  _overInvNum:''  // invoice number for cheque overpayment note
 };}
+
 function receiptFormErrors(){
   const rf=S.rForm;
   if(!rf.B)return 'בחר סוג תשלום';
   if(!rf.C?.trim())return 'הזן סכום תשלום';
-  // Invoice number — if entered, must match an existing invoice
+  const paid=parseFloat(rf.C)||0;
+  const total=parseFloat(rf._invTotal)||0;
+  // Cash: cannot exceed invoice total
+  if(rf.B==='מזומן'&&total>0&&paid>total+0.5)
+    return `מזומן לא יכול לעלות על ₪${Math.round(total).toLocaleString('he-IL')}`;
+  // Cheque overpayment: require invoice number for the difference
+  if(rf.B==='שיק'&&total>0&&paid>total+0.5&&!rf._overInvNum?.trim())
+    return 'הזן מספר חשבונית עבור ההפרש';
+  // Invoice number — if entered must match existing
   if(rf.A?.trim()){
     const found=S.invoices.find(r=>nz(r.AF)===rf.A.trim());
     if(!found)return 'מספר חשבונית לא קיים במערכת';
@@ -667,7 +676,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.9</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.0</div></div>`;
   return h;
 }
 
@@ -1080,6 +1089,15 @@ function renderReceiptForm(){
       oninput="uf('rForm','C',this.value)" onchange="uf('rForm','C',this.value)">
   </div>`;
 
+  // Amount rules hint
+  if(rf._invTotal){
+    const total=parseFloat(rf._invTotal)||0;
+    h+=`<div style="background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#555">
+      ${isCash?`💵 מזומן: עד ₪${Math.round(total).toLocaleString('he-IL')} בלבד`
+              :`🏦 שיק: ₪${Math.round(total).toLocaleString('he-IL')} — שיק גדול יותר מצריין מספר חשבונית להפרש`}
+    </div>`;
+  }
+
   h+=`<div id="receipt-cash-date" style="display:${isCash?'block':'none'}">
     <div class="field"><label>תאריך תשלום <small>(עמודה D)</small></label>
       <input type="text" class="finput" value="${esc(rf.D||tod())}" readonly
@@ -1106,15 +1124,24 @@ function renderReceiptForm(){
       </button>
       ${rf._photoDataUrl?`<img src="${rf._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
     </div>
+    ${(()=>{const paid=parseFloat(rf.C)||0;const total=parseFloat(rf._invTotal)||0;
+      return isChk&&total>0&&paid>total+0.5?`
+      <div style="background:#fff8e1;border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:#e65100">
+        ⚠️ שיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — הזן מספר חשבונית להפרש
+      </div>
+      <div class="field"><label>מספר חשבונית עבור ההפרש *</label>
+        <input type="text" inputmode="numeric" id="r-overinv" class="finput num" value="${esc(rf._overInvNum||'')}"
+          oninput="uf('rForm','_overInvNum',this.value)" onchange="uf('rForm','_overInvNum',this.value)">
+      </div>`:'';})()}
   </div>`;
 
   h+=`<div class="field"><label>הערות <small>(עמודה G)</small></label>
     <textarea class="finput" id="r-G" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
   </div>`;
 
-  const btnBg=S.saving?'#ccc':(validErr?'#e0a000':color);
-  const btnTxt=S.saving?'⏳ שומר...':(validErr?'⚠️ '+validErr:'💾 שמור קבלה');
-  h+=`<button class="save-btn" onmousedown="captureReceiptFields()" style="background:${btnBg}" onclick="saveReceipt()">${btnTxt}</button></div>`;
+  // Button always enabled — captureReceiptFields runs onmousedown before validation
+  h+=`<button class="save-btn" onmousedown="captureReceiptFields()" style="background:${S.saving?'#ccc':color}" onclick="saveReceipt()">
+    ${S.saving?'⏳ שומר...':'💾 שמור קבלה'}</button></div>`;
   return h;
 }
 
@@ -1451,6 +1478,7 @@ function captureReceiptFields(){
   const inv=g('r-A').trim();  if(inv)S.rForm.A=inv;
   const chq=g('r-E').trim();  if(chq)S.rForm.E=chq;
   const dt =g('r-D').trim();  if(dt) S.rForm.D=dt;
+  const ov =g('r-overinv').trim(); if(ov)S.rForm._overInvNum=ov;
   const gEl=document.getElementById('r-G'); if(gEl)S.rForm.G=gEl.value;
 }
 function onReceiptPayTypeChange(val){
@@ -1467,9 +1495,17 @@ function clearReceiptCustomer(){
   S.rForm.A='';S.rForm._invTotal='';S.rForm._invDate='';
   render();
 }
+let _invLookupTimer=null;
 function onReceiptInvNumInput(val){
   S.rForm.A=val;
-  if(val.trim().length>=3){
+  clearTimeout(_invLookupTimer);
+  if(val.trim().length<3){
+    S.rForm._custId='';S.rForm._custName='';
+    S.rForm._invTotal='';S.rForm._invDate='';S.rForm._openInvs=[];
+    updateReceiptCustomerBlock();return;
+  }
+  // 600ms debounce — keyboard stays open while typing
+  _invLookupTimer=setTimeout(()=>{
     const found=S.invoices.find(r=>nz(r.AF)===val.trim());
     if(found){
       S.rForm._custId=nz(found.A)||'';
@@ -1479,12 +1515,10 @@ function onReceiptInvNumInput(val){
       S.rForm._openInvs=openInvsFor(S.rForm._custId);
     }else{
       S.rForm._custId='';S.rForm._custName='';
-      S.rForm._invTotal='';S.rForm._invDate='';
-      S.rForm._openInvs=[];
+      S.rForm._invTotal='';S.rForm._invDate='';S.rForm._openInvs=[];
     }
-    // Update customer info block in DOM without re-rendering the whole form
     updateReceiptCustomerBlock();
-  }
+  },600);
 }
 
 function updateReceiptCustomerBlock(){
@@ -1563,12 +1597,28 @@ async function saveCust(){
 
 async function saveReceipt(){
   if(S.saving)return;
-  // Capture all field values from DOM (onmousedown already did this, but be safe)
   captureReceiptFields();
   const err=receiptFormErrors();
   if(err){S.msg={t:'e',m:err};render();return;}
-  S.saving=true;S.msg=null;render();
+
   const rf=S.rForm;
+  const paid=parseFloat(rf.C)||0;
+  const total=parseFloat(rf._invTotal)||0;
+
+  // Underpayment warning (both cash and cheque)
+  if(total>0&&paid<total-0.5){
+    const diff=Math.round(total-paid).toLocaleString('he-IL');
+    if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nלתשלום: ₪${Math.round(total).toLocaleString('he-IL')}\nיתרה: ₪${diff}\n\nלהמשיך?`))return;
+  }
+
+  // Cheque overpayment — append note to G
+  if(rf.B==='שיק'&&total>0&&paid>total+0.5&&rf._overInvNum?.trim()){
+    const diff=Math.round(paid-total).toLocaleString('he-IL');
+    const note=`ההפרש ₪${diff} שולם עבור חשבונית מספר ${rf._overInvNum.trim()}`;
+    rf.G=rf.G?.trim()?(rf.G.trim()+' | '+note):note;
+  }
+
+  S.saving=true;S.msg=null;render();
   // Only A,B,C,D,E,F,G — never H (שם לקוח), I (ת"ז), J (מספר קבלה)
   const data={A:rf.A||'',B:rf.B||'',C:rf.C||'',D:rf.D||tod(),E:rf.E||'',F:rf.F||'',G:rf.G||''};
   try{
