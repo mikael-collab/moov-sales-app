@@ -667,7 +667,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.8</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.9</div></div>`;
   return h;
 }
 
@@ -1110,11 +1110,11 @@ function renderReceiptForm(){
 
   h+=`<div class="field"><label>הערות <small>(עמודה G)</small></label>
     <textarea class="finput" id="r-G" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
-  </div>
+  </div>`;
 
-  <button class="save-btn" onmousedown="captureReceiptFields()" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveReceipt()">
-    ${S.saving?'⏳ שומר...':(validErr?'⛔ '+validErr:'💾 שמור קבלה')}
-  </button></div>`;
+  const btnBg=S.saving?'#ccc':(validErr?'#e0a000':color);
+  const btnTxt=S.saving?'⏳ שומר...':(validErr?'⚠️ '+validErr:'💾 שמור קבלה');
+  h+=`<button class="save-btn" onmousedown="captureReceiptFields()" style="background:${btnBg}" onclick="saveReceipt()">${btnTxt}</button></div>`;
   return h;
 }
 
@@ -1562,11 +1562,9 @@ async function saveCust(){
 }
 
 async function saveReceipt(){
-  // Read amount directly from DOM — Samsung Browser oninput can be unreliable
-  const amtEl=document.getElementById('r-C');
-  if(amtEl)S.rForm.C=amtEl.value.trim();
-  // B is set directly by button tap via onReceiptPayTypeChange - no DOM read needed
-
+  if(S.saving)return;
+  // Capture all field values from DOM (onmousedown already did this, but be safe)
+  captureReceiptFields();
   const err=receiptFormErrors();
   if(err){S.msg={t:'e',m:err};render();return;}
   S.saving=true;S.msg=null;render();
