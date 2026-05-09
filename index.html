@@ -662,7 +662,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.5</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v3.6</div></div>`;
   return h;
 }
 
@@ -1055,10 +1055,19 @@ function renderReceiptForm(){
   h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
 
   <div class="field"><label>סוג תשלום <small>(עמודה B) *</small></label>
-    <select class="finput" id="r-B" onchange="onReceiptPayTypeChange(this.value)">
-      <option value="">-- בחר --</option>
-      ${PAYMENT_TYPES.map(pt=>`<option${rf.B===pt?' selected':''}>${pt}</option>`).join('')}
-    </select>
+    <div style="display:flex;gap:8px">
+      ${PAYMENT_TYPES.map(pt=>{
+        const sel=rf.B===pt;
+        return`<button type="button" onmousedown="event.preventDefault()"
+          onclick="onReceiptPayTypeChange('${pt}')"
+          style="flex:1;padding:12px;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;
+          border:2px solid ${sel?color:'#e0e0e0'};
+          background:${sel?color:'#f8f8f8'};
+          color:${sel?'#fff':'#555'}">
+          ${pt==='מזומן'?'💵 מזומן':'🏦 שיק'}
+        </button>`;
+      }).join('')}
+    </div>
   </div>
 
   <div class="field"><label>סכום התשלום ₪ <small>(עמודה C) *</small></label>
@@ -1430,13 +1439,8 @@ function pickCustomer(name,id){
   render();
 }
 function onReceiptPayTypeChange(val){
-  uf('rForm','B',val);
-  // Show/hide cheque-specific fields without full re-render
-  const isChk=val==='שיק';
-  const chkFields=document.getElementById('receipt-chk-fields');
-  const cashDate=document.getElementById('receipt-cash-date');
-  if(chkFields)chkFields.style.display=isChk?'block':'none';
-  if(cashDate)cashDate.style.display=val==='מזומן'?'block':'none';
+  S.rForm.B=val; // set directly — no uf needed
+  render(); // re-render to highlight selected button and show/hide cheque fields
 }
 function clearReceiptCustomer(){
   S.rForm._custName='';S.rForm._custId='';S.rForm._openInvs=[];
@@ -1538,11 +1542,10 @@ async function saveCust(){
 }
 
 async function saveReceipt(){
-  // Always read directly from DOM — Samsung Browser oninput/onchange can be unreliable
+  // Read amount directly from DOM — Samsung Browser oninput can be unreliable
   const amtEl=document.getElementById('r-C');
-  const payEl=document.getElementById('r-B');
   if(amtEl)S.rForm.C=amtEl.value.trim();
-  if(payEl)S.rForm.B=payEl.value;
+  // B is set directly by button tap via onReceiptPayTypeChange - no DOM read needed
 
   const err=receiptFormErrors();
   if(err){S.msg={t:'e',m:err};render();return;}
