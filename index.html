@@ -697,7 +697,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.6</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.7</div></div>`;
   return h;
 }
 
@@ -1612,12 +1612,12 @@ function onReceiptPhotoChange(input){
   reader.onload=function(e){
     const img=new Image();
     img.onload=function(){
-      const MAX=800;const ratio=Math.min(MAX/img.width,MAX/img.height,1);
+      const MAX=400;const ratio=Math.min(MAX/img.width,MAX/img.height,1);
       const c=document.createElement('canvas');
       c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      const b64=c.toDataURL('image/jpeg',0.8);
-      S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;S.rForm.F='📷';
+      const b64=c.toDataURL('image/jpeg',0.6);
+      S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;S.rForm.F='pending';
       render();
       // Scroll to show the photo preview
       setTimeout(()=>{
@@ -1801,21 +1801,30 @@ function taxFormErrors(){
 
 // Photo upload via fetch text/plain — simple CORS request, no preflight
 // GAS receives full POST body before any redirect
-async function uploadPhotoToGAS(photoBase64, sheetName, invDate, invCustId){
+// Upload photo via chunked Image beacon GETs — the only approach that reliably reaches GAS.
+// POST body is always lost (302 redirect converts POST→GET, body dropped).
+// Each chunk is ~1500 chars base64, well within 8KB URL limit.
+async function uploadPhotoToGAS(photoBase64, sheetName, invDate, invCustId, savedRow){
   if(!S.scriptUrl||!photoBase64)return;
   try{
-    const body=JSON.stringify({
-      action:'uploadPhoto',
-      sheetName,invDate,invCustId,
-      _photoBase64:photoBase64
-    });
-    // text/plain is a "simple" CORS request — no preflight OPTIONS
-    // The POST body reaches GAS doPost before the 302 redirect
-    await fetch(S.scriptUrl,{
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body
-    });
+    const CHUNK=1500;
+    const key='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+    const total=Math.ceil(photoBase64.length/CHUNK);
+    for(let i=0;i<total;i++){
+      const chunk=photoBase64.slice(i*CHUNK,(i+1)*CHUNK);
+      await new Promise(res=>{
+        const img=new Image();
+        img.onload=img.onerror=()=>res();
+        img.src=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
+          action:'photoChunk',
+          key,index:i,total,chunk,
+          sheetName,invDate,invCustId,
+          savedRow:savedRow||null
+        }));
+        // Timeout per chunk
+        setTimeout(res,8000);
+      });
+    }
   }catch(e){console.warn('photo upload',e.message);}
 }
 
@@ -1845,10 +1854,10 @@ function onPhotoChange(input){
       c.width=Math.round(img.width*ratio);
       c.height=Math.round(img.height*ratio);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      const b64=c.toDataURL('image/jpeg',0.8);
+      const b64=c.toDataURL('image/jpeg',0.6);
       S.iForm._photoDataUrl=b64;
       S.iForm._photoBase64=b64;
-      S.iForm.AI='📷';
+      S.iForm.AI='pending'; // will be replaced by Drive URL after upload
       render();
       setTimeout(()=>{
         const img=document.querySelector('img[src^="data:image"]');
