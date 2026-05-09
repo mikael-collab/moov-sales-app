@@ -479,6 +479,8 @@ function switchTab(tab){
   if(tab==='invoices'&&S.isState==='idle')loadInvoices();
   else if(tab==='receipts'&&S.rsState==='idle')loadReceipts();
   else if(tab==='tax'&&S.tsState==='idle')loadTax();
+  // Also load receipts when viewing invoices — needed for balance calculation
+  if(tab==='invoices'&&S.rsState==='idle')loadReceipts();
   else render();
 }
 
@@ -695,7 +697,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.5</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v4.6</div></div>`;
   return h;
 }
 
@@ -1244,13 +1246,20 @@ function renderDocList(data,state,isTax){
     const bizName=nz(r.B);const custId=nz(r.A);const date=nz(r.C);
     const prods=PRODS.filter(p=>{const q=parseFloat(r[p.qk]);return!isNaN(q)&&q>0;});
     const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
+    // Balance — only calculated for invoice tab (not tax), only when receipts loaded
+    const balance=(!isTax&&invNum)?getInvBalance(invNum):null;
+    const hasPartialPay=balance!==null&&balance<parseMoney(totVAT)-0.5;
 
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1">
           ${invNum?`<span class="nbadge" style="background:${color}">#${esc(invNum)}</span>`:''}
           <span style="font-weight:600;font-size:14px;color:#222;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(bizName||custId||'—')}</span>
-          ${totVAT?`<span style="font-size:15px;font-weight:700;color:${color};flex-shrink:0">${fmt(totVAT)}</span>`:''}
+          <div style="text-align:left;flex-shrink:0">
+            ${totVAT?`<div style="font-size:15px;font-weight:700;color:${color}">${fmt(totVAT)}</div>`:''}
+            ${hasPartialPay?`<div style="font-size:11px;font-weight:700;color:#e65100">יתרה: ₪${Math.round(balance).toLocaleString('he-IL')}</div>`:''}
+            ${balance===0&&totVAT?`<div style="font-size:11px;color:#1e8e3e;font-weight:600">✓ שולם</div>`:''}
+          </div>
         </div>
         <div class="r2">
           ${date?`<span>📅 ${esc(date)}</span>`:''}
@@ -1289,13 +1298,19 @@ function renderDocList(data,state,isTax){
         nz(r.AB)&&{l:'הנחה',vv:r.AB+'%',disc:true},
         nz(r.AC)&&{l:'סה"כ אחר הנחה (לפני מע"מ)',vv:fmt(r.AC)},
         totVAT&&{l:'סה"כ כולל מע"מ',vv:fmt(totVAT),hi:true},
+        hasPartialPay&&{l:'שולם עד כה',vv:`₪${Math.round(parseMoney(totVAT)-balance).toLocaleString('he-IL')}`,paid:true},
+        hasPartialPay&&{l:'יתרה לתשלום',vv:`₪${Math.round(balance).toLocaleString('he-IL')}`,bal:true},
+        balance===0&&totVAT&&{l:'סטטוס',vv:'✓ שולם במלואו',done:true},
       ].filter(Boolean);
       if(pricing.length){
         h+=`<div class="dtable" style="margin-bottom:10px">`;
         pricing.forEach((row,ri)=>{
-          h+=`<div class="dtrow" style="${ri===0?'border-top:none;':''}${row.hi?`background:${color}15`:''}">
+          const bgStyle=row.hi?`background:${color}15`:row.bal?'background:#fff3e0':row.done?'background:#e6f4ea':'';
+          const valColor=row.hi?color:row.disc?'#c62828':row.bal?'#e65100':row.done?'#1e8e3e':row.paid?'#555':'#222';
+          const valSize=row.hi||row.bal?15:13;
+          h+=`<div class="dtrow" style="${ri===0?'border-top:none;':''}${bgStyle}">
             <span class="dtlabel">${row.l}</span>
-            <span class="dtval" style="color:${row.hi?color:row.disc?'#c62828':'#222'};font-size:${row.hi?15:13}px;font-weight:${row.hi?700:500}">${row.vv}</span>
+            <span class="dtval" style="color:${valColor};font-size:${valSize}px;font-weight:${row.hi||row.bal||row.done?700:500}">${row.vv}</span>
           </div>`;
         });
         h+=`</div>`;
