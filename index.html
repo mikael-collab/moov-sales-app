@@ -697,7 +697,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.0</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.2</div></div>`;
   return h;
 }
 
@@ -872,15 +872,17 @@ function renderInvForm(isTax){
 
   if(S.msg)h+=alertHtml(S.msg);
 
-  // Customer — only ת"ז/ח"פ needed (שם העסק is calculated by the sheet)
+  // Customer — ת"ז/ח"פ is mandatory
   h+=`<div class="fdivider" style="margin-top:0"><hr><span>👤 לקוח</span><hr></div>
-  <div class="field"><label>ת"ז / ח"פ <small>(עמודה A)</small></label>
+  <div class="field"><label>ת"ז / ח"פ <small>(עמודה A) *</small></label>
     <div class="field-wrap">
       <input type="text" id="inv-B" class="finput" value="${esc(f.B)}" placeholder="הקלד לחיפוש לקוח..."
         oninput="onInvCustSearch(this.value)" autocomplete="off">
       ${S.showSuggest&&S.suggest.length?suggestHtmlInv():''}
     </div>
   </div>
+  ${f.A?`<div style="background:#f0f4ff;border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:12px;font-family:monospace;color:#1a73e8">ת"ז/ח"פ: ${esc(f.A)}</div>`
+    :`<div style="background:#fff3e0;border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:12px;color:#e65100">⚠️ יש לבחור לקוח מהרשימה</div>`}
   <div class="field"><label>תאריך <small>(עמודה C)</small></label>
     <input type="date" id="inv-C" class="finput" style="direction:ltr;text-align:left"
       value="${dateToISO(f.C)}" max="${dateToISO(tod())}"
@@ -1710,6 +1712,9 @@ async function saveInv(isTax){
   const f=S.iForm;
   const calc=calcInv(f);
 
+  // ── Mandatory for both invoice and חשמ"ק ──
+  if(!f.A?.trim()){S.msg={t:'e',m:'ת"ז / ח"פ של הלקוח הוא שדה חובה'};render();return;}
+
   // ── Validation for חשמ"ק only ──
   if(isTax){
     const err=taxFormErrors();
@@ -1764,8 +1769,10 @@ async function saveInv(isTax){
       uploadPhotoToGAS(
         f._photoBase64,
         SHEETS[isTax?'tax':'invoices'],
-        data.C||'',
-        data.A||''
+        data.C||'',   // col C = invoice date
+        data.A||'',   // col A = ת"ז/ח"פ
+        null,
+        data.AF||data.AK||'' // invoice number as extra fallback key
       );
     }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
@@ -1784,6 +1791,7 @@ function taxFormErrors(){
   const total=calc.withVat;
   const paid=parseFloat(f.AF||0);
   const isOver=f.AE==='שיק'&&total>0&&paid>total+0.5;
+  if(!f.A?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
   if(!f.AE)return 'בחר סוג תשלום';
   if(!f.AF?.trim())return 'הזן סכום תשלום';
   if(f.AE==='מזומן'&&total>0&&paid>total+0.5)
@@ -1803,7 +1811,7 @@ function taxFormErrors(){
 // Upload photo via chunked Image beacon GETs — the only approach that reliably reaches GAS.
 // POST body is always lost (302 redirect converts POST→GET, body dropped).
 // Each chunk is ~1500 chars base64, well within 8KB URL limit.
-async function uploadPhotoToGAS(photoBase64, sheetName, invDate, invCustId, savedRow){
+async function uploadPhotoToGAS(photoBase64, sheetName, invDate, invCustId, savedRow, invNum){
   if(!S.scriptUrl||!photoBase64)return;
   try{
     const CHUNK=1500;
@@ -1818,17 +1826,14 @@ async function uploadPhotoToGAS(photoBase64, sheetName, invDate, invCustId, save
         const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
           action:'photoChunk',
           key,index:i,total,chunk,
-          sheetName,invDate,invCustId,
+          sheetName,invDate,invCustId,invNum:invNum||'',
           savedRow:savedRow||null
         }));
-        console.log('Chunk '+i+' URL length: '+url.length);
         img.src=url;
         setTimeout(res,8000);
       });
-      // Small delay between chunks to avoid rate limiting
       if(i<total-1)await new Promise(r=>setTimeout(r,200));
     }
-    console.log('All chunks sent');
   }catch(e){console.warn('photo upload error:',e.message);}
 }
 
