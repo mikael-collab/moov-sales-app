@@ -702,7 +702,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.7</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.8</div></div>`;
   return h;
 }
 
@@ -1815,18 +1815,20 @@ async function saveInv(isTax){
       sheetName:SHEETS[isTax?'tax':'invoices'],
       data
     };
-    await apiPost(payload);
+    // Image beacon write — no response, but reliable delivery
+    apiPost(payload);
 
-    // Delay photo upload — Image beacon resolves before GAS finishes writing the row
+    // Photo upload: wait for write to complete, then find the row by querying the sheet
     if(f._photoBase64){
       const photoB64=f._photoBase64;
       const shName=SHEETS[isTax?'tax':'invoices'];
       const invDate=data.C||'';
       const custId=data.A||'';
       const invNum=data.AF||data.AK||'';
+      // Wait 5s for GAS to write the row, then upload photo with all identifiers
       setTimeout(()=>{
         uploadPhotoToGAS(photoB64,shName,invDate,custId,null,invNum).catch(()=>{});
-      },8000); // 8s — GAS row write + formula calculation can take several seconds
+      },5000);
     }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
