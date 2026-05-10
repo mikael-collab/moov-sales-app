@@ -702,7 +702,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.6</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.7</div></div>`;
   return h;
 }
 
@@ -1047,25 +1047,36 @@ function renderReceiptForm(){
       oninput="onReceiptInvNumInput(this.value)">
   </div>`;
 
-  // ── Customer search (alternative entry point) ──
-  h+=`<div class="field"><label>חיפוש לקוח</label>
-    <div class="field-wrap">
-      <input type="text" id="r-H" class="finput" value="${esc(rf._custName)}"
-        placeholder="הקלד שם לקוח, שם עסק או ת\"ז"
-        oninput="onCustSearch(this.value)" autocomplete="off">
-      ${S.showSuggest&&S.suggest.length?suggestHtmlReceipt():''}
-    </div>
-  </div>`;
-
-  // ── Show resolved customer info ──
-  const showCust=!!(rf._custName||rf._custId);
-  h+=`<div id="receipt-cust-block" style="display:${showCust?'flex':'none'};background:#f0f4ff;border-radius:8px;padding:10px 13px;margin-bottom:12px;justify-content:space-between;align-items:center">
-    <div>
-      <div class="rcb-name" style="font-size:13px;font-weight:600;color:#1a73e8">${esc(rf._custName||'—')}</div>
-      <div class="rcb-id" style="font-size:11px;color:#888;font-family:monospace">${esc(rf._custId||'')}</div>
-    </div>
-    <button onmousedown="event.preventDefault()" onclick="clearReceiptCustomer()" style="background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
-  </div>`;
+  // ── Customer — locked (read-only) when invoice number is filled ──
+  const invLocked=!!rf.A.trim();
+  if(invLocked){
+    // Show resolved customer as read-only info block
+    h+=`<div style="background:#f0f4ff;border-radius:8px;padding:10px 13px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600;color:#1a73e8">${esc(rf._custName||'—')}</div>
+      ${rf._custId?`<div style="font-size:11px;color:#888;font-family:monospace;margin-top:2px">ת"ז/ח"פ: ${esc(rf._custId)}</div>`:''}
+      <div style="font-size:10px;color:#aaa;margin-top:4px">למחיקת הלקוח — מחק את מספר החשבונית</div>
+    </div>`;
+  }else{
+    // Free search
+    h+=`<div class="field"><label>חיפוש לקוח</label>
+      <div class="field-wrap">
+        <input type="text" id="r-H" class="finput" value="${esc(rf._custName)}"
+          placeholder="הקלד שם לקוח, שם עסק או ת&quot;ז"
+          oninput="onCustSearch(this.value)" autocomplete="off">
+        ${S.showSuggest&&S.suggest.length?suggestHtmlReceipt():''}
+      </div>
+    </div>`;
+    // Show resolved customer info when found via search
+    if(rf._custName||rf._custId){
+      h+=`<div id="receipt-cust-block" style="background:#f0f4ff;border-radius:8px;padding:10px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="rcb-name" style="font-size:13px;font-weight:600;color:#1a73e8">${esc(rf._custName||'—')}</div>
+          ${rf._custId?`<div class="rcb-id" style="font-size:11px;color:#888;font-family:monospace">${esc(rf._custId)}</div>`:''}
+        </div>
+        <button onmousedown="event.preventDefault()" onclick="clearReceiptCustomer()" style="background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
+      </div>`;
+    }
+  }
 
   // ── Open invoices list for this customer ──
   if(rf._openInvs&&rf._openInvs.length){
@@ -1124,13 +1135,19 @@ function renderReceiptForm(){
       oninput="uf('rForm','C',this.value)" onchange="uf('rForm','C',this.value)">
   </div>`;
 
-  // Amount rules hint
-  if(rf._invTotal){
+  // Amount hint — only show when relevant
+  if(rf._invTotal&&rf.B){
     const total=parseFloat(rf._invTotal)||0;
-    h+=`<div style="background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#555">
-      ${isCash?`💵 מזומן: עד ₪${Math.round(total).toLocaleString('he-IL')} בלבד`
-              :`🏦 שיק: ₪${Math.round(total).toLocaleString('he-IL')} — שיק גדול יותר מצריין מספר חשבונית להפרש`}
-    </div>`;
+    const paid=parseFloat(rf.C)||0;
+    if(isCash&&total>0){
+      h+=`<div style="background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#555">
+        💵 מזומן: עד ₪${Math.round(total).toLocaleString('he-IL')} בלבד
+      </div>`;
+    }else if(isChk&&total>0&&paid>total+0.5){
+      h+=`<div style="background:#fff8e1;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#e65100">
+        🏦 שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ב-₪${Math.round(paid-total).toLocaleString('he-IL')} מעל היתרה. יש למלא מספר חשבונית להפרש
+      </div>`;
+    }
   }
 
   h+=`<div id="receipt-cash-date" style="display:${isCash?'block':'none'}">
