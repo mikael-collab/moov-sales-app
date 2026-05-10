@@ -697,7 +697,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.4</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.5</div></div>`;
   return h;
 }
 
@@ -1713,7 +1713,8 @@ async function saveReceipt(){
     await apiPost({action:'addReceipt',data:data1});
     S.receipts.push({...data1,_id:S.receipts.length,_bg:'#ffffff'});
     if(rf._photoBase64){
-      uploadPhotoToGAS(rf._photoBase64,'קבלות',data1.D,data1.A).catch(()=>{});
+      const b64=rf._photoBase64,d1=data1.D,a1=data1.A;
+      setTimeout(()=>uploadPhotoToGAS(b64,'קבלות',d1,a1).catch(()=>{}),3000);
     }
 
     // Receipt 2 — created automatically for the second invoice (overpayment)
@@ -1727,7 +1728,8 @@ async function saveReceipt(){
       await apiPost({action:'addReceipt',data:data2});
       S.receipts.push({...data2,_id:S.receipts.length,_bg:'#ffffff'});
       if(rf._photoBase64){
-        uploadPhotoToGAS(rf._photoBase64,'קבלות',data2.D,data2.A).catch(()=>{});
+        const b64=rf._photoBase64,d2=data2.D,a2=data2.A;
+        setTimeout(()=>uploadPhotoToGAS(b64,'קבלות',d2,a2).catch(()=>{}),5000);
       }
     }
 
@@ -1793,16 +1795,16 @@ async function saveInv(isTax){
     };
     await apiPost(payload);
 
-    // Upload photo via text/plain POST — separate from invoice save
+    // Delay photo upload — Image beacon resolves before GAS finishes writing the row
     if(f._photoBase64){
-      uploadPhotoToGAS(
-        f._photoBase64,
-        SHEETS[isTax?'tax':'invoices'],
-        data.C||'',   // col C = invoice date
-        data.A||'',   // col A = ת"ז/ח"פ
-        null,
-        data.AF||data.AK||'' // invoice number as extra fallback key
-      );
+      const photoB64=f._photoBase64;
+      const shName=SHEETS[isTax?'tax':'invoices'];
+      const invDate=data.C||'';
+      const custId=data.A||'';
+      const invNum=data.AF||data.AK||'';
+      setTimeout(()=>{
+        uploadPhotoToGAS(photoB64,shName,invDate,custId,null,invNum).catch(()=>{});
+      },4000); // 4s delay — GAS row write typically takes 1-3s
     }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
