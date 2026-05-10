@@ -702,7 +702,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.0</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.1</div></div>`;
   return h;
 }
 
@@ -1818,14 +1818,18 @@ async function saveInv(isTax){
     // Fire-and-forget write (Image beacon — no response)
     apiPost(payload);
 
-    // Upload photo — same pattern as receipts (direct setTimeout, no apiFetch)
-    if(f._photoBase64){
-      const photoB64=f._photoBase64;
-      const shName=SHEETS[isTax?'tax':'invoices'];
-      const invDate=data.C||'';
-      const custId=data.A||'';
-      const invNum=data.AF||data.AK||'';
+    // Upload photo — captured BEFORE iForm is cleared
+    const hasPhoto=!!(f._photoBase64);
+    const photoB64=f._photoBase64||'';
+    const shName=SHEETS[isTax?'tax':'invoices'];
+    const invDate=data.C||'';
+    const custId=data.A||'';
+    const invNum=data.AF||data.AK||'';
+
+    if(hasPhoto){
+      console.log('Photo scheduled for upload in 5s, size='+photoB64.length+' shName='+shName+' date='+invDate+' cust='+custId);
       setTimeout(function(){
+        console.log('Photo upload firing now...');
         uploadPhotoToGAS(photoB64,shName,invDate,custId,null,invNum);
       },5000);
     }
