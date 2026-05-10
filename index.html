@@ -702,7 +702,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.9</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.0</div></div>`;
   return h;
 }
 
@@ -1818,28 +1818,16 @@ async function saveInv(isTax){
     // Fire-and-forget write (Image beacon — no response)
     apiPost(payload);
 
-    // Photo upload: read the sheet after write to find exact row, then send chunks
+    // Upload photo — same pattern as receipts (direct setTimeout, no apiFetch)
     if(f._photoBase64){
       const photoB64=f._photoBase64;
       const shName=SHEETS[isTax?'tax':'invoices'];
       const invDate=data.C||'';
       const custId=data.A||'';
-      // Wait for GAS to write the row, then find it via a read
-      setTimeout(async()=>{
-        try{
-          // Read last 5 rows of the sheet to find our row
-          const rows=await apiFetch({sheet:shName,limit:5});
-          let savedRow=null;
-          if(rows&&rows.data){
-            const match=rows.data.slice().reverse().find(r=>r.C===invDate&&r.A===custId);
-            if(match&&match._rowIndex)savedRow=match._rowIndex;
-          }
-          uploadPhotoToGAS(photoB64,shName,invDate,custId,savedRow,data.AF||data.AK||'').catch(()=>{});
-        }catch(e){
-          // Fallback: just send without row number
-          uploadPhotoToGAS(photoB64,shName,invDate,custId,null,data.AF||data.AK||'').catch(()=>{});
-        }
-      },4000);
+      const invNum=data.AF||data.AK||'';
+      setTimeout(function(){
+        uploadPhotoToGAS(photoB64,shName,invDate,custId,null,invNum);
+      },5000);
     }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
