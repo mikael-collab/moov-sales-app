@@ -450,7 +450,7 @@ async function loadAny(tab,stateKey,limit,req){
     if(limit)p.limit=limit;
     if(req)p.require=req;
     const d=await apiFetch(p);
-    S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i}));
+    S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i,_row:i+2})); // _row = 1-based sheet row (header is row 1)
     S[stateKey]='ok';delete S.errors[tab];
   }catch(e){
     S[stateKey]=isBusy(e)?'busy':'error';
@@ -697,7 +697,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.2</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.3</div></div>`;
   return h;
 }
 
@@ -800,20 +800,25 @@ function cCardBody(c,color){
     </div>`;});
     h+=`</div>`;
   }
+  h+=`<button onclick="editCust(${c._id})"
+    style="width:100%;margin-top:10px;padding:11px;border-radius:8px;border:1.5px solid ${color};
+    background:transparent;color:${color};font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">
+    ✏️ ערוך פרטי לקוח
+  </button>`;
   return h+`</div>`;
 }
 
 // ── New Customer Form ──
 function renderCustForm(){
-  const color=tc();
+  const color=tc();const isEdit=!!S.cForm._editId;
   let h=`<div class="fwrap" style="--tc:${color}">`;
   if(S.msg)h+=alertHtml(S.msg);
-  h+=`<div class="sec-t">פרטי לקוח</div>`;
+  h+=`<div class="sec-t">${isEdit?'✏️ עריכת לקוח':'פרטי לקוח'}</div>`;
   CF.filter(f=>!f.bank).forEach(f=>{h+=custField(f);});
   h+=`<div class="fdivider"><hr><span>🏦 פרטי בנק</span><hr></div>`;
   CF.filter(f=>f.bank).forEach(f=>{h+=custField(f);});
   h+=`<button class="save-btn" style="background:${S.saving?'#ccc':color}" ${S.saving?'disabled':''} onclick="saveCust()">
-    ${S.saving?'⏳ שומר...':'💾 שמור לקוח'}</button></div>`;
+    ${S.saving?'⏳ שומר...':(isEdit?'💾 עדכן לקוח':'💾 שמור לקוח')}</button></div>`;
   return h;
 }
 function custField(f){
@@ -1642,14 +1647,35 @@ function pickInvCust(custId,bizName){
   document.getElementById('suggest-box')?.remove();
 }
 
+function editCust(custId){
+  const c=S.customers.find(x=>x._id===custId);
+  if(!c)return;
+  // Pre-fill form with existing values
+  const form={};
+  CF.forEach(f=>{form[f.k]=c[f.k]||'';});
+  S.cForm=form;
+  S.cForm._editId=custId;   // signals update mode
+  S.cForm._editRow=c._row;  // sheet row number for GAS update
+  S.screen='new-customer';S.msg=null;
+  setHeader();render();
+}
+
 async function saveCust(){
   if(!S.cForm.A?.trim()){S.msg={t:'e',m:'שם לקוח הוא שדה חובה'};render();return;}
   if(S.cForm.D)S.cForm.D=fmtPhone(S.cForm.D);
+  const isEdit=!!S.cForm._editId;
   S.saving=true;S.msg=null;render();
   try{
-    await apiPost({action:'addCustomer',data:{...S.cForm}});
-    S.customers.push({...S.cForm,_id:S.customers.length,_bg:'#ffffff'});
-    S.msg={t:'s',m:'הלקוח נשמר בהצלחה!'};S.saving=false;render();
+    if(isEdit){
+      await apiPost({action:'updateCustomer',data:{...S.cForm},editRow:S.cForm._editRow});
+      // Update local cache
+      const idx=S.customers.findIndex(c=>c._id===S.cForm._editId);
+      if(idx>=0)S.customers[idx]={...S.customers[idx],...S.cForm};
+    }else{
+      await apiPost({action:'addCustomer',data:{...S.cForm}});
+      S.customers.push({...S.cForm,_id:S.customers.length,_bg:'#ffffff'});
+    }
+    S.msg={t:'s',m:isEdit?'פרטי הלקוח עודכנו!':'הלקוח נשמר בהצלחה!'};S.saving=false;render();
     setTimeout(()=>{S.screen='list';S.cForm=efC();S.msg=null;setHeader();render();},1500);
   }catch(e){S.msg={t:'e',m:e.message||'שגיאה'};S.saving=false;render();}
 }
@@ -1687,7 +1713,9 @@ async function saveReceipt(){
   try{
     await apiPost({action:'addReceipt',data:data1});
     S.receipts.push({...data1,_id:S.receipts.length,_bg:'#ffffff'});
-    if(rf._photoBase64)uploadPhotoToGAS(rf._photoBase64,'קבלות',data1.D,data1.A).catch(()=>{});
+    if(rf._photoBase64){
+      uploadPhotoToGAS(rf._photoBase64,'קבלות',data1.D,data1.A).catch(()=>{});
+    }
 
     // Receipt 2 — created automatically for the second invoice (overpayment)
     if(isOverpay&&inv2){
@@ -1699,7 +1727,9 @@ async function saveReceipt(){
       };
       await apiPost({action:'addReceipt',data:data2});
       S.receipts.push({...data2,_id:S.receipts.length,_bg:'#ffffff'});
-      if(rf._photoBase64)uploadPhotoToGAS(rf._photoBase64,'קבלות',data2.D,data2.A).catch(()=>{});
+      if(rf._photoBase64){
+        uploadPhotoToGAS(rf._photoBase64,'קבלות',data2.D,data2.A).catch(()=>{});
+      }
     }
 
     S.saving=false;
