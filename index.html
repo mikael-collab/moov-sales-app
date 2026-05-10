@@ -488,7 +488,8 @@ function goBack(){
   S.screen='list';S.msg=null;S.cForm=efC();S.rForm=efR();S.iForm={};
   S.showSuggest=false;setHeader();render();
 }
-function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();}
+function scrollToTop(){requestAnimationFrame(()=>{const el=document.getElementById('content');if(el)el.scrollTop=0;});}
+function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();scrollToTop();}
 // Invoice is "open" (unpaid) if its background is NOT greenish
 function isInvOpen(r){
   const bg=(r._bg||'#ffffff').toLowerCase().replace(/[^0-9a-f]/g,'');
@@ -496,14 +497,13 @@ function isInvOpen(r){
   const R=parseInt(bg.slice(0,2),16);
   const G=parseInt(bg.slice(2,4),16);
   const B=parseInt(bg.slice(4,6),16);
-  return!(G>R+40&&G>B+20&&G>120); // greenish = paid
+  return!(G>R+40&&G>B+20&&G>120);
 }
 function openNewReceipt(){
   S.screen='new-receipt';S.rForm=efR();S.msg=null;S.showSuggest=false;
-  // Load both invoices and receipts — needed for balance calculation
   if(S.isState==='idle')loadInvoices();
   if(S.rsState==='idle')loadReceipts();
-  setHeader();render();
+  setHeader();render();scrollToTop();
 }
 // Parse money string — handles "1,590.04", "₪590", "1,234.56" etc.
 function parseMoney(v){return parseFloat((v||'').toString().replace(/[^0-9.]/g,''))||0;}
@@ -528,21 +528,26 @@ function openNewReceiptFromInv(invId){
   const r=S.invoices.find(x=>x._id===invId);
   if(!r)return;
   const rf=efR();
-  rf.A=nz(r.AF)||'';      // מספר חשבונית
-  rf._custId=nz(r.A)||''; // ת"ז/ח"פ
-  rf._custName=nz(r.B)||'';// שם עסק
-  rf._invTotal=String(getInvBalance(rf.A)); // current balance not raw total
+  rf.A=nz(r.AF)||'';
+  rf._custId=nz(r.A)||'';
+  rf._custName=nz(r.B)||'';
   rf._invDate=nz(r.C)||'';
-  // Find open invoices for this customer
+  // Use AE (or AD for tax) directly — most reliable, avoids stale cache issues
+  const invTotal=parseMoney(r.AE)||parseMoney(r.AD)||0;
+  const paidSoFar=S.receipts
+    .filter(rec=>nz(rec.A)===rf.A)
+    .reduce((s,rec)=>s+parseMoney(rec.C),0);
+  rf._invTotal=String(Math.max(0,invTotal-paidSoFar));
   rf._openInvs=openInvsFor(rf._custId);
   rf._showOpenInvs=false;
   S.rForm=rf;S.tab='receipts';S.screen='new-receipt';S.msg=null;S.showSuggest=false;
-  syncNav();setHeader();render();
+  if(S.rsState==='idle')loadReceipts();
+  syncNav();setHeader();render();scrollToTop();
 }
 function openNewInvoice(isTax){
   S.screen=isTax?'new-tax':'new-invoice';
   S.iForm=efI(isTax);S.msg=null;S.showSuggest=false;
-  setHeader();render();
+  setHeader();render();scrollToTop();
 }
 function openSettings(){S.screen='settings';setHeader();render();}
 
@@ -697,7 +702,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.5</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v5.6</div></div>`;
   return h;
 }
 
@@ -1804,7 +1809,7 @@ async function saveInv(isTax){
       const invNum=data.AF||data.AK||'';
       setTimeout(()=>{
         uploadPhotoToGAS(photoB64,shName,invDate,custId,null,invNum).catch(()=>{});
-      },4000); // 4s delay — GAS row write typically takes 1-3s
+      },8000); // 8s — GAS row write + formula calculation can take several seconds
     }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
