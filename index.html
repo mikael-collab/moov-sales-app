@@ -702,7 +702,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.1</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.3</div></div>`;
   return h;
 }
 
@@ -1736,7 +1736,7 @@ async function saveReceipt(){
     S.receipts.push({...data1,_id:S.receipts.length,_bg:'#ffffff'});
     if(rf._photoBase64){
       const b64=rf._photoBase64,d1=data1.D,a1=data1.A;
-      setTimeout(()=>uploadPhotoToGAS(b64,'קבלות',d1,a1).catch(()=>{}),3000);
+      setTimeout(function(){sendPhoto(b64,'קבלות',d1,a1,'');},3000);
     }
 
     // Receipt 2 — created automatically for the second invoice (overpayment)
@@ -1751,7 +1751,7 @@ async function saveReceipt(){
       S.receipts.push({...data2,_id:S.receipts.length,_bg:'#ffffff'});
       if(rf._photoBase64){
         const b64=rf._photoBase64,d2=data2.D,a2=data2.A;
-        setTimeout(()=>uploadPhotoToGAS(b64,'קבלות',d2,a2).catch(()=>{}),5000);
+        setTimeout(function(){sendPhoto(b64,'קבלות',d2,a2,'');},5000);
       }
     }
 
@@ -1827,10 +1827,10 @@ async function saveInv(isTax){
     const invNum=data.AF||data.AK||'';
 
     if(hasPhoto){
-      console.log('Photo scheduled for upload in 5s, size='+photoB64.length+' shName='+shName+' date='+invDate+' cust='+custId);
+      console.log('Photo upload in 5s, size='+photoB64.length);
       setTimeout(function(){
-        console.log('Photo upload firing now...');
-        uploadPhotoToGAS(photoB64,shName,invDate,custId,null,invNum);
+        console.log('Sending photo...');
+        sendPhoto(photoB64,shName,invDate,custId,invNum);
       },5000);
     }
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
@@ -1869,30 +1869,45 @@ function taxFormErrors(){
 // Upload photo via chunked Image beacon GETs — the only approach that reliably reaches GAS.
 // POST body is always lost (302 redirect converts POST→GET, body dropped).
 // Each chunk is ~1500 chars base64, well within 8KB URL limit.
-async function uploadPhotoToGAS(photoBase64, sheetName, invDate, invCustId, savedRow, invNum){
-  if(!S.scriptUrl||!photoBase64)return;
-  try{
-    const CHUNK=1500;
-    const key='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-    const total=Math.ceil(photoBase64.length/CHUNK);
-    console.log('Uploading photo: '+total+' chunks, key='+key);
-    for(let i=0;i<total;i++){
-      const chunk=photoBase64.slice(i*CHUNK,(i+1)*CHUNK);
-      await new Promise(res=>{
-        const img=new Image();
-        img.onload=img.onerror=()=>res();
-        const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
-          action:'photoChunk',
-          key,index:i,total,chunk,
-          sheetName,invDate,invCustId,invNum:invNum||'',
-          savedRow:savedRow||null
-        }));
-        img.src=url;
-        setTimeout(res,8000);
-      });
-      if(i<total-1)await new Promise(r=>setTimeout(r,200));
+// Send photo to GAS — single GET for small photos, chunked for large
+function sendPhoto(b64,sheetName,invDate,invCustId,invNum){
+  const SINGLE_LIMIT=4000; // chars — single GET safe under 8KB URL limit
+  const CHUNK=2000;
+  if(b64.length<=SINGLE_LIMIT){
+    // Single request
+    console.log('Single GET upload, '+b64.length+' chars');
+    const img=new Image();
+    img.onload=img.onerror=function(){console.log('Single upload done');};
+    img.src=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
+      action:'uploadPhoto',sheetName,invDate,invCustId,invNum:invNum||'',_photoBase64:b64
+    }));
+  }else{
+    // Chunked upload
+    const key='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+    const total=Math.ceil(b64.length/CHUNK);
+    console.log('Chunked upload: '+total+' chunks, key='+key);
+    let i=0;
+    function sendNext(){
+      if(i>=total)return;
+      const chunk=b64.slice(i*CHUNK,(i+1)*CHUNK);
+      const img=new Image();
+      img.onload=img.onerror=function(){
+        console.log('Chunk '+i+'/'+total+' done');
+        i++;
+        if(i<total)setTimeout(sendNext,300);
+      };
+      img.src=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
+        action:'photoChunk',key,index:i,total,chunk,
+        sheetName,invDate,invCustId,invNum:invNum||''
+      }));
+      setTimeout(function(){if(i<total){i++;sendNext();}},8000); // hard timeout per chunk
     }
-  }catch(e){console.warn('photo upload error:',e.message);}
+    sendNext();
+  }
+}
+
+async function uploadPhotoToGAS(photoBase64,sheetName,invDate,invCustId,savedRow,invNum){
+  sendPhoto(photoBase64,sheetName,invDate,invCustId,invNum||'');
 }
 
 function renderSaveBtn(){
