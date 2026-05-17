@@ -1,3 +1,5 @@
+// ⚙️ Look for CENTRAL MAPPING (CONFIG) ⚙️
+// When you add new SKUs and your columns shift right,
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -22,8 +24,8 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
   max-width:480px;margin:0 auto;
   background:#f5f5f5;overflow:hidden;
 }
-/* Header — fixed so keyboard resize never moves it */
-.hdr{flex-shrink:0;padding:12px 14px 10px;color:#fff;transition:background .25s;}
+/* Header */
+.hdr{flex-shrink:0;padding:12px 14px 10px;background:#1a73e8;color:#fff;transition:background .25s;}
 .hdr-row{display:flex;align-items:center;justify-content:space-between;}
 .hdr-mid{text-align:center;flex:1;}
 .hdr-mid h1{font-size:16px;font-weight:600;margin:0;}
@@ -31,7 +33,7 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .hdr-mid p.inv-totals{font-size:15px;font-weight:700;opacity:1;margin:2px 0 0;letter-spacing:.2px;}
 .hdr-btn{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;width:36px;height:36px;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
 .hdr-btn.hidden{visibility:hidden;}
-/* Content — scrollable */
+/* Content */
 #content{
   flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
@@ -84,8 +86,7 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .prod-name{font-size:13px;font-weight:500;color:#222;}
 .prod-sub{font-size:10px;color:#aaa;}
 .prod-qty{font-size:15px;font-weight:700;}
-.sumbar{margin:10px 10px 8px;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;color:#fff;}
-/* Sticky totals bar inside invoice form */
+/* Sticky totals bar */
 .sticky-totals{
   position:sticky;top:0;z-index:20;
   display:flex;justify-content:space-between;align-items:center;
@@ -108,8 +109,8 @@ select.finput{cursor:pointer;}
 textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 .irow{display:flex;gap:8px;}
 .dash-btn{padding:10px 16px;border-radius:10px;border:1.5px solid var(--tc,#1a73e8);background:transparent;color:var(--tc,#1a73e8);font-size:22px;font-weight:700;line-height:1;cursor:pointer;flex-shrink:0;}
-.save-btn{width:100%;padding:13px;border-radius:10px;color:#fff;border:none;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer;-webkit-appearance:none;}
-.save-btn:disabled{background:#ccc !important;cursor:wait;}
+.save-btn{width:100%;padding:13px;border-radius:10px;color:#fff;border:none;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer;-webkit-appearance:none;transition:background 0.2s;}
+.save-btn:disabled{background:#ccc !important;cursor:not-allowed;}
 /* Product qty row in form */
 .prod-field{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:.5px solid #f0f0f0;direction:ltr;}
 .prod-field:last-child{border-bottom:none;}
@@ -205,6 +206,70 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 // ── Config ──
 const STORAGE_KEY='moov_url_v4';
 const VAT=0.18;
+
+// ─────────────────────────────────────────────────────────
+// ⚙️ CENTRAL MAPPING (CONFIG) ⚙️
+// When you add new SKUs and your columns shift right,
+// just update the letters below. The app will adapt instantly.
+// ─────────────────────────────────────────────────────────
+const COLS = {
+  // -- 1. Shared Invoices & Tax (חשבוניות / חשמ"ק) --
+  docCustId: 'A',      // ת"ז / ח"פ
+  docCustName: 'B',    // שם העסק
+  docDate: 'C',        // תאריך
+  
+  price: 'AD',          // מחיר ליחידה 
+  subtotal: 'AE',      // סה"כ לפני מע"מ 
+  discount: 'AF',      // הנחה 
+  afterDisc: 'AG',     // סה"כ אחר הנחה 
+  
+  // -- 2. Invoices Specific (חשבוניות) --
+  invTerms: 'AH',      // תנאי תשלום 
+  invTotalVat: 'AI',   // סה"כ כולל מע"מ
+  invNum: 'AJ',        // מספר חשבונית 
+  invPayType: 'AK',    // סוג תשלום 
+  invPayAmt: 'AL',     // סכום התשלום 
+  invPayDate: 'AM',    // תאריך פרעון שיק 
+  invChkNum: 'AN',     // מספר שיק 
+  invNotes: 'AO',      // הערות 
+  
+  // -- 3. Tax Specific (חשבוניות/קבלות) --
+  taxTotalVat: 'AH',   // סה"כ כולל מע"מ 
+  taxPayType: 'AI',    // סוג תשלום
+  taxPayAmt: 'AJ',     // סכום התשלום
+  taxPayDate: 'AK',    // תאריך פרעון שיק 
+  taxChkNum: 'AL',     // מספר שיק 
+  taxPhoto: 'AM',      // צילום שיק
+  taxNotes: 'AN',      // הערות
+  taxNum: 'AO',        // מספר חשבונית מס / קבלה 
+
+  // -- 4. Receipts (קבלות) --
+  recInvNum: 'A',      // מספר חשבונית
+  recPayType: 'B',     // סוג תשלום
+  recPayAmt: 'C',      // סכום התשלום
+  recPayDate: 'D',     // תאריך
+  recChkNum: 'E',      // מספר שיק
+  recPhoto: 'F',       // צילום שיק
+  recNotes: 'G',       // הערות
+  recCustName: 'H',    // לקוח
+  recCustId: 'I',      // ת"ז/ח"פ
+  recNum: 'J',         // מס קבלה
+
+  // -- 5. Customers (לקוחות) --
+  custName: 'A',       
+  custId: 'B',         
+  custBiz: 'C',        
+  custPhone: 'D',      
+  custEmail: 'E',      
+  custStreet: 'F',     
+  custCity: 'G',       
+  custBankHolder: 'H', 
+  custBankName: 'I',   
+  custBankBranch: 'J', 
+  custBankAcct: 'K'    
+};
+// ─────────────────────────────────────────────────────────
+
 const TABS={
   customers:{label:'לקוחות',         color:'#1a73e8',bg:'#e8f0fe'},
   invoices: {label:'חשבוניות',        color:'#d67000',bg:'#fff3e0'},
@@ -215,20 +280,19 @@ const SHEETS={customers:'לקוחות',invoices:'חשבוניות',receipts:'ק�
 const PAYMENT_TYPES=['מזומן','שיק'];
 
 const CF=[
-  {k:'A',label:'שם לקוח',      mode:'text',req:true},
-  {k:'B',label:'ת"ז / ח"פ',   mode:'num', copy:true},
-  {k:'C',label:'שם העסק',       mode:'text'},
-  {k:'D',label:'טלפון',         mode:'tel'},
-  {k:'E',label:'כתובת מייל',    mode:'email'},
-  {k:'F',label:'רחוב ומספר',    mode:'text'},
-  {k:'G',label:'עיר',           mode:'text'},
-  {k:'H',label:'שם בעל החשבון', mode:'text',bank:true},
-  {k:'I',label:'שם הבנק',       mode:'text',bank:true},
-  {k:'J',label:'מספר הסניף',    mode:'num', bank:true},
-  {k:'K',label:'מספר חשבון',    mode:'num', bank:true},
+  {k:COLS.custName,label:'שם לקוח',      mode:'text',req:true},
+  {k:COLS.custId,label:'ת"ז / ח"פ',   mode:'num', copy:true},
+  {k:COLS.custBiz,label:'שם העסק',       mode:'text'},
+  {k:COLS.custPhone,label:'טלפון',         mode:'tel'},
+  {k:COLS.custEmail,label:'כתובת מייל',    mode:'email'},
+  {k:COLS.custStreet,label:'רחוב ומספר',    mode:'text'},
+  {k:COLS.custCity,label:'עיר',           mode:'text'},
+  {k:COLS.custBankHolder,label:'שם בעל החשבון', mode:'text',bank:true},
+  {k:COLS.custBankName,label:'שם הבנק',       mode:'text',bank:true},
+  {k:COLS.custBankBranch,label:'מספר הסניף',    mode:'num', bank:true},
+  {k:COLS.custBankAcct,label:'מספר חשבון',    mode:'num', bank:true},
 ];
 
-// Products: nk=name column, qk=qty column
 const PRODS=[
   {nk:'D',qk:'E', name:'Blueberry Mint 10 - אוכמניות',     short:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
   {nk:'F',qk:'G', name:'Blueberry Mint 6 - אוכמניות',      short:'Blueberry Mint 6',  heb:'אוכמניות',    nic:6, em:'🫐'},
@@ -241,42 +305,51 @@ const PRODS=[
   {nk:'T',qk:'U', name:'Watermelon 20 - אבטיח',            short:'Watermelon 20',     heb:'אבטיח',       nic:20,em:'🍉'},
   {nk:'V',qk:'W', name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
   {nk:'X',qk:'Y', name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
+  {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                  short:'Orange 25',          heb:'תפוז',        nic:25 em:'🍊'},
+  {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',                  short:'Double Apple 25',          heb:'תפוח כפול',        nic:3, em:'🍏🍏'},
 ];
 
 const INV_TAIL=[
-  {k:'AD',label:'תנאי תשלום'},
-  {k:'AE',label:'סה"כ כולל מע"מ',money:true,hi:true},
-  {k:'AF',label:'מספר חשבונית'},
-  {k:'AG',label:'סוג תשלום'},
-  {k:'AH',label:'סכום התשלום',money:true},
-  {k:'AI',label:'תאריך תשלום / תאריך פרעון שיק'},
-  {k:'AJ',label:'מספר שיק'},
-  {k:'AK',label:'הערות',wide:true},
+  {k:COLS.invTerms,label:'תנאי תשלום'},
+  {k:COLS.invTotalVat,label:'סה"כ כולל מע"מ',money:true,hi:true},
+  {k:COLS.invNum,label:'מספר חשבונית'},
+  {k:COLS.invPayType,label:'סוג תשלום'},
+  {k:COLS.invPayAmt,label:'סכום התשלום',money:true},
+  {k:COLS.invPayDate,label:'תאריך תשלום / תאריך פרעון שיק'},
+  {k:COLS.invChkNum,label:'מספר שיק'},
+  {k:COLS.invNotes,label:'הערות',wide:true},
 ];
 const TAX_TAIL=[
-  {k:'AD',label:'סה"כ כולל מע"מ',money:true,hi:true},
-  {k:'AE',label:'סוג תשלום'},
-  {k:'AF',label:'סכום התשלום',money:true},
-  {k:'AG',label:'תאריך תשלום / תאריך פרעון שיק'},
-  {k:'AH',label:'מספר שיק'},
-  {k:'AI',label:'צילום שיק'},
-  {k:'AJ',label:'הערות',wide:true},
-  {k:'AK',label:'מספר חשבונית מס / קבלה'},
+  {k:COLS.taxTotalVat,label:'סה"כ כולל מע"מ',money:true,hi:true},
+  {k:COLS.taxPayType,label:'סוג תשלום'},
+  {k:COLS.taxPayAmt,label:'סכום התשלום',money:true},
+  {k:COLS.taxPayDate,label:'תאריך תשלום / תאריך פרעון שיק'},
+  {k:COLS.taxChkNum,label:'מספר שיק'},
+  {k:COLS.taxPhoto,label:'צילום שיק'},
+  {k:COLS.taxNotes,label:'הערות',wide:true},
+  {k:COLS.taxNum,label:'מספר חשבונית מס / קבלה'},
 ];
 const RF=[
-  {k:'A',label:'מספר חשבונית',                 icon:'🧾'},
-  {k:'B',label:'סוג תשלום',                     icon:'💳'},
-  {k:'C',label:'סכום התשלום',                   icon:'₪',money:true},
-  {k:'D',label:'תאריך תשלום / תאריך פרעון שיק',icon:'📅'},
-  {k:'E',label:'מספר שיק',                      icon:'#'},
-  {k:'F',label:'צילום שיק',                     icon:'📷'},
-  {k:'G',label:'הערות',                         icon:'📝',wide:true},
-  {k:'H',label:'שם לקוח',                       icon:'👤'},
-  {k:'I',label:'ת"ז / ח"פ',                     icon:'🪪'},
-  {k:'J',label:'מספר קבלה',                     icon:'🔢'},
+  {k:COLS.recInvNum,label:'מספר חשבונית',                 icon:'🧾'},
+  {k:COLS.recPayType,label:'סוג תשלום',                     icon:'💳'},
+  {k:COLS.recPayAmt,label:'סכום התשלום',                   icon:'₪',money:true},
+  {k:COLS.recPayDate,label:'תאריך תשלום / תאריך פרעון שיק',icon:'📅'},
+  {k:COLS.recChkNum,label:'מספר שיק',                      icon:'#'},
+  {k:COLS.recPhoto,label:'צילום שיק',                     icon:'📷'},
+  {k:COLS.recNotes,label:'הערות',                         icon:'📝',wide:true},
+  {k:COLS.recCustName,label:'שם לקוח',                       icon:'👤'},
+  {k:COLS.recCustId,label:'ת"ז / ח"פ',                     icon:'🪪'},
+  {k:COLS.recNum,label:'מספר קבלה',                     icon:'🔢'},
 ];
 
-// ── State ──
+function setElValue(id, val) { const el = document.getElementById(id); if (el && el.value !== val) el.value = val; }
+function setElText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function setElDisplay(id, display) { const el = document.getElementById(id); if (el) el.style.display = display; }
+
+function getSavedUrl() { try { return localStorage.getItem(STORAGE_KEY) || ''; } catch(e) { return ''; } }
+function saveUrlToLocal(url) { try { localStorage.setItem(STORAGE_KEY, url); } catch(e) { console.warn('Storage blocked'); } }
+function clearUrlFromLocal() { try { localStorage.removeItem(STORAGE_KEY); } catch(e) {} }
+
 const S={
   tab:'customers',screen:'list',
   customers:[],csState:'idle',
@@ -287,81 +360,116 @@ const S={
   cForm:{},rForm:{},iForm:{},
   saving:false,msg:null,
   copied:null,copiedTimer:null,
-  scriptUrl:localStorage.getItem(STORAGE_KEY)||'',
+  scriptUrl:getSavedUrl(),
   availableSheets:[],
   diagData:{},diagRunning:false,
   errors:{},
   suggest:[],showSuggest:false,
 };
 
-// ── Helpers ──
 const tc=()=>TABS[S.tab].color;
 function efC(){const o={};CF.forEach(f=>o[f.k]='');return o;}
-function efR(){return{
-  A:'',   // מספר חשבונית
-  B:'',   // סוג תשלום
-  C:'',   // סכום
-  D:tod(),// תאריך
-  E:'',   // מספר שיק
-  F:'',   // צילום שיק
-  G:'',   // הערות
-  _custName:'', _custId:'', _invTotal:'', _invDate:'',
-  _photoDataUrl:'', _photoBase64:'',
-  _openInvs:[], _showOpenInvs:false,
-  _overInvNum:''  // invoice number for cheque overpayment note
-};}
+
+function efR(){
+  const o = {
+    _custName:'', _custId:'', _invTotal:'', _invDate:'',
+    _photoDataUrl:'', _photoBase64:'',
+    _openInvs:[], _showOpenInvs:false, _overInvNum:''  
+  };
+  o[COLS.recInvNum]=''; o[COLS.recPayType]=''; o[COLS.recPayAmt]=''; o[COLS.recPayDate]=tod();
+  o[COLS.recChkNum]=''; o[COLS.recPhoto]=''; o[COLS.recNotes]='';
+  return o;
+}
+
+function taxFormErrors(){
+  const f=S.iForm;
+  const calc=calcInv(f);
+  const total=calc.withVat;
+  const paid=parseFloat(f[COLS.taxPayAmt]||0);
+  const isOver=f[COLS.taxPayType]==='שיק'&&total>0&&paid>total+0.5;
+  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
+  if(!f[COLS.taxPayType])return 'בחר סוג תשלום';
+  if(!f[COLS.taxPayAmt]?.trim())return 'הזן סכום תשלום';
+  if(f[COLS.taxPayType]==='מזומן'&&total>0&&paid>total+0.5)
+    return `מזומן לא יכול לעלות על ₪${Math.round(total).toLocaleString('he-IL')}`;
+  if(isOver&&!f._overInvNum?.trim())
+    return 'הזן מספר חשבונית עבור ההפרש';
+  if(f[COLS.taxPayType]==='שיק'){
+    if(!f[COLS.taxChkNum]?.trim())return 'הזן מספר שיק';
+    if(!f[COLS.taxPayDate]?.trim())return 'הזן תאריך פרעון שיק';
+    if(!f._photoTaken)return 'צלם את השיק';
+  }
+  return null;
+}
+
+function invoiceFormErrors() {
+  const f=S.iForm;
+  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
+  return null;
+}
 
 function receiptFormErrors(){
   const rf=S.rForm;
-  if(!rf.B)return 'בחר סוג תשלום';
-  if(!rf.C?.trim())return 'הזן סכום תשלום';
-  const paid=parseFloat(rf.C)||0;
+  if(!rf[COLS.recPayType])return 'בחר סוג תשלום';
+  if(!rf[COLS.recPayAmt]?.trim())return 'הזן סכום תשלום';
+  const paid=parseFloat(rf[COLS.recPayAmt])||0;
   const balance=parseFloat(rf._invTotal)||0;
-  // Cash: cannot exceed current balance
-  if(rf.B==='מזומן'&&balance>0&&paid>balance+0.5)
+  if(rf[COLS.recPayType]==='מזומן'&&balance>0&&paid>balance+0.5)
     return `מזומן לא יכול לעלות על יתרה: ₪${Math.round(balance).toLocaleString('he-IL')}`;
-  // Cheque overpayment: require invoice number for the excess
-  if(rf.B==='שיק'&&balance>0&&paid>balance+0.5&&!rf._overInvNum?.trim())
+  if(rf[COLS.recPayType]==='שיק'&&balance>0&&paid>balance+0.5&&!rf._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
-  // Invoice number — must match existing
-  if(rf.A?.trim()){
-    const found=S.invoices.find(r=>nz(r.AF)===rf.A.trim());
+  if(rf[COLS.recInvNum]?.trim()){
+    const found=S.invoices.find(r=>nz(r[COLS.invNum])===rf[COLS.recInvNum].trim() || nz(r[COLS.taxNum])===rf[COLS.recInvNum].trim());
     if(!found)return 'מספר חשבונית לא קיים במערכת';
   }
-  if(rf.B==='שיק'){
-    if(!rf.E?.trim())return 'הזן מספר שיק';
-    if(!rf.D?.trim())return 'הזן תאריך פרעון שיק';
+  if(rf[COLS.recPayType]==='שיק'){
+    if(!rf[COLS.recChkNum]?.trim())return 'הזן מספר שיק';
+    if(!rf[COLS.recPayDate]?.trim())return 'הזן תאריך פרעון שיק';
     if(!rf._photoTaken)return 'צלם את השיק';
   }
   return null;
 }
+
 function efI(isTax){
-  const o={A:'',B:'',C:tod()};
+  const o={};
+  o[COLS.docCustId]=''; o[COLS.docCustName]=''; o[COLS.docDate]=tod();
   PRODS.forEach(p=>{o[p.nk]=p.name;o[p.qk]='0';});
-  o.Z='13.00';o.AA='';o.AB='';o.AC='';  // default price ₪13
-  if(!isTax){o.AD='';o.AE='';o.AF='';o.AG='מזומן';o.AH='';o.AI='';o.AJ='';o.AK='';}
-  else{o.AD='';o.AE='';o.AF='';o.AG=tod();o.AH='';o.AI='';o.AJ='';o.AK='';}
+  o[COLS.price]='13.00'; o[COLS.subtotal]=''; o[COLS.discount]=''; o[COLS.afterDisc]='';
+  
+  if(!isTax){
+    o[COLS.invTerms]=''; o[COLS.invTotalVat]=''; o[COLS.invNum]='';
+    o[COLS.invPayType]='מזומן'; o[COLS.invPayAmt]=''; o[COLS.invPayDate]='';
+    o[COLS.invChkNum]=''; o[COLS.invNotes]='';
+  }else{
+    o[COLS.taxTotalVat]=''; o[COLS.taxPayType]=''; o[COLS.taxPayAmt]='';
+    o[COLS.taxPayDate]=tod(); o[COLS.taxChkNum]=''; o[COLS.taxPhoto]='';
+    o[COLS.taxNotes]=''; o[COLS.taxNum]='';
+  }
   return o;
 }
+
 function tod(){
   const d=new Date();
   return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
 }
-// DD/MM/YYYY → YYYY-MM-DD (for <input type="date">)
 function dateToISO(s){
   if(!s)return new Date().toISOString().slice(0,10);
   const p=s.split('/');
   if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
   return new Date().toISOString().slice(0,10);
 }
-// YYYY-MM-DD → DD/MM/YYYY
 function isoToHeb(s){
   if(!s)return '';
   const p=s.split('-');
   if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];
   return s;
 }
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
 function fmt(x){
   const n=parseFloat((x||'').toString().replace(/[^0-9.]/g,''));
@@ -383,10 +491,10 @@ function rowBg(r,isExp){
   return(bg==='#ffffff'||bg==='#fff'||bg===''||bg==='white')?'#ffffff':bg;
 }
 function calcInv(f){
-  const price=parseFloat(f.Z)||0;
+  const price=parseFloat(f[COLS.price])||0;
   const totalQty=PRODS.reduce((s,p)=>s+(parseInt(f[p.qk])||0),0);
   const aa=price*totalQty;
-  const disc=parseFloat(f.AB)||0;
+  const disc=parseFloat(f[COLS.discount])||0;
   const ac=aa*(1-disc/100);
   const withVat=ac*(1+VAT);
   return{totalQty,aa,disc,ac,withVat};
@@ -401,18 +509,16 @@ async function apiFetch(params){
   if(d.error)throw new Error(d.error+(d.available?' | '+d.available.join(', '):''));
   return d;
 }
-// Image beacon write — zero CORS, zero redirects issues, works on every browser.
-// Creates an Image element pointing to the GAS URL. The browser sends the GET
-// request silently. GAS writes the data. We always resolve (can't read response).
+
 function apiPost(body){
-  return new Promise(function(resolve){
-    if(!S.scriptUrl){resolve({status:'ok'});return;}
-    const url=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify(body));
-    const img=new Image();
-    img.onload=img.onerror=function(){resolve({status:'ok'});};
-    img.src=url;
-    setTimeout(function(){resolve({status:'ok'});},8000);
-  });
+  if(!S.scriptUrl) return Promise.resolve({status:'ok'});
+  return fetch(S.scriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(body),
+    mode: 'no-cors'
+  }).then(() => { return {status: 'ok'}; })
+    .catch((e) => { console.error(e); return {status: 'ok'}; });
 }
 
 async function pingSheets(){
@@ -450,7 +556,7 @@ async function loadAny(tab,stateKey,limit,req){
     if(limit)p.limit=limit;
     if(req)p.require=req;
     const d=await apiFetch(p);
-    S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i,_row:i+2})); // _row = 1-based sheet row (header is row 1)
+    S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i,_row:i+2})); 
     S[stateKey]='ok';delete S.errors[tab];
   }catch(e){
     S[stateKey]=isBusy(e)?'busy':'error';
@@ -458,10 +564,11 @@ async function loadAny(tab,stateKey,limit,req){
   }
   render();
 }
-const loadCustomers=()=>loadAny('customers','csState',0,'');
-const loadInvoices =()=>loadAny('invoices', 'isState',20,'AE');
-const loadReceipts =()=>loadAny('receipts', 'rsState',20,'');
-const loadTax      =()=>loadAny('tax',      'tsState',20,'AD');
+
+const loadCustomers=()=>loadAny('customers','csState',0, COLS.custId);
+const loadInvoices =()=>loadAny('invoices', 'isState',0, COLS.docCustId);
+const loadReceipts =()=>loadAny('receipts', 'rsState',0, COLS.recInvNum);
+const loadTax      =()=>loadAny('tax',      'tsState',0, COLS.docCustId);
 
 // ── Nav ──
 function syncNav(){
@@ -479,7 +586,6 @@ function switchTab(tab){
   if(tab==='invoices'&&S.isState==='idle')loadInvoices();
   else if(tab==='receipts'&&S.rsState==='idle')loadReceipts();
   else if(tab==='tax'&&S.tsState==='idle')loadTax();
-  // Also load receipts when viewing invoices — needed for balance calculation
   if(tab==='invoices'&&S.rsState==='idle')loadReceipts();
   else render();
 }
@@ -490,7 +596,6 @@ function goBack(){
 }
 function scrollToTop(){requestAnimationFrame(()=>{const el=document.getElementById('content');if(el)el.scrollTop=0;});}
 function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();scrollToTop();}
-// Invoice is "open" (unpaid) if its background is NOT greenish
 function isInvOpen(r){
   const bg=(r._bg||'#ffffff').toLowerCase().replace(/[^0-9a-f]/g,'');
   if(bg.length<6)return true;
@@ -505,38 +610,33 @@ function openNewReceipt(){
   if(S.rsState==='idle')loadReceipts();
   setHeader();render();scrollToTop();
 }
-// Parse money string — handles "1,590.04", "₪590", "1,234.56" etc.
 function parseMoney(v){return parseFloat((v||'').toString().replace(/[^0-9.]/g,''))||0;}
-
 function getInvBalance(invNum){
   if(!invNum)return 0;
-  const inv=S.invoices.find(r=>nz(r.AF)===invNum);
+  const inv=S.invoices.find(r=>nz(r[COLS.invNum])===invNum);
   if(!inv)return 0;
-  const total=parseMoney(inv.AE);
+  const total=parseMoney(inv[COLS.invTotalVat]);
   const paid=S.receipts
-    .filter(r=>nz(r.A)===invNum)
-    .reduce((s,r)=>s+parseMoney(r.C),0);
+    .filter(r=>nz(r[COLS.recInvNum])===invNum)
+    .reduce((s,r)=>s+parseMoney(r[COLS.recPayAmt]),0);
   return Math.max(0,total-paid);
 }
-// Get open invoices for a customer ת"ז
 function openInvsFor(custId){
   if(!custId)return[];
-  return S.invoices.filter(r=>r.A===custId&&isInvOpen(r));
+  return S.invoices.filter(r=>r[COLS.docCustId]===custId&&isInvOpen(r));
 }
-// Pre-fill receipt form from a selected invoice row
 function openNewReceiptFromInv(invId){
   const r=S.invoices.find(x=>x._id===invId);
   if(!r)return;
   const rf=efR();
-  rf.A=nz(r.AF)||'';
-  rf._custId=nz(r.A)||'';
-  rf._custName=nz(r.B)||'';
-  rf._invDate=nz(r.C)||'';
-  // Use AE (or AD for tax) directly — most reliable, avoids stale cache issues
-  const invTotal=parseMoney(r.AE)||parseMoney(r.AD)||0;
+  rf[COLS.recInvNum]=nz(r[COLS.invNum])||'';
+  rf._custId=nz(r[COLS.docCustId])||'';
+  rf._custName=nz(r[COLS.docCustName])||'';
+  rf._invDate=nz(r[COLS.docDate])||'';
+  const invTotal=parseMoney(r[COLS.invTotalVat])||parseMoney(r[COLS.taxTotalVat])||0;
   const paidSoFar=S.receipts
-    .filter(rec=>nz(rec.A)===rf.A)
-    .reduce((s,rec)=>s+parseMoney(rec.C),0);
+    .filter(rec=>nz(rec[COLS.recInvNum])===rf[COLS.recInvNum])
+    .reduce((s,rec)=>s+parseMoney(rec[COLS.recPayAmt]),0);
   rf._invTotal=String(Math.max(0,invTotal-paidSoFar));
   rf._openInvs=openInvsFor(rf._custId);
   rf._showOpenInvs=false;
@@ -571,10 +671,8 @@ function setHeader(){
   };
   document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[tab]?.label||'';
 
-  // Header subtitle — always show name (totals are now in the sticky form bar)
   if(sub){sub.className='';sub.textContent='מיקאל קולמן | MOOV';}
 
-  // LEFT button: ⚙️ on list screens, ← on form/settings screens
   back.classList.remove('hidden');
   if(isList){
     back.textContent='⚙️';
@@ -586,7 +684,6 @@ function setHeader(){
     back.onclick=goBack;
   }
 
-  // RIGHT button: + on list screens (except settings), hidden in settings
   if(S.screen==='settings'){
     right.classList.add('hidden');
   }else if(isList){
@@ -604,7 +701,6 @@ function setHeader(){
   }
 }
 
-// ── Render ──
 function render(){
   syncNav();
   const el=document.getElementById('content');
@@ -631,7 +727,6 @@ function render(){
   el.scrollTop=pos;bindAll();
 }
 
-// ── Setup ──
 function renderSetup(){
   return`<div class="setup-screen">
     <div class="setup-hero"><div class="logo">📊</div><h2>MOOV Sales App</h2><p>חיבור חד-פעמי ל-Google Sheets שלך</p></div>
@@ -647,7 +742,6 @@ function renderSetup(){
   </div>`;
 }
 
-// ── Settings ──
 function renderSettings(){
   const connected=!!S.scriptUrl;
   let h=`<div class="set-wrap">
@@ -702,7 +796,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.3</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.15 (Dynamic Cols)</div></div>`;
   return h;
 }
 
@@ -714,14 +808,14 @@ function saveUrl(inputId,errId){
     if(inp)inp.classList.add('err');
     if(errEl){errEl.textContent='URL לא תקין';errEl.style.display='block';}return;
   }
-  S.scriptUrl=val;localStorage.setItem(STORAGE_KEY,val);
+  S.scriptUrl=val;saveUrlToLocal(val);
   resetAll();S.screen='list';S.tab='customers';
   document.getElementById('bnav').style.display='flex';
   setHeader();syncNav();pingSheets().then(()=>loadCustomers());
 }
 function clearUrl(){
   if(!confirm('למחוק את ה-URL?'))return;
-  S.scriptUrl='';localStorage.removeItem(STORAGE_KEY);
+  S.scriptUrl='';clearUrlFromLocal();
   resetAll();S.screen='list';document.getElementById('bnav').style.display='none';
   setHeader();render();
 }
@@ -732,11 +826,11 @@ function resetAll(){
 }
 function refreshAll(){resetAll();S.screen='list';setHeader();pingSheets().then(()=>loadCustomers());}
 
-// ── Customer List ──
 function filteredC(){
   if(!S.search.trim())return S.customers;
   const q=S.search.toLowerCase();
-  return S.customers.filter(c=>['A','B','C','D','E','F','G'].some(k=>(c[k]||'').toLowerCase().includes(q)));
+  const keys = [COLS.custName, COLS.custId, COLS.custBiz, COLS.custPhone, COLS.custEmail, COLS.custStreet, COLS.custCity];
+  return S.customers.filter(c=>keys.some(k=>(c[k]||'').toLowerCase().includes(q)));
 }
 function renderCustList(){
   const st=S.csState;const fc=filteredC();const color=tc();
@@ -762,22 +856,22 @@ function renderCustList(){
   return h+`</div>`;
 }
 function cCard(c,i){
-  const isE=S.expId===c._id;const bg=rowBg(c,isE);const cpd=S.copied===`${c._id}-B`;
-  const color=tc();const bank=c.H||c.I||c.J||c.K;
+  const isE=S.expId===c._id;const bg=rowBg(c,isE);const cpd=S.copied===`${c._id}-id`;
+  const color=tc();const bank=c[COLS.custBankHolder]||c[COLS.custBankName]||c[COLS.custBankBranch]||c[COLS.custBankAcct];
   return`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
     <div class="card-hdr" onclick="tog(${c._id})">
       <div class="r1">
-        <span class="cust-name">${esc(c.C||c.A||'—')}</span>
-        ${c.B?`<span class="id-badge">${esc(c.B)}</span>
-          <button class="copy-btn${cpd?' done':''}" onclick="event.stopPropagation();cp('${esc(c.B)}','${c._id}-B')"
+        <span class="cust-name">${esc(c[COLS.custBiz]||c[COLS.custName]||'—')}</span>
+        ${c[COLS.custId]?`<span class="id-badge">${esc(c[COLS.custId])}</span>
+          <button class="copy-btn${cpd?' done':''}" onclick="event.stopPropagation();cp('${esc(c[COLS.custId])}','${c._id}-id')"
             style="${cpd?`background:${color};border-color:${color};color:#fff`:''}">
             ${cpd?'✓ הועתק':'📋 העתק'}</button>`:''}
-        ${c.A&&c.C?`<span class="biz-name" style="color:#888;font-size:12px">${esc(c.A)}</span>`:''}
+        ${c[COLS.custName]&&c[COLS.custBiz]?`<span class="biz-name" style="color:#888;font-size:12px">${esc(c[COLS.custName])}</span>`:''}
       </div>
       <div class="r2">
-        ${c.D?`<span>📱 ${esc(c.D)}</span>`:''}
-        ${c.E?`<span style="direction:ltr;overflow:hidden;text-overflow:ellipsis;max-width:160px">✉ ${esc(c.E)}</span>`:''}
-        ${(c.F||c.G)?`<span>📍 ${esc([c.F,c.G].filter(Boolean).join(', '))}</span>`:''}
+        ${c[COLS.custPhone]?`<span>📱 ${esc(c[COLS.custPhone])}</span>`:''}
+        ${c[COLS.custEmail]?`<span style="direction:ltr;overflow:hidden;text-overflow:ellipsis;max-width:160px">✉ ${esc(c[COLS.custEmail])}</span>`:''}
+        ${(c[COLS.custStreet]||c[COLS.custCity])?`<span>📍 ${esc([c[COLS.custStreet],c[COLS.custCity]].filter(Boolean).join(', '))}</span>`:''}
       </div>
       <div class="r3">
         ${bank&&!isE?`<span class="tag">🏦 פרטי בנק</span>`:'<span></span>'}
@@ -790,7 +884,7 @@ function cCard(c,i){
 function cCardBody(c,color){
   let h=`<div class="card-body"><div class="sec-t">פרטי קשר</div><div class="g2" style="margin-bottom:12px">`;
   CF.filter(f=>!f.bank&&c[f.k]).forEach(f=>{
-    h+=`<div class="gcell${['E','F'].includes(f.k)?' wide':''}">
+    h+=`<div class="gcell${[COLS.custEmail,COLS.custStreet].includes(f.k)?' wide':''}">
       <div class="glabel">${f.label}</div>
       <div class="gval" style="direction:${f.mode==='email'?'ltr':'rtl'}">${esc(c[f.k])}</div>
     </div>`;
@@ -801,7 +895,7 @@ function cCardBody(c,color){
     h+=`<div class="sec-t">🏦 פרטי בנק</div><div class="dtable">`;
     bankF.forEach((f,i)=>{h+=`<div class="dtrow"${i===0?' style="border-top:none"':''}>
       <span class="dtlabel">${f.label}</span>
-      <span class="dtval" style="${['J','K'].includes(f.k)?'font-family:monospace;letter-spacing:1px':''}">${esc(c[f.k])}</span>
+      <span class="dtval" style="${[COLS.custBankBranch,COLS.custBankAcct].includes(f.k)?'font-family:monospace;letter-spacing:1px':''}">${esc(c[f.k])}</span>
     </div>`;});
     h+=`</div>`;
   }
@@ -813,7 +907,6 @@ function cCardBody(c,color){
   return h+`</div>`;
 }
 
-// ── New Customer Form ──
 function renderCustForm(){
   const color=tc();const isEdit=!!S.cForm._editId;
   let h=`<div class="fwrap" style="--tc:${color}">`;
@@ -822,16 +915,19 @@ function renderCustForm(){
   CF.filter(f=>!f.bank).forEach(f=>{h+=custField(f);});
   h+=`<div class="fdivider"><hr><span>🏦 פרטי בנק</span><hr></div>`;
   CF.filter(f=>f.bank).forEach(f=>{h+=custField(f);});
-  h+=`<button class="save-btn" style="background:${S.saving?'#ccc':color}" ${S.saving?'disabled':''} onclick="saveCust()">
-    ${S.saving?'⏳ שומר...':(isEdit?'💾 עדכן לקוח':'💾 שמור לקוח')}</button></div>`;
+  
+  const btnDisabled=S.saving;
+  const btnLabel=S.saving?'⏳ שומר...':(isEdit?'💾 עדכן לקוח':'💾 שמור לקוח');
+  h+=`<button class="save-btn" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveCust()">
+    ${btnLabel}</button></div>`;
   return h;
 }
 function custField(f){
   const vv=esc(S.cForm[f.k]||'');
-  if(f.k==='B')return`<div class="field"><label>${f.label} <small>(עמודה B${f.req?' *':''})</small></label>
+  if(f.k===COLS.custId)return`<div class="field"><label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
     <div class="irow">
-      <input type="text" inputmode="numeric" id="f-B" class="finput num" value="${vv}"
-        oninput="uf('cForm','B',this.value.replace(/[^0-9-]/g,''))">
+      <input type="text" inputmode="numeric" id="f-id" class="finput num" value="${vv}"
+        oninput="uf('cForm','${f.k}',this.value.replace(/[^0-9-]/g,''))">
       <button class="dash-btn" onclick="addDashC()">-</button>
     </div></div>`;
   const im=f.mode==='num'?'numeric':f.mode==='tel'?'tel':f.mode==='email'?'email':'text';
@@ -842,28 +938,11 @@ function custField(f){
   </div>`;
 }
 
-// ── New Invoice / Tax Form ──
 function renderInvForm(isTax){
   const color=tc();const f=S.iForm;
   const calc=calcInv(f);
-  const price=parseFloat(f.Z)||0;
+  const price=parseFloat(f[COLS.price])||0;
 
-  // Build sticky totals text
-  let totText,totSub;
-  if(price>0&&calc.totalQty>0){
-    totText=`${calc.totalQty} יח'`;
-    totSub=`₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`;
-  }else if(price>0){
-    totText=`מחיר ₪${fmtNum(price)}`;
-    totSub='הזן כמויות';
-  }else{
-    totText='הזן מחיר';
-    totSub='וכמויות';
-  }
-
-  let h=`<div class="fwrap" style="--tc:${color}">`;
-
-  // Sticky totals bar — stays at top of scroll area as you scroll through products
   let cansText,totalText;
   if(price>0&&calc.totalQty>0){
     cansText=`${calc.totalQty} יח'`;
@@ -875,30 +954,34 @@ function renderInvForm(isTax){
     cansText='הזן מחיר';
     totalText='וכמויות';
   }
-  h+=`<div class="sticky-totals" id="sticky-totals" style="background:${color}">
+
+  let h=`<div class="fwrap" style="--tc:${color}">
+  <div class="sticky-totals" id="sticky-totals" style="background:${color}">
     <span class="st-cans" id="st-cans">${esc(cansText)}</span>
     <span class="st-total" id="st-total">${esc(totalText)}</span>
   </div>`;
 
   if(S.msg)h+=alertHtml(S.msg);
 
-  // Customer — ת"ז/ח"פ is mandatory
   h+=`<div class="fdivider" style="margin-top:0"><hr><span>👤 לקוח</span><hr></div>
-  <div class="field"><label>חיפוש לקוח <small>(שם לקוח / שם עסק / ת"ז) *</small></label>
+  <div class="field"><label>חיפוש לקוח / שם עסק <small>(לחיפוש) *</small></label>
     <div class="field-wrap">
-      <input type="text" id="inv-B" class="finput" value="${esc(f.B||f.A)}" placeholder="הקלד שם, עסק, או ת&quot;ז..."
+      <input type="text" id="inv-custName" class="finput" value="${esc(f[COLS.docCustName])}" placeholder="הקלד לחיפוש..."
         oninput="onInvCustSearch(this.value)" autocomplete="off">
       ${S.showSuggest&&S.suggest.length?suggestHtmlInv():''}
     </div>
   </div>
-  ${f.A?`<div style="background:#f0f4ff;border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:12px;font-family:monospace;color:#1a73e8">✓ ${esc(f.B||'')} — ת"ז/ח"פ: ${esc(f.A)}</div>`:''}
-  <div class="field"><label>תאריך <small>(עמודה C)</small></label>
-    <input type="date" id="inv-C" class="finput" style="direction:ltr;text-align:left"
-      value="${dateToISO(f.C)}" max="${dateToISO(tod())}"
-      oninput="uf('iForm','C',isoToHeb(this.value))">
+  <div class="field"><label>ת"ז / ח"פ <small>(עמודה ${COLS.docCustId}) *</small></label>
+    <input type="text" inputmode="numeric" id="inv-custId" class="finput num" value="${esc(f[COLS.docCustId])}"
+      placeholder="הזן ת\"ז או ח\"פ..."
+      oninput="uf('iForm','${COLS.docCustId}',this.value);renderSaveBtn()">
+  </div>
+  <div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
+    <input type="date" id="inv-date" class="finput" style="direction:ltr;text-align:left"
+      value="${dateToISO(f[COLS.docDate])}" max="${dateToISO(tod())}"
+      oninput="uf('iForm','${COLS.docDate}',isoToHeb(this.value))">
   </div>`;
 
-  // Products
   h+=`<div class="fdivider"><hr><span>📦 מוצרים</span><hr></div>
   <div class="dtable" style="margin-bottom:10px">`;
   PRODS.forEach(p=>{
@@ -915,14 +998,13 @@ function renderInvForm(isTax){
   });
   h+=`</div>`;
 
-  // Pricing
   h+=`<div class="fdivider"><hr><span>💰 תמחור</span><hr></div>
-  <div class="field"><label>מחיר ליחידה ₪ (לפני מע"מ) <small>(עמודה Z)</small></label>
-    <input type="text" inputmode="decimal" id="inv-Z" class="finput num" value="${esc(f.Z)}"
-      placeholder="0.00" oninput="uf('iForm','Z',this.value);refreshCalc()">
+  <div class="field"><label>מחיר ליחידה ₪ (לפני מע"מ) <small>(עמודה ${COLS.price})</small></label>
+    <input type="text" inputmode="decimal" id="inv-price" class="finput num" value="${esc(f[COLS.price])}"
+      placeholder="0.00" oninput="uf('iForm','${COLS.price}',this.value);refreshCalc()">
   </div>`;
 
-  if(calc.totalQty>0&&parseFloat(f.Z)>0){
+  if(calc.totalQty>0&&parseFloat(f[COLS.price])>0){
     h+=`<div id="calc-preview" style="background:#f8f8f8;border-radius:10px;padding:4px;margin-bottom:12px">
       <div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
       <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
@@ -933,51 +1015,51 @@ function renderInvForm(isTax){
     h+=`<div id="calc-preview"></div>`;
   }
 
-  h+=`<div class="field"><label>הנחה % <small>(עמודה AB)</small></label>
-    <input type="text" inputmode="numeric" class="finput num" value="${esc(f.AB)}" placeholder="0"
-      oninput="uf('iForm','AB',this.value);refreshCalc()">
+  h+=`<div class="field"><label>הנחה % <small>(עמודה ${COLS.discount})</small></label>
+    <input type="text" inputmode="numeric" class="finput num" value="${esc(f[COLS.discount])}" placeholder="0"
+      oninput="uf('iForm','${COLS.discount}',this.value);refreshCalc()">
   </div>`;
 
-  // Payment section — חשמ"ק only
   if(isTax){
-    const isChq=f.AE==='שיק';
-    const isCash=f.AE==='מזומן';
-    const paid=parseFloat(f.AF||0);
+    const isChq=f[COLS.taxPayType]==='שיק';
+    const isCash=f[COLS.taxPayType]==='מזומן';
+    const paid=parseFloat(f[COLS.taxPayAmt]||0);
     const total=calc.withVat;
-    const isOver=isChq&&total>0&&paid>total+0.5; // over-payment only valid for cheque
+    const isOver=isChq&&total>0&&paid>total+0.5;
 
     h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
 
-    <div class="field"><label>סוג תשלום <small>(עמודה AE) *</small></label>
-      <select class="finput" onchange="uf('iForm','AE',this.value);render()">
+    <div class="field"><label>סוג תשלום <small>(עמודה ${COLS.taxPayType}) *</small></label>
+      <select class="finput" onchange="uf('iForm','${COLS.taxPayType}',this.value);render()">
         <option value="">-- בחר --</option>
-        ${PAYMENT_TYPES.map(pt=>`<option${f.AE===pt?' selected':''}>${pt}</option>`).join('')}
+        ${PAYMENT_TYPES.map(pt=>`<option${f[COLS.taxPayType]===pt?' selected':''}>${pt}</option>`).join('')}
       </select>
     </div>
 
-    <div class="field"><label>סכום התשלום ₪ <small>(עמודה AF) *</small></label>
-      <input type="text" inputmode="decimal" class="finput num" value="${esc(f.AF)}"
-        oninput="uf('iForm','AF',this.value);renderSaveBtn()">
+    <div class="field"><label>סכום התשלום ₪ <small>(עמודה ${COLS.taxPayAmt}) *</small></label>
+      <input type="text" inputmode="decimal" class="finput num" value="${esc(f[COLS.taxPayAmt])}"
+        oninput="uf('iForm','${COLS.taxPayAmt}',this.value);renderSaveBtn()"
+        onchange="uf('iForm','${COLS.taxPayAmt}',this.value);render()">
     </div>
 
     ${isCash?`
-    <div class="field"><label>תאריך תשלום <small>(עמודה AG)</small></label>
-      <input type="text" class="finput" value="${esc(f.AG||tod())}" readonly
+    <div class="field"><label>תאריך תשלום <small>(עמודה ${COLS.taxPayDate})</small></label>
+      <input type="text" class="finput" value="${esc(f[COLS.taxPayDate]||tod())}" readonly
         style="background:#f0f0f0;color:#888;cursor:default">
     </div>`:''}
 
     ${isChq?`
-    <div class="field"><label>מספר שיק <small>(עמודה AH) *</small></label>
-      <input type="text" inputmode="numeric" class="finput num" value="${esc(f.AH)}"
-        oninput="uf('iForm','AH',this.value);renderSaveBtn()">
+    <div class="field"><label>מספר שיק <small>(עמודה ${COLS.taxChkNum}) *</small></label>
+      <input type="text" inputmode="numeric" class="finput num" value="${esc(f[COLS.taxChkNum])}"
+        oninput="uf('iForm','${COLS.taxChkNum}',this.value);renderSaveBtn()">
     </div>
-    <div class="field"><label>תאריך פרעון שיק <small>(עמודה AG) *</small></label>
-      <input type="text" class="finput" value="${esc(f.AG||tod())}"
-        oninput="uf('iForm','AG',this.value);renderSaveBtn()">
+    <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.taxPayDate}) *</small></label>
+      <input type="text" class="finput" value="${esc(f[COLS.taxPayDate]||tod())}"
+        oninput="uf('iForm','${COLS.taxPayDate}',this.value);renderSaveBtn()">
     </div>
-    <div class="field"><label>צילום שיק <small>(עמודה AI) *</small></label>
+    <div class="field"><label>צילום שיק <small>(עמודה ${COLS.taxPhoto}) *</small></label>
       <input type="file" id="cheque-photo" accept="image/*" capture="environment"
-        style="display:none" onchange="onPhotoChange(this)">
+        style="position:absolute;width:1px;height:1px;opacity:0;" onchange="onPhotoChange(this)">
       <button type="button" class="finput"
         style="text-align:center;cursor:pointer;background:${f._photoTaken?'#e6f4ea':'#f8f8f8'};color:${f._photoTaken?'#1e8e3e':'#555'};font-size:14px;"
         onclick="document.getElementById('cheque-photo').click()">
@@ -996,128 +1078,113 @@ function renderInvForm(isTax){
     </div>`:''}
     `:''}
 
-    <div class="field"><label>הערות <small>(עמודה AJ)</small></label>
-      <textarea class="finput" rows="3" id="inv-AJ"
-        oninput="uf('iForm','AJ',this.value)">${esc(f.AJ)}</textarea>
+    <div class="field"><label>הערות <small>(עמודה ${COLS.taxNotes})</small></label>
+      <textarea class="finput" rows="3" id="inv-notes"
+        oninput="uf('iForm','${COLS.taxNotes}',this.value)">${esc(f[COLS.taxNotes])}</textarea>
     </div>`;
   }
 
-  const validErr=isTax?taxFormErrors():null;
-  const btnDisabled=S.saving||!!validErr;
-  const btnLabel=S.saving?'⏳ שומר...':(validErr?'⛔ '+validErr:(isTax?'💾 שמור חשמ"ק':'💾 שמור חשבונית'));
-  h+=`<button class="save-btn" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveInv(${isTax})">
+  const validErr = isTax ? taxFormErrors() : invoiceFormErrors();
+  const btnDisabled = S.saving || !!validErr;
+  const btnLabel = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור חשמ"ק' : '💾 שמור חשבונית'));
+  
+  h+=`<button id="btn-save-inv" class="save-btn" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveInv(${isTax})">
     ${btnLabel}</button></div>`;
   return h;
 }
 
-// Suggest box for RECEIPT form — onmousedown prevents input blur before pick
 function suggestHtmlReceipt(){
   return`<div class="suggest-box" id="suggest-box">
-    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
-      <div>${esc(c.A||'—')}</div>
-      <div class="sug-sub">${c.C?esc(c.C)+' · ':''}${c.B?esc(c.B):''}</div>
+    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c[COLS.custName]||'')}','${esc(c[COLS.custId]||'')}')">
+      <div>${esc(c[COLS.custBiz]||c[COLS.custName]||'—')}</div>
+      <div class="sug-sub">${c[COLS.custBiz]&&c[COLS.custName]?esc(c[COLS.custName])+' · ':''}${c[COLS.custId]?esc(c[COLS.custId]):''}</div>
     </div>`).join('')}
   </div>`;
 }
-// Suggest box for INVOICE/TAX form
 function suggestHtmlInv(){
   return`<div class="suggest-box" id="suggest-box">
-    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c.B)}','${esc(c.C)}')">
-      <div>${esc(c.C||c.A||'—')}</div>
-      <div class="sug-sub">${c.A?esc(c.A)+' · ':''}${c.B?esc(c.B):''}</div>
+    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c[COLS.custId]||'')}','${esc(c[COLS.custBiz]||c[COLS.custName]||'')}')">
+      <div>${esc(c[COLS.custBiz]||c[COLS.custName]||'—')}</div>
+      <div class="sug-sub">${c[COLS.custBiz]&&c[COLS.custName]?esc(c[COLS.custName])+' · ':''}${c[COLS.custId]?esc(c[COLS.custId]):''}</div>
     </div>`).join('')}
   </div>`;
 }
 
-// ── New Receipt Form ──
+function buildOpenInvsHtml() {
+  const rf = S.rForm;
+  if(!rf._openInvs || !rf._openInvs.length) return '';
+  let h = `<div class="fdivider"><hr><span>📄 חשבוניות פתוחות</span><hr></div>
+  <div class="dtable" style="margin-bottom:12px">
+    <div class="dthead" style="background:${tc()}"><span>בחר חשבונית לתשלום</span><span>${rf._openInvs.length} פתוחות</span></div>`;
+  rf._openInvs.forEach((inv,i)=>{
+    const invNum=nz(inv[COLS.invNum])||'—';
+    const invDate=nz(inv[COLS.docDate])||'';
+    const balance=getInvBalance(invNum);
+    const rawTotal=parseFloat(nz(inv[COLS.invTotalVat]))||0;
+    const hasPartial=balance<rawTotal-0.1;
+    const selected=rf[COLS.recInvNum]===invNum;
+    h+=`<div class="dtrow" style="cursor:pointer;${selected?`background:${tc()}15;`:''}${i===0?'border-top:none':''}"
+      onclick="pickReceiptInv('${esc(invNum)}','${balance}','${esc(invDate)}')">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:${selected?tc():'#222'}">#${esc(invNum)}</div>
+        <div style="font-size:11px;color:#888">${esc(invDate)}</div>
+        ${hasPartial?`<div style="font-size:10px;color:#e65100">שולם חלקית: ₪${Math.round(rawTotal-balance).toLocaleString('he-IL')}</div>`:''}
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:14px;font-weight:700;color:${tc()}">יתרה: ${fmt(String(balance))}</div>
+        ${selected?`<div style="font-size:10px;color:${tc()}">✓ נבחרה</div>`:''}
+      </div>
+    </div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function renderOpenInvs() {
+  const container = document.getElementById('open-invs-container');
+  if(container) container.innerHTML = buildOpenInvsHtml();
+}
+
 function renderReceiptForm(){
   const color=tc();const rf=S.rForm;
-  const isChk=rf.B==='שיק';
-  const isCash=rf.B==='מזומן';
-  const validErr=receiptFormErrors();
-  const btnDisabled=S.saving||!!validErr;
+  const isChk=rf[COLS.recPayType]==='שיק';
+  const isCash=rf[COLS.recPayType]==='מזומן';
 
   let h=`<div class="fwrap" style="--tc:${color}">`;
-  if(S.msg)h+=alertHtml(S.msg);
 
-  // ── Invoice number ──
-  h+=`<div class="field"><label>מספר חשבונית <small>(עמודה A)</small></label>
-    <input type="text" inputmode="numeric" id="r-A" class="finput num" value="${esc(rf.A)}"
+  h+=`<div class="field"><label>מספר חשבונית <small>(עמודה ${COLS.recInvNum})</small></label>
+    <input type="text" inputmode="numeric" id="r-${COLS.recInvNum}" class="finput num" value="${esc(rf[COLS.recInvNum])}"
       placeholder="הזן מספר חשבונית לחיפוש אוטומטי"
       oninput="onReceiptInvNumInput(this.value)">
   </div>`;
 
-  // ── Customer — locked (read-only) when invoice number is filled ──
-  const invLocked=!!rf.A.trim();
-  if(invLocked){
-    // Show resolved customer as read-only info block
-    h+=`<div style="background:#f0f4ff;border-radius:8px;padding:10px 13px;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:600;color:#1a73e8">${esc(rf._custName||'—')}</div>
-      ${rf._custId?`<div style="font-size:11px;color:#888;font-family:monospace;margin-top:2px">ת"ז/ח"פ: ${esc(rf._custId)}</div>`:''}
-      <div style="font-size:10px;color:#aaa;margin-top:4px">למחיקת הלקוח — מחק את מספר החשבונית</div>
-    </div>`;
-  }else{
-    // Free search
-    h+=`<div class="field"><label>חיפוש לקוח</label>
+  h+=`<div class="field"><label>חיפוש לקוח / שם עסק</label>
       <div class="field-wrap">
         <input type="text" id="r-H" class="finput" value="${esc(rf._custName)}"
-          placeholder="הקלד שם לקוח, שם עסק או ת&quot;ז"
+          placeholder="הקלד לחיפוש..."
           oninput="onCustSearch(this.value)" autocomplete="off">
         ${S.showSuggest&&S.suggest.length?suggestHtmlReceipt():''}
       </div>
+    </div>
+    <div class="field"><label>ת"ז / ח"פ</label>
+      <input type="text" inputmode="numeric" id="r-I" class="finput num" value="${esc(rf._custId)}"
+        placeholder="ת\"ז או ח\"פ..."
+        oninput="onCustIdInput(this.value)">
     </div>`;
-    // Show resolved customer info when found via search
-    if(rf._custName||rf._custId){
-      h+=`<div id="receipt-cust-block" style="background:#f0f4ff;border-radius:8px;padding:10px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div class="rcb-name" style="font-size:13px;font-weight:600;color:#1a73e8">${esc(rf._custName||'—')}</div>
-          ${rf._custId?`<div class="rcb-id" style="font-size:11px;color:#888;font-family:monospace">${esc(rf._custId)}</div>`:''}
-        </div>
-        <button onmousedown="event.preventDefault()" onclick="clearReceiptCustomer()" style="background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
-      </div>`;
-    }
-  }
 
-  // ── Open invoices list for this customer ──
-  if(rf._openInvs&&rf._openInvs.length){
-    h+=`<div class="fdivider"><hr><span>📄 חשבוניות פתוחות</span><hr></div>
-    <div class="dtable" style="margin-bottom:12px">
-      <div class="dthead" style="background:${color}"><span>בחר חשבונית לתשלום</span><span>${rf._openInvs.length} פתוחות</span></div>`;
-    rf._openInvs.forEach((inv,i)=>{
-      const invNum=nz(inv.AF)||'—';
-      const invDate=nz(inv.C)||'';
-      const balance=getInvBalance(invNum);
-      const rawTotal=parseFloat(nz(inv.AE))||0;
-      const hasPartial=balance<rawTotal-0.1;
-      const selected=rf.A===invNum;
-      h+=`<div class="dtrow" style="cursor:pointer;${selected?`background:${color}15;`:''}${i===0?'border-top:none':''}"
-        onclick="pickReceiptInv('${esc(invNum)}','${balance}','${esc(invDate)}')">
-        <div>
-          <div style="font-size:13px;font-weight:600;color:${selected?color:'#222'}">#${esc(invNum)}</div>
-          <div style="font-size:11px;color:#888">${esc(invDate)}</div>
-          ${hasPartial?`<div style="font-size:10px;color:#e65100">שולם חלקית: ₪${Math.round(rawTotal-balance).toLocaleString('he-IL')}</div>`:''}
-        </div>
-        <div style="text-align:left">
-          <div style="font-size:14px;font-weight:700;color:${color}">יתרה: ${fmt(String(balance))}</div>
-          ${selected?`<div style="font-size:10px;color:${color}">✓ נבחרה</div>`:''}
-        </div>
-      </div>`;
-    });
-    h+=`</div>`;
-  }
+  h+=`<div id="open-invs-container">${buildOpenInvsHtml()}</div>`;
 
-  // ── Show selected invoice total ──
   h+=`<div id="receipt-inv-total" style="display:${rf._invTotal?'flex':'none'};background:#f8f8f8;border-radius:8px;padding:9px 13px;margin-bottom:12px;justify-content:space-between">
     <span style="font-size:13px;color:#666">יתרה לתשלום</span>
-    <span class="rcb-total" style="font-size:15px;font-weight:700;color:${color}">${rf._invTotal?fmt(rf._invTotal):''}</span>
+    <span class="rcb-total" id="rcb-total-val" style="font-size:15px;font-weight:700;color:${color}">${rf._invTotal?fmt(rf._invTotal):''}</span>
   </div>`;
 
   h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
 
-  <div class="field"><label>סוג תשלום <small>(עמודה B) *</small></label>
+  <div class="field"><label>סוג תשלום <small>(עמודה ${COLS.recPayType}) *</small></label>
     <div style="display:flex;gap:8px">
       ${PAYMENT_TYPES.map(pt=>{
-        const sel=rf.B===pt;
+        const sel=rf[COLS.recPayType]===pt;
         return`<button type="button" onmousedown="event.preventDefault()"
           onclick="onReceiptPayTypeChange('${pt}')"
           style="flex:1;padding:12px;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;
@@ -1130,45 +1197,30 @@ function renderReceiptForm(){
     </div>
   </div>
 
-  <div class="field"><label>סכום התשלום ₪ <small>(עמודה C) *</small></label>
-    <input type="text" inputmode="decimal" class="finput num" id="r-C" value="${esc(rf.C)}"
-      oninput="uf('rForm','C',this.value)" onchange="uf('rForm','C',this.value)">
-  </div>`;
+  <div class="field"><label>סכום התשלום ₪ <small>(עמודה ${COLS.recPayAmt}) *</small></label>
+    <input type="text" inputmode="decimal" class="finput num" id="r-${COLS.recPayAmt}" value="${esc(rf[COLS.recPayAmt])}"
+      oninput="uf('rForm','${COLS.recPayAmt}',this.value);renderSaveBtnRec()">
+  </div>
 
-  // Amount hint — only show when relevant
-  if(rf._invTotal&&rf.B){
-    const total=parseFloat(rf._invTotal)||0;
-    const paid=parseFloat(rf.C)||0;
-    if(isCash&&total>0){
-      h+=`<div style="background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#555">
-        💵 מזומן: עד ₪${Math.round(total).toLocaleString('he-IL')} בלבד
-      </div>`;
-    }else if(isChk&&total>0&&paid>total+0.5){
-      h+=`<div style="background:#fff8e1;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#e65100">
-        🏦 שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ב-₪${Math.round(paid-total).toLocaleString('he-IL')} מעל היתרה. יש למלא מספר חשבונית להפרש
-      </div>`;
-    }
-  }
-
-  h+=`<div id="receipt-cash-date" style="display:${isCash?'block':'none'}">
-    <div class="field"><label>תאריך תשלום <small>(עמודה D)</small></label>
-      <input type="text" class="finput" value="${esc(rf.D||tod())}" readonly
+  <div id="receipt-cash-date" style="display:${isCash?'block':'none'}">
+    <div class="field"><label>תאריך תשלום <small>(עמודה ${COLS.recPayDate})</small></label>
+      <input type="text" class="finput" value="${esc(rf[COLS.recPayDate]||tod())}" readonly
         style="background:#f0f0f0;color:#888;cursor:default">
     </div>
   </div>
 
   <div id="receipt-chk-fields" style="display:${isChk?'block':'none'}">
-    <div class="field"><label>מספר שיק <small>(עמודה E) *</small></label>
-      <input type="text" inputmode="numeric" id="r-E" class="finput num" value="${esc(rf.E)}"
-        oninput="uf('rForm','E',this.value)" onchange="uf('rForm','E',this.value)">
+    <div class="field"><label>מספר שיק <small>(עמודה ${COLS.recChkNum}) *</small></label>
+      <input type="text" inputmode="numeric" id="r-${COLS.recChkNum}" class="finput num" value="${esc(rf[COLS.recChkNum])}"
+        oninput="uf('rForm','${COLS.recChkNum}',this.value);renderSaveBtnRec()">
     </div>
-    <div class="field"><label>תאריך פרעון שיק <small>(עמודה D) *</small></label>
-      <input type="text" id="r-D" class="finput" value="${esc(rf.D||tod())}"
-        oninput="uf('rForm','D',this.value)" onchange="uf('rForm','D',this.value)">
+    <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.recPayDate}) *</small></label>
+      <input type="text" id="r-${COLS.recPayDate}" class="finput" value="${esc(rf[COLS.recPayDate]||tod())}"
+        oninput="uf('rForm','${COLS.recPayDate}',this.value);renderSaveBtnRec()">
     </div>
-    <div class="field"><label>צילום שיק <small>(עמודה F) *</small></label>
+    <div class="field"><label>צילום שיק <small>(עמודה ${COLS.recPhoto}) *</small></label>
       <input type="file" id="receipt-cheque-photo" accept="image/*" capture="environment"
-        style="display:none" onchange="onReceiptPhotoChange(this)">
+        style="position:absolute;width:1px;height:1px;opacity:0;" onchange="onReceiptPhotoChange(this)">
       <button type="button" class="finput"
         style="text-align:center;cursor:pointer;background:${rf._photoTaken?'#e6f4ea':'#f8f8f8'};color:${rf._photoTaken?'#1e8e3e':'#555'};font-size:14px;"
         onclick="document.getElementById('receipt-cheque-photo').click()">
@@ -1176,54 +1228,55 @@ function renderReceiptForm(){
       </button>
       ${rf._photoDataUrl?`<img src="${rf._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
     </div>
-    ${(()=>{const paid=parseFloat(rf.C)||0;const total=parseFloat(rf._invTotal)||0;
+    ${(()=>{const paid=parseFloat(rf[COLS.recPayAmt])||0;const total=parseFloat(rf._invTotal)||0;
       return isChk&&total>0&&paid>total+0.5?`
       <div style="background:#fff8e1;border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:#e65100">
         ⚠️ שיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — הזן מספר חשבונית להפרש
       </div>
       <div class="field"><label>מספר חשבונית עבור ההפרש *</label>
         <input type="text" inputmode="numeric" id="r-overinv" class="finput num" value="${esc(rf._overInvNum||'')}"
-          oninput="uf('rForm','_overInvNum',this.value)" onchange="uf('rForm','_overInvNum',this.value)">
+          oninput="uf('rForm','_overInvNum',this.value);renderSaveBtnRec()">
       </div>`:'';})()}
+  </div>
+
+  <div class="field"><label>הערות <small>(עמודה ${COLS.recNotes})</small></label>
+    <textarea class="finput" id="r-${COLS.recNotes}" rows="3" oninput="uf('rForm','${COLS.recNotes}',this.value)">${esc(rf[COLS.recNotes])}</textarea>
   </div>`;
 
-  h+=`<div class="field"><label>הערות <small>(עמודה G)</small></label>
-    <textarea class="finput" id="r-G" rows="3" oninput="uf('rForm','G',this.value)">${esc(rf.G)}</textarea>
-  </div>`;
-
-  // Button always enabled — captureReceiptFields runs onmousedown before validation
-  h+=`<button class="save-btn" onmousedown="captureReceiptFields()" style="background:${S.saving?'#ccc':color}" onclick="saveReceipt()">
-    ${S.saving?'⏳ שומר...':'💾 שמור קבלה'}</button></div>`;
+  const validErr = receiptFormErrors();
+  const btnDisabled = S.saving || !!validErr;
+  const btnLabel = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
+  
+  h+=`<button type="button" id="btn-save-rec" class="save-btn" onmousedown="captureReceiptFields()" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveReceipt()">
+    ${btnLabel}</button></div>`;
   return h;
 }
 
-// ── Receipt List ──
 function renderRecList(){
   const {receipts:data,rsState:state}=S;const color=tc();
   if(state==='error')return errScreen(S.errors.receipts,'loadReceipts()','קבלות',color);
   if(state!=='ok')return statusHtml(state,'loadReceipts()','קבלות');
   if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
     <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
-  const total=data.reduce((s,r)=>{const n=parseFloat((r.C||'').replace(/[^0-9.]/g,''));return s+(isNaN(n)?0:n);},0);
   let h=`<div style="padding-bottom:24px">`;
   [...data].reverse().forEach((r,i)=>{
     const id=`rec-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
-    const num=nz(r.J)||nz(r.A)||`#${i+1}`;
+    const num=nz(r[COLS.recNum])||nz(r[COLS.recInvNum])||`#${i+1}`;
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1" style="justify-content:space-between">
           <div style="display:flex;align-items:center;gap:7px">
             <span class="nbadge" style="background:${color}">קבלה ${esc(num)}</span>
-            ${nz(r.H)?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(r.H)}</span>`:''}
+            ${nz(r[COLS.recCustName])?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(r[COLS.recCustName])}</span>`:''}
           </div>
-          ${nz(r.C)?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(r.C)}</span>`:''}
+          ${nz(r[COLS.recPayAmt])?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(r[COLS.recPayAmt])}</span>`:''}
         </div>
         <div class="r2">
-          ${nz(r.B)?`<span class="tag">${esc(r.B)}</span>`:''}
-          ${nz(r.D)?`<span>📅 ${esc(r.D)}</span>`:''}
-          ${nz(r.A)?`<span style="color:#bbb">חשב׳ ${esc(r.A)}</span>`:''}
-          ${nz(r.E)?`<span class="tag blue">🏦 שיק ${esc(r.E)}</span>`:''}
-          ${(()=>{if(!nz(r.A))return'';const bal=getInvBalance(r.A);
+          ${nz(r[COLS.recPayType])?`<span class="tag">${esc(r[COLS.recPayType])}</span>`:''}
+          ${nz(r[COLS.recPayDate])?`<span>📅 ${esc(r[COLS.recPayDate])}</span>`:''}
+          ${nz(r[COLS.recInvNum])?`<span style="color:#bbb">חשב׳ ${esc(r[COLS.recInvNum])}</span>`:''}
+          ${nz(r[COLS.recChkNum])?`<span class="tag blue">🏦 שיק ${esc(r[COLS.recChkNum])}</span>`:''}
+          ${(()=>{if(!nz(r[COLS.recInvNum]))return'';const bal=getInvBalance(r[COLS.recInvNum]);
             return bal>0.5?`<span style="font-size:11px;color:#e65100">יתרה: ₪${Math.round(bal).toLocaleString('he-IL')}</span>`
               :`<span style="font-size:11px;color:#1e8e3e">✓ שולם</span>`;})()} 
         </div>
@@ -1249,12 +1302,12 @@ function renderRecList(){
   return h+`</div>`;
 }
 
-// ── Document List ──
 function renderDocList(data,state,isTax){
   const label=isTax?'חשבוניות/קבלות':'חשבוניות';
   const reload=isTax?'loadTax()':'loadInvoices()';
   const color=tc();const errMsg=S.errors[isTax?'tax':'invoices'];
-  const totalKey=isTax?'AD':'AE';const numKey=isTax?'AK':'AF';
+  const totalKey=isTax?COLS.taxTotalVat:COLS.invTotalVat;
+  const numKey=isTax?COLS.taxNum:COLS.invNum;
   const tail=isTax?TAX_TAIL:INV_TAIL;
   if(state==='error')return errScreen(errMsg,reload,label,color);
   if(state!=='ok')return statusHtml(state,reload,label);
@@ -1265,16 +1318,14 @@ function renderDocList(data,state,isTax){
     <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">↻ רענן</button>
   </div>`;
 
-  const grand=data.reduce((s,r)=>{const n=parseFloat((r[totalKey]||'').replace(/[^0-9.]/g,''));return s+(isNaN(n)?0:n);},0);
   let h=`<div style="padding-bottom:24px">`;
 
   [...data].reverse().forEach((r,i)=>{
     const id=`${isTax?'t':'v'}-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
     const totVAT=nz(r[totalKey]);const invNum=nz(r[numKey]);
-    const bizName=nz(r.B);const custId=nz(r.A);const date=nz(r.C);
+    const bizName=nz(r[COLS.docCustName]);const custId=nz(r[COLS.docCustId]);const date=nz(r[COLS.docDate]);
     const prods=PRODS.filter(p=>{const q=parseFloat(r[p.qk]);return!isNaN(q)&&q>0;});
     const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
-    // Balance — only calculated for invoice tab (not tax), only when receipts loaded
     const balance=(!isTax&&invNum)?getInvBalance(invNum):null;
     const hasPartialPay=balance!==null&&balance<parseMoney(totVAT)-0.5;
 
@@ -1321,10 +1372,10 @@ function renderDocList(data,state,isTax){
         h+=`</div>`;
       }
       const pricing=[
-        nz(r.Z)&&{l:'מחיר ליחידה (לפני מע"מ)',vv:fmt(r.Z)},
-        nz(r.AA)&&{l:'סה"כ לפני מע"מ',vv:fmt(r.AA)},
-        nz(r.AB)&&{l:'הנחה',vv:r.AB+'%',disc:true},
-        nz(r.AC)&&{l:'סה"כ אחר הנחה (לפני מע"מ)',vv:fmt(r.AC)},
+        nz(r[COLS.price])&&{l:'מחיר ליחידה (לפני מע"מ)',vv:fmt(r[COLS.price])},
+        nz(r[COLS.subtotal])&&{l:'סה"כ לפני מע"מ',vv:fmt(r[COLS.subtotal])},
+        nz(r[COLS.discount])&&{l:'הנחה',vv:r[COLS.discount]+'%',disc:true},
+        nz(r[COLS.afterDisc])&&{l:'סה"כ אחר הנחה (לפני מע"מ)',vv:fmt(r[COLS.afterDisc])},
         totVAT&&{l:'סה"כ כולל מע"מ',vv:fmt(totVAT),hi:true},
         hasPartialPay&&{l:'שולם עד כה',vv:`₪${Math.round(parseMoney(totVAT)-balance).toLocaleString('he-IL')}`,paid:true},
         hasPartialPay&&{l:'יתרה לתשלום',vv:`₪${Math.round(balance).toLocaleString('he-IL')}`,bal:true},
@@ -1355,7 +1406,6 @@ function renderDocList(data,state,isTax){
           <div style="font-size:13px;color:#222;margin-top:2px">${esc(r[f.k])}</div></div>`;});
         h+=`</div>`;
       }
-      // "Create receipt" button — only for invoice tab, open (non-green) rows
       if(!isTax&&isInvOpen(r)){
         h+=`<button onclick="openNewReceiptFromInv(${r._id})"
           style="width:100%;margin-top:10px;padding:11px;border-radius:8px;border:1.5px solid ${color};
@@ -1370,8 +1420,6 @@ function renderDocList(data,state,isTax){
   return h+`</div>`;
 }
 
-// ── Shared Helpers ──
-// Toast — shown at bottom of screen regardless of scroll position
 let _toastTimer=null;
 function showToast(msg,type,duration){
   const c=document.getElementById('toast-container');
@@ -1404,7 +1452,6 @@ function statusHtml(state,reload,label){
     <button onclick="${reload}" style="background:#c62828;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">נסה שוב</button></div>`;
 }
 
-// ── Events ──
 function bindAll(){
   const si=document.getElementById('sinput');
   if(si){
@@ -1429,13 +1476,15 @@ async function cp(text,key){
   S.copied=key;render();
   S.copiedTimer=setTimeout(()=>{S.copied=null;render();},2000);
 }
-function uf(formKey,k,val){S[formKey][k]=val;}
-function addDashC(){S.cForm.B=(S.cForm.B||'')+'-';const i=document.getElementById('f-B');if(i){i.value=S.cForm.B;i.focus();}}
+function uf(formKey,k,val){
+  S[formKey][k]=val;
+}
+function addDashC(){S.cForm[COLS.custId]=(S.cForm[COLS.custId]||'')+'-';const i=document.getElementById('f-id');if(i){i.value=S.cForm[COLS.custId];i.focus();}}
 
 function updateInvBar(){
   const f=S.iForm||{};
   const calc=calcInv(f);
-  const price=parseFloat(f.Z)||0;
+  const price=parseFloat(f[COLS.price])||0;
   const cansEl=document.getElementById('st-cans');
   const totEl=document.getElementById('st-total');
   if(!cansEl)return;
@@ -1453,17 +1502,14 @@ function updateInvBar(){
 
 function refreshCalc(){
   const f=S.iForm;const calc=calcInv(f);const color=tc();
-  // Store computed values for save
-  S.iForm.AA=calc.aa>0?fmtNum(calc.aa):'';
-  S.iForm.AC=calc.ac>0?fmtNum(calc.ac):'';
-  if(S.screen==='new-invoice')S.iForm.AE=calc.withVat>0?String(Math.round(calc.withVat)):'';
-  else S.iForm.AD=calc.withVat>0?String(Math.round(calc.withVat)):'';
-  // Update fixed bar
+  S.iForm[COLS.subtotal]=calc.aa>0?fmtNum(calc.aa):'';
+  S.iForm[COLS.afterDisc]=calc.ac>0?fmtNum(calc.ac):'';
+  if(S.screen==='new-invoice')S.iForm[COLS.invTotalVat]=calc.withVat>0?String(Math.round(calc.withVat)):'';
+  else S.iForm[COLS.taxTotalVat]=calc.withVat>0?String(Math.round(calc.withVat)):'';
   updateInvBar();
-  // Update calc preview in-place — targeted, no render()
   const preview=document.getElementById('calc-preview');
   if(!preview)return;
-  if(calc.totalQty>0&&parseFloat(f.Z)>0){
+  if(calc.totalQty>0&&parseFloat(f[COLS.price])>0){
     let inner=`<div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
     <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
     if(calc.disc>0)inner+=`<div class="calc-row"><span class="calc-label">אחרי הנחה ${calc.disc}%</span><span class="calc-val">₪${fmtNum(calc.ac)}</span></div>`;
@@ -1477,32 +1523,13 @@ function refreshCalc(){
 
 function updProd(qk,val){
   S.iForm[qk]=val.replace(/[^0-9]/g,'')||'0';
-  refreshCalc(); // targeted only — focus preserved
+  refreshCalc(); 
 }
 
-// Customer search for RECEIPT form → updates suggest box only, no render
 function onCustSearch(val){
-  // Do NOT update S.rForm on every keystroke — just update the suggest box
+  S.rForm._custName=val; 
+  renderSaveBtnRec();
   const inp=document.getElementById('r-H');
-  const wrap=inp?.parentElement;
-  let box=document.getElementById('suggest-box');
-  if(val.length<2){S.suggest=[];if(box)box.remove();inp?.focus();return;}
-  const q=val.toLowerCase();
-  S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
-  if(S.suggest.length&&wrap){
-    const inner=S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c.A)}','${esc(c.B)}')">
-      <div>${esc(c.C||c.A||'—')}</div><div class="sug-sub">${c.B?esc(c.B):''}</div>
-    </div>`).join('');
-    if(box)box.innerHTML=inner;
-    else{const el=document.createElement('div');el.className='suggest-box';el.id='suggest-box';el.innerHTML=inner;wrap.appendChild(el);}
-  }else if(box)box.remove();
-  inp?.focus();
-}
-
-// Customer search for INVOICE form → updates suggest box only, no render
-function onInvCustSearch(val){
-  S.iForm.B=val;
-  const inp=document.getElementById('inv-B');
   const wrap=inp?.parentElement;
   let box=document.getElementById('suggest-box');
   if(val.length<2){
@@ -1511,11 +1538,12 @@ function onInvCustSearch(val){
     return;
   }
   const q=val.toLowerCase();
-  S.suggest=S.customers.filter(c=>['A','B','C'].some(k=>(c[k]||'').toLowerCase().includes(q)));
+  const keys = [COLS.custName, COLS.custId, COLS.custBiz];
+  S.suggest=S.customers.filter(c=>keys.some(k=>(c[k]||'').toLowerCase().includes(q)));
   S.showSuggest=S.suggest.length>0;
   if(S.showSuggest&&wrap){
-    const inner=S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c.B)}','${esc(c.C)}')">
-      <div>${esc(c.C||c.A||'—')}</div><div class="sug-sub">${c.A?esc(c.A)+' · ':''}${c.B?esc(c.B):''}</div>
+    const inner=S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c[COLS.custName]||'')}','${esc(c[COLS.custId]||'')}')">
+      <div>${esc(c[COLS.custBiz]||c[COLS.custName]||'—')}</div><div class="sug-sub">${c[COLS.custBiz]&&c[COLS.custName]?esc(c[COLS.custName])+' · ':''}${c[COLS.custId]?esc(c[COLS.custId]):''}</div>
     </div>`).join('');
     if(box){box.innerHTML=inner;}
     else{
@@ -1524,172 +1552,255 @@ function onInvCustSearch(val){
       el.innerHTML=inner;wrap.appendChild(el);
     }
   }else if(box){box.remove();}
-  // Always keep focus on the input
-  inp?.focus();
 }
-// Pick customer for RECEIPT: c.A=שם לקוח→H, c.B=ת"ז/ח"פ→I
+
+function onCustIdInput(val) {
+  S.rForm._custId = val;
+  renderSaveBtnRec();
+  clearTimeout(_invLookupTimer);
+  _invLookupTimer = setTimeout(()=>{
+    S.rForm._openInvs = openInvsFor(val.trim());
+    renderOpenInvs();
+  }, 400);
+}
+
+function onInvCustSearch(val){
+  S.iForm[COLS.docCustName]=val;
+  renderSaveBtn();
+  const inp=document.getElementById('inv-custName');
+  const wrap=inp?.parentElement;
+  let box=document.getElementById('suggest-box');
+  if(val.length<2){
+    S.suggest=[];S.showSuggest=false;
+    if(box)box.remove();
+    return;
+  }
+  const q=val.toLowerCase();
+  const keys = [COLS.custName, COLS.custId, COLS.custBiz];
+  S.suggest=S.customers.filter(c=>keys.some(k=>(c[k]||'').toLowerCase().includes(q)));
+  S.showSuggest=S.suggest.length>0;
+  if(S.showSuggest&&wrap){
+    const inner=S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c[COLS.custId]||'')}','${esc(c[COLS.custBiz]||c[COLS.custName]||'')}')">
+      <div>${esc(c[COLS.custBiz]||c[COLS.custName]||'—')}</div><div class="sug-sub">${c[COLS.custBiz]&&c[COLS.custName]?esc(c[COLS.custName])+' · ':''}${c[COLS.custId]?esc(c[COLS.custId]):''}</div>
+    </div>`).join('');
+    if(box){box.innerHTML=inner;}
+    else{
+      const el=document.createElement('div');
+      el.className='suggest-box';el.id='suggest-box';
+      el.innerHTML=inner;wrap.appendChild(el);
+    }
+  }else if(box){box.remove();}
+}
+
 function pickCustomer(name,id){
-  // Look up customer from S.customers to get business name (c.C)
-  const cust=S.customers.find(c=>c.B===id)||{A:name,B:id,C:''};
-  S.rForm._custName=cust.C||name;
+  S.rForm._custName=name;
   S.rForm._custId=id;
   S.rForm._openInvs=openInvsFor(id);
   S.rForm._showOpenInvs=true;
-  // Auto-select if only one open invoice
+
+  setElValue('r-H', name);
+  setElValue('r-I', id);
+
   if(S.rForm._openInvs.length===1){
     const inv=S.rForm._openInvs[0];
-    S.rForm.A=nz(inv.AF)||'';
-    S.rForm._invTotal=String(getInvBalance(S.rForm.A));
-    S.rForm._invDate=nz(inv.C)||'';
+    S.rForm[COLS.recInvNum]=nz(inv[COLS.invNum])||'';
+    S.rForm._invTotal=String(getInvBalance(S.rForm[COLS.recInvNum]));
+    S.rForm._invDate=nz(inv[COLS.docDate])||'';
+    setElValue('r-'+COLS.recInvNum, S.rForm[COLS.recInvNum]);
+    setElDisplay('receipt-inv-total', 'flex');
+    setElText('rcb-total-val', fmt(S.rForm._invTotal));
+  }else{
+    S.rForm[COLS.recInvNum]='';
+    S.rForm._invTotal='';
+    setElValue('r-'+COLS.recInvNum, '');
+    setElDisplay('receipt-inv-total', 'none');
   }
+  
   S.showSuggest=false;S.suggest=[];
-  document.getElementById('suggest-box')?.remove();
-  const inp=document.getElementById('r-H');
-  if(inp)inp.value=cust.C||name;
-  render();
-}
-// Called onmousedown on the save button — fires BEFORE blur on any focused input
-// This ensures we capture typed values before focus changes lose them
-function captureReceiptFields(){
-  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
-  S.rForm.C=g('r-C').trim();
-  S.rForm.A=g('r-A').trim()||S.rForm.A;  // keep existing if field empty
-  S.rForm.E=g('r-E').trim();
-  S.rForm.D=g('r-D').trim()||S.rForm.D;
-  const ov=g('r-overinv').trim();S.rForm._overInvNum=ov||S.rForm._overInvNum;
-  const gEl=document.getElementById('r-G');if(gEl)S.rForm.G=gEl.value;
-}
-function onReceiptPayTypeChange(val){
-  // Capture ALL current field values from DOM before any re-render
-  captureReceiptFields();
-  S.rForm.B=val;
-  render();
-}
-function clearReceiptCustomer(){
-  S.rForm._custName='';S.rForm._custId='';S.rForm._openInvs=[];
-  S.rForm.A='';S.rForm._invTotal='';S.rForm._invDate='';
-  render();
-}
-let _invLookupTimer=null;
-function onReceiptInvNumInput(val){
-  S.rForm.A=val;
-  clearTimeout(_invLookupTimer);
-  if(val.trim().length<7){
-    // Clear customer info if less than 7 digits
-    S.rForm._custId='';S.rForm._custName='';
-    S.rForm._invTotal='';S.rForm._invDate='';S.rForm._openInvs=[];
-    updateReceiptCustomerBlock();return;
-  }
-  // Trigger immediately at 7 digits, debounce for more
-  const delay=val.trim().length===7?0:400;
-  _invLookupTimer=setTimeout(()=>{
-    const found=S.invoices.find(r=>nz(r.AF)===val.trim());
-    if(found){
-      S.rForm._custId=nz(found.A)||'';
-      S.rForm._custName=nz(found.B)||'';
-      S.rForm._invTotal=String(getInvBalance(val.trim()));
-      S.rForm._invDate=nz(found.C)||'';
-      S.rForm._openInvs=openInvsFor(S.rForm._custId);
-    }else{
-      S.rForm._custId='';S.rForm._custName='';
-      S.rForm._invTotal='';S.rForm._invDate='';S.rForm._openInvs=[];
-    }
-    updateReceiptCustomerBlock();
-  },delay);
+  const box = document.getElementById('suggest-box');
+  if(box) box.remove();
+  
+  renderOpenInvs();
+  renderSaveBtnRec();
 }
 
-function updateReceiptCustomerBlock(){
-  const rf=S.rForm;
-  const block=document.getElementById('receipt-cust-block');
-  const totalBlock=document.getElementById('receipt-inv-total');
-  if(block){
-    if(rf._custName||rf._custId){
-      block.style.display='flex';
-      const nameEl=block.querySelector('.rcb-name');
-      const idEl=block.querySelector('.rcb-id');
-      if(nameEl)nameEl.textContent=rf._custName||'—';
-      if(idEl)idEl.textContent=rf._custId||'';
-    }else{
-      block.style.display='none';
-    }
-  }
-  if(totalBlock){
-    if(rf._invTotal){
-      totalBlock.style.display='flex';
-      const tv=totalBlock.querySelector('.rcb-total');
-      if(tv)tv.textContent=fmt(rf._invTotal);
-    }else{
-      totalBlock.style.display='none';
-    }
-  }
+function captureReceiptFields(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  S.rForm[COLS.recPayAmt]=g('r-'+COLS.recPayAmt).trim();
+  S.rForm[COLS.recInvNum]=g('r-'+COLS.recInvNum).trim()||S.rForm[COLS.recInvNum];  
+  S.rForm[COLS.recChkNum]=g('r-'+COLS.recChkNum).trim();
+  S.rForm[COLS.recPayDate]=g('r-'+COLS.recPayDate).trim()||S.rForm[COLS.recPayDate];
+  
+  const rh=g('r-H'); if(rh) S.rForm._custName=rh;
+  const ri=g('r-I'); if(ri) S.rForm._custId=ri;
+  
+  const ov=g('r-overinv').trim();S.rForm._overInvNum=ov||S.rForm._overInvNum;
+  const gEl=document.getElementById('r-'+COLS.recNotes);if(gEl)S.rForm[COLS.recNotes]=gEl.value;
 }
-function pickReceiptInv(invNum,invTotal,invDate){
-  S.rForm.A=invNum;
-  S.rForm._invTotal=invTotal;
-  S.rForm._invDate=invDate;
-  S.rForm._openInvs=[];  // collapse list — user has chosen
+
+function onReceiptPayTypeChange(val){
+  captureReceiptFields();
+  S.rForm[COLS.recPayType]=val;
   render();
 }
+
+function clearReceiptCustomer(){
+  S.rForm._custName='';S.rForm._custId='';S.rForm._openInvs=[];
+  S.rForm[COLS.recInvNum]='';S.rForm._invTotal='';S.rForm._invDate='';
+  setElValue('r-H', '');
+  setElValue('r-I', '');
+  setElValue('r-'+COLS.recInvNum, '');
+  setElDisplay('receipt-inv-total', 'none');
+  renderOpenInvs();
+  renderSaveBtnRec();
+}
+
+let _invLookupTimer=null;
+function onReceiptInvNumInput(val){
+  S.rForm[COLS.recInvNum]=val;
+  renderSaveBtnRec();
+  clearTimeout(_invLookupTimer);
+  
+  if(!val.trim()){
+    S.rForm._invTotal='';
+    S.rForm._invDate='';
+    setElDisplay('receipt-inv-total', 'none');
+    return;
+  }
+  
+  _invLookupTimer=setTimeout(()=>{
+    const found=S.invoices.find(r=>nz(r[COLS.invNum])===val.trim() || nz(r[COLS.taxNum])===val.trim());
+    
+    if(found){
+      S.rForm._custId=nz(found[COLS.docCustId])||'';
+      let cName=nz(found[COLS.docCustName]);
+      if(!cName && S.rForm._custId){
+        const cust = S.customers.find(c => c[COLS.custId] === S.rForm._custId);
+        if(cust) cName = cust[COLS.custBiz] || cust[COLS.custName];
+      }
+      S.rForm._custName=cName||'';
+      S.rForm._invTotal=String(getInvBalance(val.trim()));
+      S.rForm._invDate=nz(found[COLS.docDate])||'';
+      
+      setElValue('r-H', S.rForm._custName);
+      setElValue('r-I', S.rForm._custId);
+
+      if(S.rForm._invTotal) {
+          setElDisplay('receipt-inv-total', 'flex');
+          setElText('rcb-total-val', fmt(S.rForm._invTotal));
+      }
+    }else{
+      S.rForm._invTotal='';
+      S.rForm._invDate='';
+      setElDisplay('receipt-inv-total', 'none');
+    }
+    renderSaveBtnRec();
+  }, 400);
+}
+
+function pickReceiptInv(invNum,invTotal,invDate){
+  S.rForm[COLS.recInvNum]=invNum;
+  S.rForm._invTotal=invTotal;
+  S.rForm._invDate=invDate;
+  S.rForm._openInvs=[];  
+  
+  setElValue('r-'+COLS.recInvNum, invNum);
+  setElDisplay('receipt-inv-total', 'flex');
+  setElText('rcb-total-val', fmt(invTotal));
+  
+  renderOpenInvs();
+  renderSaveBtnRec();
+}
+
+function onPhotoChange(input){
+  if(!input.files||!input.files[0])return;
+  showToast('⏳ מעבד תמונה...', 'ok', 2000);
+  const file=input.files[0];
+  const img=new Image();
+  img.onload=function(){
+    URL.revokeObjectURL(img.src);
+    const MAX=800; 
+    const ratio=Math.min(MAX/img.width,MAX/img.height,1);
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    const b64=c.toDataURL('image/jpeg',0.6);
+    S.iForm._photoDataUrl=b64;
+    S.iForm._photoBase64=b64;
+    S.iForm._photoTaken=true; 
+    render();
+    setTimeout(()=>{
+      const el=document.querySelector('img[src^="data:image"]');
+      if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    },100);
+  };
+  img.onerror=function(){ showToast('❌ שגיאה בטעינת התמונה', 'err'); };
+  img.src=URL.createObjectURL(file);
+  input.value='';
+}
+
 function onReceiptPhotoChange(input){
   if(!input.files||!input.files[0])return;
+  showToast('⏳ מעבד תמונה...', 'ok', 2000);
   const file=input.files[0];
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const img=new Image();
-    img.onload=function(){
-      const MAX=300;const ratio=Math.min(MAX/img.width,MAX/img.height,1);
-      const c=document.createElement('canvas');
-      c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
-      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      const b64=c.toDataURL('image/jpeg',0.5);
-      console.log('Photo compressed: '+b64.length+' chars, ~'+Math.ceil(b64.length/1500)+' chunks');
-      S.rForm._photoDataUrl=b64;S.rForm._photoBase64=b64;
-      S.rForm._photoTaken=true;
-      render();
-      // Scroll to show the photo preview
-      setTimeout(()=>{
-        const img=document.querySelector('#receipt-chk-fields img');
-        if(img)img.scrollIntoView({behavior:'smooth',block:'nearest'});
-      },100);
-    };
-    img.src=e.target.result;
+  const img=new Image();
+  img.onload=function(){
+    URL.revokeObjectURL(img.src);
+    const MAX=800; 
+    const ratio=Math.min(MAX/img.width,MAX/img.height,1);
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    const b64=c.toDataURL('image/jpeg',0.6);
+    S.rForm._photoDataUrl=b64;
+    S.rForm._photoBase64=b64;
+    S.rForm._photoTaken=true;
+    render();
+    setTimeout(()=>{
+      const el=document.querySelector('#receipt-chk-fields img');
+      if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    },100);
   };
-  reader.readAsDataURL(file);
+  img.onerror=function(){ showToast('❌ שגיאה בטעינת התמונה', 'err'); };
+  img.src=URL.createObjectURL(file);
+  input.value='';
 }
-// Pick customer for INVOICE/TAX: display שם עסק in search box, write ת"ז/ח"פ → iForm.A
+
 function pickInvCust(custId,bizName){
-  S.iForm.A=custId;
-  S.iForm.B=bizName||''; // display only — B is calculated in sheet, not saved
+  S.iForm[COLS.docCustId]=custId;
+  S.iForm[COLS.docCustName]=bizName||''; 
   S.showSuggest=false;S.suggest=[];
-  const inp=document.getElementById('inv-B');
+  const inp=document.getElementById('inv-custName');
   if(inp)inp.value=bizName||'';
-  const idField=document.getElementById('inv-A');
+  const idField=document.getElementById('inv-custId');
   if(idField)idField.value=custId||'';
   document.getElementById('suggest-box')?.remove();
+  renderSaveBtn();
 }
 
 function editCust(custId){
   const c=S.customers.find(x=>x._id===custId);
   if(!c)return;
-  // Pre-fill form with existing values
   const form={};
   CF.forEach(f=>{form[f.k]=c[f.k]||'';});
   S.cForm=form;
-  S.cForm._editId=custId;   // signals update mode
-  S.cForm._editRow=c._row;  // sheet row number for GAS update
+  S.cForm._editId=custId;   
+  S.cForm._editRow=c._row;  
   S.screen='new-customer';S.msg=null;
   setHeader();render();
 }
 
 async function saveCust(){
-  if(!S.cForm.A?.trim()){S.msg={t:'e',m:'שם לקוח הוא שדה חובה'};render();return;}
-  if(S.cForm.D)S.cForm.D=fmtPhone(S.cForm.D);
+  if(!S.cForm[COLS.custName]?.trim()){
+    showToast('❌ שם לקוח הוא שדה חובה', 'err');
+    return;
+  }
+  if(S.cForm[COLS.custPhone])S.cForm[COLS.custPhone]=fmtPhone(S.cForm[COLS.custPhone]);
   const isEdit=!!S.cForm._editId;
   S.saving=true;S.msg=null;render();
   try{
     if(isEdit){
       await apiPost({action:'updateCustomer',data:{...S.cForm},editRow:S.cForm._editRow});
-      // Update local cache
       const idx=S.customers.findIndex(c=>c._id===S.cForm._editId);
       if(idx>=0)S.customers[idx]={...S.customers[idx],...S.cForm};
     }else{
@@ -1698,7 +1809,11 @@ async function saveCust(){
     }
     S.msg={t:'s',m:isEdit?'פרטי הלקוח עודכנו!':'הלקוח נשמר בהצלחה!'};S.saving=false;render();
     setTimeout(()=>{S.screen='list';S.cForm=efC();S.msg=null;setHeader();render();},1500);
-  }catch(e){S.msg={t:'e',m:e.message||'שגיאה'};S.saving=false;render();}
+  }catch(e){
+    showToast('❌ '+(e.message||'שגיאה'), 'err');
+    S.saving=false;
+    render();
+  }
 }
 
 async function saveReceipt(){
@@ -1708,131 +1823,121 @@ async function saveReceipt(){
   if(err){showToast('❌ '+err,'err');return;}
 
   const rf=S.rForm;
-  const paid=parseFloat(rf.C)||0;
+  const paid=parseFloat(rf[COLS.recPayAmt])||0;
   const balance=parseFloat(rf._invTotal)||0;
-  const isOverpay=rf.B==='שיק'&&balance>0.5&&paid>balance+0.5;
+  const isOverpay=rf[COLS.recPayType]==='שיק'&&balance>0.5&&paid>balance+0.5;
   const excess=isOverpay?Math.round((paid-balance)*100)/100:0;
   const inv2=rf._overInvNum?.trim()||'';
 
-  // Underpayment warning
   if(balance>0.5&&paid<balance-0.5){
     const diff=Math.round(balance-paid).toLocaleString('he-IL');
     if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nיתרה: ₪${Math.round(balance).toLocaleString('he-IL')}\nנותר: ₪${diff}\n\nלהמשיך?`))return;
   }
 
-  // Build receipt 1 (this invoice — amount = balance, excess goes to notes)
   const g1Notes=isOverpay
-    ?`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה חשבונית זו ₪${Math.round(balance).toLocaleString('he-IL')}. ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2||'—'}${rf.G?.trim()?' | '+rf.G.trim():''}`
-    :rf.G||'';
+    ?`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה חשבונית זו ₪${Math.round(balance).toLocaleString('he-IL')}. ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2||'—'}${rf[COLS.recNotes]?.trim()?' | '+rf[COLS.recNotes].trim():''}`
+    :rf[COLS.recNotes]||'';
+    
   const data1={
-    A:rf.A||'',B:rf.B||'',
-    C:isOverpay?String(Math.round(balance*100)/100):rf.C,
-    D:rf.D||tod(),E:rf.E||'',G:g1Notes
+    [COLS.recInvNum]:rf[COLS.recInvNum]||'',
+    [COLS.recPayType]:rf[COLS.recPayType]||'',
+    [COLS.recPayAmt]:isOverpay?String(Math.round(balance*100)/100):rf[COLS.recPayAmt],
+    [COLS.recPayDate]:rf[COLS.recPayDate]||tod(),
+    [COLS.recChkNum]:rf[COLS.recChkNum]||'',
+    [COLS.recNotes]:g1Notes,
+    [COLS.recCustName]:rf._custName||'', 
+    [COLS.recCustId]:rf._custId||''
   };
 
-  S.saving=true;S.msg=null;render();
+  S.saving=true;
+  renderSaveBtnRec();
   try{
-    await apiPost({action:'addReceipt',data:data1});
+    await apiPost({action:'addReceipt', data:data1, photoBase64: rf._photoBase64 || ''});
     S.receipts.push({...data1,_id:S.receipts.length,_bg:'#ffffff'});
-    if(rf._photoBase64){
-      const b64=rf._photoBase64,d1=data1.D,a1=data1.A;
-      setTimeout(function(){sendPhoto(b64,'קבלות',d1,a1,'');},3000);
-    }
 
-    // Receipt 2 — created automatically for the second invoice (overpayment)
     if(isOverpay&&inv2){
-      const g2Notes=`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${Math.round(balance).toLocaleString('he-IL')} שולמו מאותו שיק עבור חשבונית מספר ${rf.A||'—'}`;
+      const g2Notes=`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${Math.round(balance).toLocaleString('he-IL')} שולמו מאותו שיק עבור חשבונית מספר ${rf[COLS.recInvNum]||'—'}`;
       const data2={
-        A:inv2,B:rf.B,
-        C:String(Math.round(excess*100)/100),
-        D:rf.D||tod(),E:rf.E||'',G:g2Notes
+        [COLS.recInvNum]:inv2,
+        [COLS.recPayType]:rf[COLS.recPayType],
+        [COLS.recPayAmt]:String(Math.round(excess*100)/100),
+        [COLS.recPayDate]:rf[COLS.recPayDate]||tod(),
+        [COLS.recChkNum]:rf[COLS.recChkNum]||'',
+        [COLS.recNotes]:g2Notes,
+        [COLS.recCustName]:rf._custName||'', 
+        [COLS.recCustId]:rf._custId||''
       };
-      await apiPost({action:'addReceipt',data:data2});
+      await apiPost({action:'addReceipt', data:data2, photoBase64: rf._photoBase64 || ''});
       S.receipts.push({...data2,_id:S.receipts.length,_bg:'#ffffff'});
-      if(rf._photoBase64){
-        const b64=rf._photoBase64,d2=data2.D,a2=data2.A;
-        setTimeout(function(){sendPhoto(b64,'קבלות',d2,a2,'');},5000);
-      }
     }
 
     S.saving=false;
     showToast(isOverpay&&inv2?'✅ נשמרו 2 קבלות!':'✅ הקבלה נשמרה!','ok',2500);
     setTimeout(()=>{S.screen='list';S.rForm=efR();S.msg=null;setHeader();render();},1600);
-  }catch(e){showToast('❌ '+(e.message||'שגיאה'),'err');S.saving=false;render();}
+  }catch(e){showToast('❌ '+(e.message||'שגיאה'),'err');S.saving=false;renderSaveBtnRec();}
 }
 
 async function saveInv(isTax){
   const f=S.iForm;
   const calc=calcInv(f);
 
-  // ── Mandatory for both invoice and חשמ"ק ──
-  if(!f.A?.trim()){S.msg={t:'e',m:'ת"ז / ח"פ של הלקוח הוא שדה חובה'};render();return;}
+  if(!f[COLS.docCustId]?.trim()){
+    showToast('❌ ת"ז / ח"פ של הלקוח הוא שדה חובה', 'err');
+    return;
+  }
 
-  // ── Validation for חשמ"ק only ──
   if(isTax){
     const err=taxFormErrors();
-    if(err){S.msg={t:'e',m:err};render();return;}
+    if(err){
+      showToast('❌ '+err, 'err');
+      return;
+    }
 
-    // Under-payment warning (rounding tolerance 0.5)
-    const paid=parseFloat(f.AF||0);
+    const paid=parseFloat(f[COLS.taxPayAmt]||0);
     const total=calc.withVat;
     if(total>0&&paid<total-0.5){
       const diff=Math.round(total-paid).toLocaleString('he-IL');
       if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nלתשלום: ₪${Math.round(total).toLocaleString('he-IL')}\nיתרה: ₪${diff}\n\nלהמשיך?`))return;
     }
 
-    // Cheque over-payment — append difference note to AJ, never overwrite
-    if(f.AE==='שיק'&&total>0&&paid>total+0.5&&f._overInvNum?.trim()){
+    if(f[COLS.taxPayType]==='שיק'&&total>0&&paid>total+0.5&&f._overInvNum?.trim()){
       const diff=Math.round(paid-total).toLocaleString('he-IL');
       const note=`ההפרש ₪${diff} שולם עבור חשבונית מספר ${f._overInvNum.trim()}`;
-      f.AJ=f.AJ?.trim()?(f.AJ.trim()+' | '+note):note;
+      f[COLS.taxNotes]=f[COLS.taxNotes]?.trim()?(f[COLS.taxNotes].trim()+' | '+note):note;
     }
   }
-  // AB = discount % — user entered, keep as-is
-  // AA, AC, AE are formula columns in the sheet — do NOT write them
-  // Explicit allowed columns only — safer than a skip list
-  const qkCols=PRODS.map(p=>p.qk); // E,G,I,K,M,O,Q,S,U,W,Y
-  // Invoice: A(ת"ז), C(date), quantities, Z(price), AB(discount%) only
-  // Tax:     same + AE(payment type), AF(amount), AG(date paid), AH(cheque), AJ(notes), AK(invoice#)
-  const allowed=new Set(['A','C','Z','AB',...qkCols]);
-  if(isTax){['AE','AF','AG','AH','AJ','AK'].forEach(k=>allowed.add(k));}
+  
+  const qkCols=PRODS.map(p=>p.qk); 
+  const allowed=new Set([COLS.docCustId,COLS.docCustName,COLS.docDate,COLS.price,COLS.discount,COLS.subtotal,COLS.afterDisc,...qkCols]);
+  
+  if(isTax){
+    [COLS.taxTotalVat,COLS.taxPayType,COLS.taxPayAmt,COLS.taxPayDate,COLS.taxChkNum,COLS.taxNotes,COLS.taxNum].forEach(k=>allowed.add(k));
+  } else {
+    [COLS.invTerms,COLS.invTotalVat,COLS.invNum,COLS.invPayType,COLS.invPayAmt,COLS.invPayDate,COLS.invChkNum,COLS.invNotes].forEach(k=>allowed.add(k));
+  }
 
   const data={};
   allowed.forEach(k=>{
     const val=(f[k]||'').toString();
     const isQty=qkCols.includes(k);
-    // Write blank instead of '0' for qty columns
     data[k]=(isQty&&(val===''||val==='0'))?'':val;
   });
 
   const qtySummary=PRODS.filter(p=>parseInt(data[p.qk])>0)
     .map(p=>p.short+': '+data[p.qk]).join(', ');
 
-  S.saving=true;S.msg=null;render();
+  S.saving=true;
+  renderSaveBtn();
   try{
     const payload={
       action:isTax?'addTax':'addInvoice',
       sheetName:SHEETS[isTax?'tax':'invoices'],
-      data
+      data,
+      photoBase64: f._photoBase64 || ''  
     };
-    // Fire-and-forget write (Image beacon — no response)
-    apiPost(payload);
-
-    // Upload photo — captured BEFORE iForm is cleared
-    const hasPhoto=!!(f._photoBase64);
-    const photoB64=f._photoBase64||'';
-    const shName=SHEETS[isTax?'tax':'invoices'];
-    const invDate=data.C||'';
-    const custId=data.A||'';
-    const invNum=data.AF||data.AK||'';
-
-    if(hasPhoto){
-      console.log('Photo upload in 5s, size='+photoB64.length);
-      setTimeout(function(){
-        console.log('Sending photo...');
-        sendPhoto(photoB64,shName,invDate,custId,invNum);
-      },5000);
-    }
+    
+    await apiPost(payload);
+    
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
     setTimeout(()=>{
@@ -1840,137 +1945,51 @@ async function saveInv(isTax){
       if(isTax){S.tsState='idle';S.tax=[];}else{S.isState='idle';S.invoices=[];}
       setHeader();if(isTax)loadTax();else loadInvoices();
     },2500);
-  }catch(e){S.msg={t:'e',m:'שגיאה: '+e.name+' — '+e.message};S.saving=false;render();}
-}
-
-function taxFormErrors(){
-  const f=S.iForm;
-  const calc=calcInv(f);
-  const total=calc.withVat;
-  const paid=parseFloat(f.AF||0);
-  const isOver=f.AE==='שיק'&&total>0&&paid>total+0.5;
-  if(!f.A?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
-  if(!f.AE)return 'בחר סוג תשלום';
-  if(!f.AF?.trim())return 'הזן סכום תשלום';
-  if(f.AE==='מזומן'&&total>0&&paid>total+0.5)
-    return `מזומן לא יכול לעלות על ₪${Math.round(total).toLocaleString('he-IL')}`;
-  if(isOver&&!f._overInvNum?.trim())
-    return 'הזן מספר חשבונית עבור ההפרש';
-  if(f.AE==='שיק'){
-    if(!f.AH?.trim())return 'הזן מספר שיק';
-    if(!f.AG?.trim())return 'הזן תאריך פרעון שיק';
-    if(!f._photoTaken)return 'צלם את השיק';
+  }catch(e){
+    showToast('❌ שגיאה: '+e.name+' — '+e.message, 'err');
+    S.saving=false;
+    renderSaveBtn();
   }
-  return null;
-}
-
-// Photo upload via fetch text/plain — simple CORS request, no preflight
-// GAS receives full POST body before any redirect
-// Upload photo via chunked Image beacon GETs — the only approach that reliably reaches GAS.
-// POST body is always lost (302 redirect converts POST→GET, body dropped).
-// Each chunk is ~1500 chars base64, well within 8KB URL limit.
-// Send photo to GAS — single GET for small photos, chunked for large
-function sendPhoto(b64,sheetName,invDate,invCustId,invNum){
-  const SINGLE_LIMIT=4000; // chars — single GET safe under 8KB URL limit
-  const CHUNK=2000;
-  if(b64.length<=SINGLE_LIMIT){
-    // Single request
-    console.log('Single GET upload, '+b64.length+' chars');
-    const img=new Image();
-    img.onload=img.onerror=function(){console.log('Single upload done');};
-    img.src=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
-      action:'uploadPhoto',sheetName,invDate,invCustId,invNum:invNum||'',_photoBase64:b64
-    }));
-  }else{
-    // Chunked upload
-    const key='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
-    const total=Math.ceil(b64.length/CHUNK);
-    console.log('Chunked upload: '+total+' chunks, key='+key);
-    let i=0;
-    function sendNext(){
-      if(i>=total)return;
-      const chunk=b64.slice(i*CHUNK,(i+1)*CHUNK);
-      const img=new Image();
-      img.onload=img.onerror=function(){
-        console.log('Chunk '+i+'/'+total+' done');
-        i++;
-        if(i<total)setTimeout(sendNext,300);
-      };
-      img.src=S.scriptUrl+'?write=1&payload='+encodeURIComponent(JSON.stringify({
-        action:'photoChunk',key,index:i,total,chunk,
-        sheetName,invDate,invCustId,invNum:invNum||''
-      }));
-      setTimeout(function(){if(i<total){i++;sendNext();}},8000); // hard timeout per chunk
-    }
-    sendNext();
-  }
-}
-
-async function uploadPhotoToGAS(photoBase64,sheetName,invDate,invCustId,savedRow,invNum){
-  sendPhoto(photoBase64,sheetName,invDate,invCustId,invNum||'');
 }
 
 function renderSaveBtn(){
-  const btn=document.querySelector('.save-btn[onclick^="saveInv"]');
+  const btn=document.getElementById('btn-save-inv');
   if(!btn)return;
-  const isTax=S.screen==='new-tax';
-  const validErr=isTax?taxFormErrors():null;
-  const dis=S.saving||!!validErr;
-  btn.disabled=dis;
-  btn.style.background=dis?'#ccc':tc();
-  btn.textContent=S.saving?'⏳ שומר...':(validErr?'⛔ '+validErr:(isTax?'💾 שמור חשמ"ק':'💾 שמור חשבונית'));
+  const isTax = S.screen==='new-tax';
+  const validErr = isTax ? taxFormErrors() : invoiceFormErrors();
+  const dis = S.saving || !!validErr;
+  btn.disabled = dis;
+  btn.style.background = dis ? '#ccc' : tc();
+  btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור חשמ"ק' : '💾 שמור חשבונית'));
 }
 
-function onPhotoChange(input){
-  if(!input.files||!input.files[0])return;
-  const file=input.files[0];
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const img=new Image();
-    img.onload=function(){
-      // 800px wide, quality 0.8 — full cheque readability
-      // Sent as a SEPARATE request after invoice save so URL length isn't shared
-      const MAX=800;
-      const ratio=Math.min(MAX/img.width,MAX/img.height,1);
-      const c=document.createElement('canvas');
-      c.width=Math.round(img.width*ratio);
-      c.height=Math.round(img.height*ratio);
-      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      const b64=c.toDataURL('image/jpeg',0.6);
-      S.iForm._photoDataUrl=b64;
-      S.iForm._photoBase64=b64;
-      S.iForm._photoTaken=true; // GAS writes the image URL to AI after chunked upload
-      render();
-      setTimeout(()=>{
-        const img=document.querySelector('img[src^="data:image"]');
-        if(img)img.scrollIntoView({behavior:'smooth',block:'nearest'});
-      },100);
-    };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(file);
+function renderSaveBtnRec(){
+  const btn=document.getElementById('btn-save-rec');
+  if(!btn)return;
+  const validErr = receiptFormErrors();
+  const dis = S.saving || !!validErr;
+  btn.disabled = dis;
+  btn.style.background = dis ? '#ccc' : tc();
+  btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
 }
+
 window.addEventListener('DOMContentLoaded',()=>{
   S.cForm=efC();S.rForm=efR();S.tab='customers';S.screen='list';
   setHeader();
   syncNav();
   requestAnimationFrame(syncNav);
 
-  // Prevent accidental exit — desktop (refresh/close tab)
   window.addEventListener('beforeunload',e=>{
     e.preventDefault();
     return e.returnValue='האם אתה בטוח שברצונך לצאת מהאפליקציה?';
   });
 
-  // Prevent accidental exit — Android hardware back button
   history.pushState(null,'',location.href);
   window.addEventListener('popstate',()=>{
     if(S.screen!=='list'){
-      // If in a sub-screen, go back within app
       history.pushState(null,'',location.href);
       goBack();
     }else{
-      // On main list — ask to exit
       if(confirm('האם אתה בטוח שברצונך לצאת מהאפליקציה?')){
         history.back();
       }else{
@@ -1985,3 +2004,4 @@ window.addEventListener('DOMContentLoaded',()=>{
 </script>
 </body>
 </html>
+
