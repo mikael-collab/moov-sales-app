@@ -202,7 +202,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 </div>
 <script>
 // ── Config ──
-const STORAGE_KEY='moov_url_v6';
+const STORAGE_KEY='moov_url_v7';
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -210,46 +210,45 @@ const VAT=0.18;
 // ─────────────────────────────────────────────────────────
 const COLS = {
   // -- 1. Shared Invoices & Tax (חשבוניות / חשמ"ק) --
-  docCustId: 'A',      // ת"ז / ח"פ
-  docCustName: 'B',    // שם העסק
-  docDate: 'C',        // תאריך
-  
-  price: 'AD',         // מחיר ליחידה
-  subtotal: 'AE',      // סה"כ לפני מע"מ
-  discount: 'AF',      // הנחה
-  afterDisc: 'AG',     // סה"כ אחר הנחה
+  docCustId: 'A',      
+  docCustName: 'B',    
+  docDate: 'C',        
+  price: 'AD',         
+  subtotal: 'AE',      
+  discount: 'AF',      
+  afterDisc: 'AG',     
   
   // -- 2. Invoices Specific (חשבוניות) --
-  invTerms: 'AH',      // תנאי תשלום
-  invTotalVat: 'AI',   // סה"כ כולל מע"מ
-  invNum: 'AJ',        // מספר חשבונית
-  invPayType: 'AK',    // סוג תשלום
-  invPayAmt: 'AL',     // סכום התשלום
-  invPayDate: 'AM',    // תאריך פרעון שיק
-  invChkNum: 'AN',     // מספר שיק
-  invNotes: 'AO',      // הערות
+  invTerms: 'AH',      
+  invTotalVat: 'AI',   
+  invNum: 'AJ',        
+  invPayType: 'AK',    
+  invPayAmt: 'AL',     
+  invPayDate: 'AM',    
+  invChkNum: 'AN',     
+  invNotes: 'AO',      
   
   // -- 3. Tax Specific (חשבוניות/קבלות) --
-  taxTotalVat: 'AH',   // סה"כ כולל מע"מ
-  taxPayType: 'AI',    // סוג תשלום
-  taxPayAmt: 'AJ',     // סכום התשלום
-  taxPayDate: 'AK',    // תאריך פרעון שיק
-  taxChkNum: 'AL',     // מספר שיק
-  taxPhoto: 'AM',      // צילום שיק
-  taxNotes: 'AN',      // הערות
-  taxNum: 'AO',        // מספר חשבונית מס / קבלה
+  taxTotalVat: 'AH',   
+  taxPayType: 'AI',    
+  taxPayAmt: 'AJ',     
+  taxPayDate: 'AK',    
+  taxChkNum: 'AL',     
+  taxPhoto: 'AM',      
+  taxNotes: 'AN',      
+  taxNum: 'AO',        
 
   // -- 4. Receipts (קבלות) --
-  recInvNum: 'A',      // מספר חשבונית
-  recPayType: 'B',     // סוג תשלום
-  recPayAmt: 'C',      // סכום התשלום
-  recPayDate: 'D',     // תאריך
-  recChkNum: 'E',      // מספר שיק
-  recPhoto: 'F',       // צילום שיק
-  recNotes: 'G',       // הערות
-  recCustName: 'H',    // לקוח
-  recCustId: 'I',      // ת"ז/ח"פ
-  recNum: 'J',         // מס קבלה
+  recInvNum: 'A',      
+  recPayType: 'B',     
+  recPayAmt: 'C',      
+  recPayDate: 'D',     
+  recChkNum: 'E',      
+  recPhoto: 'F',       
+  recNotes: 'G',       
+  recCustName: 'H',    
+  recCustId: 'I',      
+  recNum: 'J',         
 
   // -- 5. Customers (לקוחות) --
   custName: 'A',       
@@ -482,11 +481,23 @@ function fmtPhone(x){
   return x;
 }
 function isBusy(e){const m=(e?.message||'').toLowerCase();return m.includes('quota')||m.includes('rate')||m.includes('limit')||m.includes('429');}
+
 function rowBg(r,isExp){
   if(isExp)return'#ffffff';
   const bg=(r._bg||'#ffffff').toLowerCase().replace(/\s/g,'');
   return(bg==='#ffffff'||bg==='#fff'||bg===''||bg==='white')?'#ffffff':bg;
 }
+
+// Check if cell background is colored red
+function isInvRed(r) {
+  const bg = (r._bgInv || r._bg || '#ffffff').toLowerCase().replace(/[^0-9a-f]/g, '');
+  if (bg.length < 6) return false;
+  const R = parseInt(bg.slice(0, 2), 16);
+  const G = parseInt(bg.slice(2, 4), 16);
+  const B = parseInt(bg.slice(4, 6), 16);
+  return (R > G + 40 && R > B + 40 && R > 150);
+}
+
 function calcInv(f){
   const price=parseFloat(f[COLS.price])||0;
   const totalQty=PRODS.reduce((s,p)=>s+(parseInt(f[p.qk])||0),0);
@@ -594,6 +605,7 @@ function goBack(){
 function scrollToTop(){requestAnimationFrame(()=>{const el=document.getElementById('content');if(el)el.scrollTop=0;});}
 function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();scrollToTop();}
 function isInvOpen(r){
+  if(isInvRed(r)) return false; // Red marks it closed/0 balance
   const bg=(r._bg||'#ffffff').toLowerCase().replace(/[^0-9a-f]/g,'');
   if(bg.length<6)return true;
   const R=parseInt(bg.slice(0,2),16);
@@ -608,20 +620,25 @@ function openNewReceipt(){
   setHeader();render();scrollToTop();
 }
 function parseMoney(v){return parseFloat((v||'').toString().replace(/[^0-9.]/g,''))||0;}
+
 function getInvBalance(invNum){
   if(!invNum)return 0;
   const inv=S.invoices.find(r=>nz(r[COLS.invNum])===invNum);
   if(!inv)return 0;
+  if(isInvRed(inv)) return 0; // Red marks it closed/0 balance
+  
   const total=parseMoney(inv[COLS.invTotalVat]);
   const paid=S.receipts
     .filter(r=>nz(r[COLS.recInvNum])===invNum)
     .reduce((s,r)=>s+parseMoney(r[COLS.recPayAmt]),0);
   return Math.max(0,total-paid);
 }
+
 function openInvsFor(custId){
   if(!custId)return[];
   return S.invoices.filter(r=>r[COLS.docCustId]===custId&&isInvOpen(r));
 }
+
 function openNewReceiptFromInv(invId){
   const r=S.invoices.find(x=>x._id===invId);
   if(!r)return;
@@ -779,7 +796,7 @@ function renderSettings(){
         if(d.error)h+=`<div class="derr">❌ ${esc(d.error)}</div>`;
         else if(!d.firstRow)h+=`<div style="color:#6b7280;font-size:11px">📭 ריק</div>`;
         else{
-          const entries=Object.entries(d.firstRow).filter(([k,v])=>k!=='_bg'&&v&&String(v).trim());
+          const entries=Object.entries(d.firstRow).filter(([k,v])=>k!=='_bg'&&k!=='_bgInv'&&v&&String(v).trim());
           h+=entries.length?`<div class="diag-grid">${entries.slice(0,20).map(([k,v])=>`<div class="dcell"><span class="dk">${k}:</span><span class="dv">${esc(String(v).slice(0,14))}</span></div>`).join('')}</div>`:`<div style="color:#6b7280;font-size:11px">⚠️ ריק</div>`;
         }
         h+=`</div>`;
@@ -793,7 +810,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.17 (New SKUs & Mapping)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.18 (Auto-Receipt + Red Balance 0)</div></div>`;
   return h;
 }
 
@@ -1378,7 +1395,8 @@ function renderDocList(data,state,isTax){
     const prods=PRODS.filter(p=>{const q=parseFloat(r[p.qk]);return!isNaN(q)&&q>0;});
     const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
     const balance=(!isTax&&invNum)?getInvBalance(invNum):null;
-    const hasPartialPay=balance!==null&&balance<parseMoney(totVAT)-0.5;
+    const isRed = (!isTax && invNum) ? isInvRed(r) : false;
+    const hasPartialPay=balance!==null&&balance>0&&balance<parseMoney(totVAT)-0.5;
 
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
       <div class="card-hdr" onclick="tog('${id}')">
@@ -1388,7 +1406,7 @@ function renderDocList(data,state,isTax){
           <div style="text-align:left;flex-shrink:0">
             ${totVAT?`<div style="font-size:15px;font-weight:700;color:${color}">${fmt(totVAT)}</div>`:''}
             ${hasPartialPay?`<div style="font-size:11px;font-weight:700;color:#e65100">יתרה: ₪${Math.round(balance).toLocaleString('he-IL')}</div>`:''}
-            ${balance===0&&totVAT?`<div style="font-size:11px;color:#1e8e3e;font-weight:600">✓ שולם</div>`:''}
+            ${isRed ? `<div style="font-size:11px;color:#c62828;font-weight:600">סגור (מסומן באדום)</div>` : (balance===0&&totVAT?`<div style="font-size:11px;color:#1e8e3e;font-weight:600">✓ שולם</div>`:'')}
           </div>
         </div>
         <div class="r2">
@@ -1430,13 +1448,15 @@ function renderDocList(data,state,isTax){
         totVAT&&{l:'סה"כ כולל מע"מ',vv:fmt(totVAT),hi:true},
         hasPartialPay&&{l:'שולם עד כה',vv:`₪${Math.round(parseMoney(totVAT)-balance).toLocaleString('he-IL')}`,paid:true},
         hasPartialPay&&{l:'יתרה לתשלום',vv:`₪${Math.round(balance).toLocaleString('he-IL')}`,bal:true},
-        balance===0&&totVAT&&{l:'סטטוס',vv:'✓ שולם במלואו',done:true},
+        isRed&&{l:'סטטוס',vv:'סגור / בוטל (אדום)',red:true},
+        balance===0&&totVAT&&!isRed&&{l:'סטטוס',vv:'✓ שולם במלואו',done:true},
       ].filter(Boolean);
+      
       if(pricing.length){
         h+=`<div class="dtable" style="margin-bottom:10px">`;
         pricing.forEach((row,ri)=>{
-          const bgStyle=row.hi?`background:${color}15`:row.bal?'background:#fff3e0':row.done?'background:#e6f4ea':'';
-          const valColor=row.hi?color:row.disc?'#c62828':row.bal?'#e65100':row.done?'#1e8e3e':row.paid?'#555':'#222';
+          const bgStyle=row.hi?`background:${color}15`:row.bal?'background:#fff3e0':row.done?'background:#e6f4ea':row.red?'background:#fce8e6':'';
+          const valColor=row.hi?color:row.disc?'#c62828':row.bal?'#e65100':row.done?'#1e8e3e':row.red?'#c62828':row.paid?'#555':'#222';
           const valSize=row.hi||row.bal?15:13;
           h+=`<div class="dtrow" style="${ri===0?'border-top:none;':''}${bgStyle}">
             <span class="dtlabel">${row.l}</span>
