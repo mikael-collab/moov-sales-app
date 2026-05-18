@@ -202,7 +202,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 </div>
 <script>
 // ── Config ──
-const STORAGE_KEY='moov_url_v11'; 
+const STORAGE_KEY='moov_url_v12'; 
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -527,17 +527,17 @@ async function apiFetch(params){
   return d;
 }
 
-// 🛡️ ENHANCED apiPost: Forces server to return real success/fail so UI won't fake-save.
-async function apiPost(body){
-  if(!S.scriptUrl) throw new Error('NO_URL');
-  const res = await fetch(S.scriptUrl, {
+// 🛡️ CRITICAL FIX: Restored mode: 'no-cors'. This is required by Google Apps Script. 
+// If network fails, it now strictly rejects, preventing the UI from freezing or fake-saving.
+function apiPost(body){
+  if(!S.scriptUrl) return Promise.reject(new Error('NO_URL'));
+  return fetch(S.scriptUrl, {
     method: 'POST',
-    body: JSON.stringify(body)
-  });
-  // Note: Due to Google Apps Script CORS policy on 'no-cors' mode, errors are tricky to catch natively here, 
-  // but if it is blocked, it throws completely.
-  if (!res.ok && res.type !== 'opaque') throw new Error('HTTP ' + res.status);
-  return {status: 'ok'};
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(body),
+    mode: 'no-cors'
+  }).then(() => { return {status: 'ok'}; })
+    .catch((e) => { throw new Error('Network Connection Failed'); });
 }
 
 async function pingSheets(){
@@ -825,7 +825,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.22 (Strict Red & Real Save Check)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.23 (Robust Save + Range Sync)</div></div>`;
   return h;
 }
 
@@ -986,6 +986,7 @@ function setTaxOverInv(num) {
   renderSaveBtn();
 }
 
+// 🛡️ Restored exact placement for the open invoices container
 function buildTaxOpenInvsHtml() {
   const f = S.iForm;
   if (!f._openInvs || !f._openInvs.length) return '';
@@ -1056,10 +1057,6 @@ function renderInvForm(isTax){
       placeholder="הזן ת\"ז או ח\"פ..."
       oninput="onInvCustIdInput(this.value)">
   </div>`;
-  
-  if (isTax) {
-    h+= `<div id="tax-open-invs-container" style="margin-top: 12px;">${buildTaxOpenInvsHtml()}</div>`;
-  }
   
   h+=`<div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
     <input type="date" id="inv-date" class="finput" style="direction:ltr;text-align:left"
@@ -1156,6 +1153,7 @@ function renderInvForm(isTax){
     <div style="background:#fff8e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
       ⚠️ השיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — סמן חשבונית פתוחה לעיל, או הזן מספר חשבונית ידנית עבור ההפרש
     </div>
+    <div id="tax-open-invs-container">${buildTaxOpenInvsHtml()}</div>
     <div class="field"><label>או הזן מספר חשבונית ידנית *</label>
       <input type="text" inputmode="numeric" id="inv-overInvNum" class="finput num" value="${esc(f._overInvNum||'')}"
         placeholder="מספר חשבונית"
@@ -1943,7 +1941,6 @@ async function saveReceipt(){
   S.saving=true;
   renderSaveBtnRec();
   try{
-    // Await will throw an error immediately if the server rejects it.
     await apiPost({action:'addReceipt', data:data1, photoBase64: rf._photoBase64 || ''});
     
     // Only pushes to local UI IF the save was fully successful
@@ -1973,9 +1970,9 @@ async function saveReceipt(){
     setTimeout(()=>{S.screen='list';S.rForm=efR();S.msg=null;setHeader();render();},1600);
   }catch(e){
     // Catches the error and blocks the UI from fake-saving
-    showToast('❌ Error: '+(e.message||'Server rejected'),'err');
+    showToast('❌ Error: '+(e.message||'Network Connection Failed'),'err');
     S.saving=false;
-    renderSaveBtnRec();
+    render(); // Hard UI reset
   }
 }
 
@@ -2070,10 +2067,9 @@ async function saveInv(isTax){
       setHeader();if(isTax)loadTax();else loadInvoices();
     },2500);
   }catch(e){
-    // Catches the error and blocks the UI from fake-saving
     showToast('❌ Error: '+ e.message, 'err');
     S.saving=false;
-    renderSaveBtn();
+    render(); // Hard UI reset
   }
 }
 
