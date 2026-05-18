@@ -202,7 +202,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 </div>
 <script>
 // ── Config ──
-const STORAGE_KEY='moov_url_v7';
+const STORAGE_KEY='moov_url_v8'; // Memory cleared for fresh load
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -488,14 +488,18 @@ function rowBg(r,isExp){
   return(bg==='#ffffff'||bg==='#fff'||bg===''||bg==='white')?'#ffffff':bg;
 }
 
-// Check if cell background is colored red
+// Check if cell background is colored red (isolating orange)
 function isInvRed(r) {
   const bg = (r._bgInv || r._bg || '#ffffff').toLowerCase().replace(/[^0-9a-f]/g, '');
   if (bg.length < 6) return false;
   const R = parseInt(bg.slice(0, 2), 16);
   const G = parseInt(bg.slice(2, 4), 16);
   const B = parseInt(bg.slice(4, 6), 16);
-  return (R > G + 40 && R > B + 40 && R > 150);
+  
+  if (!(R > G + 30 && R > B + 30 && R > 130)) return false;
+  if (G - B > 40) return false; 
+  
+  return true;
 }
 
 function calcInv(f){
@@ -604,8 +608,9 @@ function goBack(){
 }
 function scrollToTop(){requestAnimationFrame(()=>{const el=document.getElementById('content');if(el)el.scrollTop=0;});}
 function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();scrollToTop();}
+
 function isInvOpen(r){
-  if(isInvRed(r)) return false; // Red marks it closed/0 balance
+  if(isInvRed(r)) return false; 
   const bg=(r._bg||'#ffffff').toLowerCase().replace(/[^0-9a-f]/g,'');
   if(bg.length<6)return true;
   const R=parseInt(bg.slice(0,2),16);
@@ -613,19 +618,21 @@ function isInvOpen(r){
   const B=parseInt(bg.slice(4,6),16);
   return!(G>R+40&&G>B+20&&G>120);
 }
+
 function openNewReceipt(){
   S.screen='new-receipt';S.rForm=efR();S.msg=null;S.showSuggest=false;
   if(S.isState==='idle')loadInvoices();
   if(S.rsState==='idle')loadReceipts();
   setHeader();render();scrollToTop();
 }
+
 function parseMoney(v){return parseFloat((v||'').toString().replace(/[^0-9.]/g,''))||0;}
 
 function getInvBalance(invNum){
   if(!invNum)return 0;
   const inv=S.invoices.find(r=>nz(r[COLS.invNum])===invNum);
   if(!inv)return 0;
-  if(isInvRed(inv)) return 0; // Red marks it closed/0 balance
+  if(isInvRed(inv)) return 0; 
   
   const total=parseMoney(inv[COLS.invTotalVat]);
   const paid=S.receipts
@@ -658,6 +665,7 @@ function openNewReceiptFromInv(invId){
   if(S.rsState==='idle')loadReceipts();
   syncNav();setHeader();render();scrollToTop();
 }
+
 function openNewInvoice(isTax){
   S.screen=isTax?'new-tax':'new-invoice';
   S.iForm=efI(isTax);S.msg=null;S.showSuggest=false;
@@ -810,7 +818,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.18 (Auto-Receipt + Red Balance 0)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.19 (Red Balance Fix)</div></div>`;
   return h;
 }
 
@@ -1697,7 +1705,9 @@ function pickCustomer(name,id){
 
 function captureReceiptFields(){
   const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
-  S.rForm[COLS.recPayAmt]=g('r-'+COLS.recPayAmt).trim();
+  // Do NOT write to H and I. Only read from the UI if needed internally
+  const recAmtInput = g('r-'+COLS.recPayAmt).trim();
+  if (recAmtInput) S.rForm[COLS.recPayAmt] = recAmtInput;
   S.rForm[COLS.recInvNum]=g('r-'+COLS.recInvNum).trim()||S.rForm[COLS.recInvNum];  
   S.rForm[COLS.recChkNum]=g('r-'+COLS.recChkNum).trim();
   S.rForm[COLS.recPayDate]=g('r-'+COLS.recPayDate).trim()||S.rForm[COLS.recPayDate];
@@ -1840,14 +1850,14 @@ function onReceiptPhotoChange(input){
 function pickInvCust(custId,bizName){
   S.iForm[COLS.docCustId]=custId;
   S.iForm[COLS.docCustName]=bizName||''; 
-  S.iForm._openInvs=openInvsFor(custId); // FETCH OPEN INVOICES
+  S.iForm._openInvs=openInvsFor(custId); 
   S.showSuggest=false;S.suggest=[];
   const inp=document.getElementById('inv-custName');
   if(inp)inp.value=bizName||'';
   const idField=document.getElementById('inv-custId');
   if(idField)idField.value=custId||'';
   document.getElementById('suggest-box')?.remove();
-  renderTaxOpenInvs(); // UPDATE THE UI
+  renderTaxOpenInvs(); 
   renderSaveBtn();
 }
 
@@ -1911,21 +1921,23 @@ async function saveReceipt(){
     ?`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה חשבונית זו ₪${Math.round(balance).toLocaleString('he-IL')}. ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2||'—'}${rf[COLS.recNotes]?.trim()?' | '+rf[COLS.recNotes].trim():''}`
     :rf[COLS.recNotes]||'';
     
+  // NOTE: H and I are removed here so the server will NOT touch columns H and I and protect the formulas.
   const data1={
     [COLS.recInvNum]:rf[COLS.recInvNum]||'',
     [COLS.recPayType]:rf[COLS.recPayType]||'',
     [COLS.recPayAmt]:isOverpay?String(Math.round(balance*100)/100):rf[COLS.recPayAmt],
     [COLS.recPayDate]:rf[COLS.recPayDate]||tod(),
     [COLS.recChkNum]:rf[COLS.recChkNum]||'',
-    [COLS.recNotes]:g1Notes,
-    [COLS.recCustName]:rf._custName||'', 
-    [COLS.recCustId]:rf._custId||''
+    [COLS.recNotes]:g1Notes
   };
 
   S.saving=true;
   renderSaveBtnRec();
   try{
     await apiPost({action:'addReceipt', data:data1, photoBase64: rf._photoBase64 || ''});
+    
+    data1[COLS.recCustName] = rf._custName || '';
+    data1[COLS.recCustId] = rf._custId || '';
     S.receipts.push({...data1,_id:S.receipts.length,_bg:'#ffffff'});
 
     if(isOverpay&&inv2){
@@ -1936,11 +1948,12 @@ async function saveReceipt(){
         [COLS.recPayAmt]:String(Math.round(excess*100)/100),
         [COLS.recPayDate]:rf[COLS.recPayDate]||tod(),
         [COLS.recChkNum]:rf[COLS.recChkNum]||'',
-        [COLS.recNotes]:g2Notes,
-        [COLS.recCustName]:rf._custName||'', 
-        [COLS.recCustId]:rf._custId||''
+        [COLS.recNotes]:g2Notes
       };
       await apiPost({action:'addReceipt', data:data2, photoBase64: rf._photoBase64 || ''});
+      
+      data2[COLS.recCustName] = rf._custName || '';
+      data2[COLS.recCustId] = rf._custId || '';
       S.receipts.push({...data2,_id:S.receipts.length,_bg:'#ffffff'});
     }
 
@@ -2011,7 +2024,6 @@ async function saveInv(isTax){
     
     await apiPost(payload);
     
-    // --- AUTOMATICALLY CREATE THE RECEIPT FOR OVERPAYMENT ---
     const isChq = f[COLS.taxPayType] === 'שיק';
     const paidAmt = parseFloat(f[COLS.taxPayAmt] || 0);
     const invTotal = calc.withVat;
@@ -2025,14 +2037,14 @@ async function saveInv(isTax){
         [COLS.recPayAmt]: String(excess),
         [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
         [COLS.recChkNum]: f[COLS.taxChkNum] || '',
-        [COLS.recNotes]: 'יתרת שיק מחשמ"ק שנוצר עכשיו',
-        [COLS.recCustName]: f[COLS.docCustName] || '',
-        [COLS.recCustId]: f[COLS.docCustId] || ''
+        [COLS.recNotes]: 'יתרת שיק מחשמ"ק שנוצר עכשיו'
       };
       await apiPost({action:'addReceipt', data:recData, photoBase64: f._photoBase64 || ''});
+      
+      recData[COLS.recCustName] = f[COLS.docCustName] || '';
+      recData[COLS.recCustId] = f[COLS.docCustId] || '';
       S.receipts.push({...recData, _id:S.receipts.length, _bg:'#ffffff'});
     }
-    // --------------------------------------------------------
     
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
