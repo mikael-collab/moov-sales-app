@@ -1,5 +1,3 @@
-// ⚙️ Look for CENTRAL MAPPING (CONFIG) ⚙️
-// When you add new SKUs and your columns shift right,
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -204,13 +202,11 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 </div>
 <script>
 // ── Config ──
-const STORAGE_KEY='moov_url_v4';
+const STORAGE_KEY='moov_url_v6';
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
 // ⚙️ CENTRAL MAPPING (CONFIG) ⚙️
-// When you add new SKUs and your columns shift right,
-// just update the letters below. The app will adapt instantly.
 // ─────────────────────────────────────────────────────────
 const COLS = {
   // -- 1. Shared Invoices & Tax (חשבוניות / חשמ"ק) --
@@ -218,30 +214,30 @@ const COLS = {
   docCustName: 'B',    // שם העסק
   docDate: 'C',        // תאריך
   
-  price: 'AD',          // מחיר ליחידה 
-  subtotal: 'AE',      // סה"כ לפני מע"מ 
-  discount: 'AF',      // הנחה 
-  afterDisc: 'AG',     // סה"כ אחר הנחה 
+  price: 'AD',         // מחיר ליחידה
+  subtotal: 'AE',      // סה"כ לפני מע"מ
+  discount: 'AF',      // הנחה
+  afterDisc: 'AG',     // סה"כ אחר הנחה
   
   // -- 2. Invoices Specific (חשבוניות) --
-  invTerms: 'AH',      // תנאי תשלום 
+  invTerms: 'AH',      // תנאי תשלום
   invTotalVat: 'AI',   // סה"כ כולל מע"מ
-  invNum: 'AJ',        // מספר חשבונית 
-  invPayType: 'AK',    // סוג תשלום 
-  invPayAmt: 'AL',     // סכום התשלום 
-  invPayDate: 'AM',    // תאריך פרעון שיק 
-  invChkNum: 'AN',     // מספר שיק 
-  invNotes: 'AO',      // הערות 
+  invNum: 'AJ',        // מספר חשבונית
+  invPayType: 'AK',    // סוג תשלום
+  invPayAmt: 'AL',     // סכום התשלום
+  invPayDate: 'AM',    // תאריך פרעון שיק
+  invChkNum: 'AN',     // מספר שיק
+  invNotes: 'AO',      // הערות
   
   // -- 3. Tax Specific (חשבוניות/קבלות) --
-  taxTotalVat: 'AH',   // סה"כ כולל מע"מ 
+  taxTotalVat: 'AH',   // סה"כ כולל מע"מ
   taxPayType: 'AI',    // סוג תשלום
   taxPayAmt: 'AJ',     // סכום התשלום
-  taxPayDate: 'AK',    // תאריך פרעון שיק 
-  taxChkNum: 'AL',     // מספר שיק 
+  taxPayDate: 'AK',    // תאריך פרעון שיק
+  taxChkNum: 'AL',     // מספר שיק
   taxPhoto: 'AM',      // צילום שיק
   taxNotes: 'AN',      // הערות
-  taxNum: 'AO',        // מספר חשבונית מס / קבלה 
+  taxNum: 'AO',        // מספר חשבונית מס / קבלה
 
   // -- 4. Receipts (קבלות) --
   recInvNum: 'A',      // מספר חשבונית
@@ -305,8 +301,8 @@ const PRODS=[
   {nk:'T',qk:'U', name:'Watermelon 20 - אבטיח',            short:'Watermelon 20',     heb:'אבטיח',       nic:20,em:'🍉'},
   {nk:'V',qk:'W', name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
   {nk:'X',qk:'Y', name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
-  {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                 short:'Orange 25',         heb:'תפוז',       nic:25, em:'🍊'},
-  {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',     short:'Double Apple 25',    heb:'תפוח כפול',  nic:25, em:'🍏🍏'},
+  {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25, em:'🍊'},
+  {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
 ];
 
 const INV_TAIL=[
@@ -433,6 +429,7 @@ function receiptFormErrors(){
 function efI(isTax){
   const o={};
   o[COLS.docCustId]=''; o[COLS.docCustName]=''; o[COLS.docDate]=tod();
+  o._openInvs=[]; o._overInvNum=''; 
   PRODS.forEach(p=>{o[p.nk]=p.name;o[p.qk]='0';});
   o[COLS.price]='13.00'; o[COLS.subtotal]=''; o[COLS.discount]=''; o[COLS.afterDisc]='';
   
@@ -796,7 +793,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.15 (Dynamic Cols)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.17 (New SKUs & Mapping)</div></div>`;
   return h;
 }
 
@@ -938,6 +935,59 @@ function custField(f){
   </div>`;
 }
 
+// --- NEW TAX OVERPAYMENT FUNCTIONS ---
+let _invCustLookupTimer = null;
+function onInvCustIdInput(val) {
+  S.iForm[COLS.docCustId] = val;
+  renderSaveBtn();
+  clearTimeout(_invCustLookupTimer);
+  _invCustLookupTimer = setTimeout(() => {
+    S.iForm._openInvs = openInvsFor(val.trim());
+    renderTaxOpenInvs();
+  }, 400);
+}
+
+function setTaxOverInv(num) {
+  S.iForm._overInvNum = num;
+  const el = document.getElementById('inv-overInvNum');
+  if(el) el.value = num;
+  renderTaxOpenInvs();
+  renderSaveBtn();
+}
+
+function buildTaxOpenInvsHtml() {
+  const f = S.iForm;
+  if (!f._openInvs || !f._openInvs.length) return '';
+  let h = `<div class="dtable" style="margin-bottom:12px">
+    <div class="dthead" style="background:${tc()}"><span>בחר חשבונית לכיסוי ההפרש</span></div>`;
+  f._openInvs.forEach((inv, i) => {
+    const invNum = nz(inv[COLS.invNum]) || '—';
+    const invDate = nz(inv[COLS.docDate]) || '';
+    const balance = getInvBalance(invNum);
+    const selected = f._overInvNum === invNum;
+    h += `<div class="dtrow" style="cursor:pointer;${selected ? `background:${tc()}15;` : ''}${i === 0 ? 'border-top:none' : ''}"
+      onclick="setTaxOverInv('${esc(invNum)}')">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:${selected ? tc() : '#222'}">#${esc(invNum)}</div>
+        <div style="font-size:11px;color:#888">${esc(invDate)}</div>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:14px;font-weight:700;color:${tc()}">יתרה: ${fmt(String(balance))}</div>
+        ${selected ? `<div style="font-size:10px;color:${tc()}">✓ נבחרה</div>` : ''}
+      </div>
+    </div>`;
+  });
+  h += `</div>`;
+  return h;
+}
+
+function renderTaxOpenInvs() {
+  const container = document.getElementById('tax-open-invs-container');
+  if (container) container.innerHTML = buildTaxOpenInvsHtml();
+}
+// -------------------------------------
+
+
 function renderInvForm(isTax){
   const color=tc();const f=S.iForm;
   const calc=calcInv(f);
@@ -974,7 +1024,7 @@ function renderInvForm(isTax){
   <div class="field"><label>ת"ז / ח"פ <small>(עמודה ${COLS.docCustId}) *</small></label>
     <input type="text" inputmode="numeric" id="inv-custId" class="finput num" value="${esc(f[COLS.docCustId])}"
       placeholder="הזן ת\"ז או ח\"פ..."
-      oninput="uf('iForm','${COLS.docCustId}',this.value);renderSaveBtn()">
+      oninput="onInvCustIdInput(this.value)">
   </div>
   <div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
     <input type="date" id="inv-date" class="finput" style="direction:ltr;text-align:left"
@@ -1069,12 +1119,13 @@ function renderInvForm(isTax){
     </div>
     ${isOver?`
     <div style="background:#fff8e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
-      ⚠️ השיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — יש לציין מספר החשבונית שעבורה שולם ההפרש
+      ⚠️ השיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — בחר חשבונית פתוחה עבור ההפרש
     </div>
-    <div class="field"><label>מספר חשבונית עבור ההפרש *</label>
-      <input type="text" inputmode="numeric" class="finput num" value="${esc(f._overInvNum||'')}"
+    <div id="tax-open-invs-container">${buildTaxOpenInvsHtml()}</div>
+    <div class="field"><label>או הזן מספר חשבונית ידנית *</label>
+      <input type="text" inputmode="numeric" id="inv-overInvNum" class="finput num" value="${esc(f._overInvNum||'')}"
         placeholder="מספר חשבונית"
-        oninput="uf('iForm','_overInvNum',this.value);renderSaveBtn()">
+        oninput="uf('iForm','_overInvNum',this.value); renderTaxOpenInvs(); renderSaveBtn();">
     </div>`:''}
     `:''}
 
@@ -1769,12 +1820,14 @@ function onReceiptPhotoChange(input){
 function pickInvCust(custId,bizName){
   S.iForm[COLS.docCustId]=custId;
   S.iForm[COLS.docCustName]=bizName||''; 
+  S.iForm._openInvs=openInvsFor(custId); // FETCH OPEN INVOICES
   S.showSuggest=false;S.suggest=[];
   const inp=document.getElementById('inv-custName');
   if(inp)inp.value=bizName||'';
   const idField=document.getElementById('inv-custId');
   if(idField)idField.value=custId||'';
   document.getElementById('suggest-box')?.remove();
+  renderTaxOpenInvs(); // UPDATE THE UI
   renderSaveBtn();
 }
 
@@ -1938,6 +1991,29 @@ async function saveInv(isTax){
     
     await apiPost(payload);
     
+    // --- AUTOMATICALLY CREATE THE RECEIPT FOR OVERPAYMENT ---
+    const isChq = f[COLS.taxPayType] === 'שיק';
+    const paidAmt = parseFloat(f[COLS.taxPayAmt] || 0);
+    const invTotal = calc.withVat;
+    const isOverpay = isChq && invTotal > 0 && paidAmt > invTotal + 0.5;
+
+    if (isTax && isOverpay && f._overInvNum?.trim()) {
+      const excess = Math.round((paidAmt - invTotal) * 100) / 100;
+      const recData = {
+        [COLS.recInvNum]: f._overInvNum.trim(),
+        [COLS.recPayType]: f[COLS.taxPayType],
+        [COLS.recPayAmt]: String(excess),
+        [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
+        [COLS.recChkNum]: f[COLS.taxChkNum] || '',
+        [COLS.recNotes]: 'יתרת שיק מחשמ"ק שנוצר עכשיו',
+        [COLS.recCustName]: f[COLS.docCustName] || '',
+        [COLS.recCustId]: f[COLS.docCustId] || ''
+      };
+      await apiPost({action:'addReceipt', data:recData, photoBase64: f._photoBase64 || ''});
+      S.receipts.push({...recData, _id:S.receipts.length, _bg:'#ffffff'});
+    }
+    // --------------------------------------------------------
+    
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
     setTimeout(()=>{
@@ -2004,4 +2080,3 @@ window.addEventListener('DOMContentLoaded',()=>{
 </script>
 </body>
 </html>
-
