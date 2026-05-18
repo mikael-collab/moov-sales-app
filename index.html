@@ -202,7 +202,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 </div>
 <script>
 // ── Config ──
-const STORAGE_KEY='moov_url_v8'; // Memory cleared for fresh load
+const STORAGE_KEY='moov_url_v9'; 
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -488,7 +488,7 @@ function rowBg(r,isExp){
   return(bg==='#ffffff'||bg==='#fff'||bg===''||bg==='white')?'#ffffff':bg;
 }
 
-// Check if cell background is colored red (isolating orange)
+// אלגוריתם חכם לזיהוי רקע אדום בטוח שמדלג על כתום!
 function isInvRed(r) {
   const bg = (r._bgInv || r._bg || '#ffffff').toLowerCase().replace(/[^0-9a-f]/g, '');
   if (bg.length < 6) return false;
@@ -496,8 +496,11 @@ function isInvRed(r) {
   const G = parseInt(bg.slice(2, 4), 16);
   const B = parseInt(bg.slice(4, 6), 16);
   
-  if (!(R > G + 30 && R > B + 30 && R > 130)) return false;
-  if (G - B > 40) return false; 
+  if (R < 150) return false; // חייב להיות עם אדום דומיננטי
+  if (R <= G + 30 || R <= B + 30) return false; // חייב לבלוט מעל שאר הצבעים
+  
+  // פילטר גאוני: אם הפער בין הירוק לכחול גדול מ-50, זה אומר שזה צהוב או כתום ולא אדום
+  if (Math.abs(G - B) > 50) return false; 
   
   return true;
 }
@@ -818,7 +821,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.19 (Red Balance Fix)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.20 (Safe H/I + True Orange)</div></div>`;
   return h;
 }
 
@@ -960,7 +963,6 @@ function custField(f){
   </div>`;
 }
 
-// --- NEW TAX OVERPAYMENT FUNCTIONS ---
 let _invCustLookupTimer = null;
 function onInvCustIdInput(val) {
   S.iForm[COLS.docCustId] = val;
@@ -1010,7 +1012,6 @@ function renderTaxOpenInvs() {
   const container = document.getElementById('tax-open-invs-container');
   if (container) container.innerHTML = buildTaxOpenInvsHtml();
 }
-// -------------------------------------
 
 
 function renderInvForm(isTax){
@@ -1705,7 +1706,7 @@ function pickCustomer(name,id){
 
 function captureReceiptFields(){
   const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
-  // Do NOT write to H and I. Only read from the UI if needed internally
+  // הגנה: לא כותבים את נתוני הלקוח לעמודות H ו-I, המערכת קוראת אותם לממשק בלבד!
   const recAmtInput = g('r-'+COLS.recPayAmt).trim();
   if (recAmtInput) S.rForm[COLS.recPayAmt] = recAmtInput;
   S.rForm[COLS.recInvNum]=g('r-'+COLS.recInvNum).trim()||S.rForm[COLS.recInvNum];  
@@ -1921,7 +1922,7 @@ async function saveReceipt(){
     ?`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה חשבונית זו ₪${Math.round(balance).toLocaleString('he-IL')}. ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2||'—'}${rf[COLS.recNotes]?.trim()?' | '+rf[COLS.recNotes].trim():''}`
     :rf[COLS.recNotes]||'';
     
-  // NOTE: H and I are removed here so the server will NOT touch columns H and I and protect the formulas.
+  // נתוני השמירה בלבד: לעולם לא ישלח את H או I כדי לא לדרוס נוסחאות!
   const data1={
     [COLS.recInvNum]:rf[COLS.recInvNum]||'',
     [COLS.recPayType]:rf[COLS.recPayType]||'',
@@ -1936,6 +1937,7 @@ async function saveReceipt(){
   try{
     await apiPost({action:'addReceipt', data:data1, photoBase64: rf._photoBase64 || ''});
     
+    // מוסיף את התצוגה המקומית כדי שתוצג בטלפון (אך לא נשלח לשרת)
     data1[COLS.recCustName] = rf._custName || '';
     data1[COLS.recCustId] = rf._custId || '';
     S.receipts.push({...data1,_id:S.receipts.length,_bg:'#ffffff'});
