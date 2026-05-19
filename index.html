@@ -79,7 +79,7 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .dtrow{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-top:.5px solid #f0f0f0;}
 .dtlabel{font-size:12px;color:#666;flex-shrink:0;padding-left:8px;}
 .dtval{font-size:13px;font-weight:500;color:#222;text-align:left;direction:ltr;max-width:55%;overflow:hidden;text-overflow:ellipsis;}
-.prod-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:.5px solid #f0f0f0;}
+.prod-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-top:.5px solid #f0f0f0;}
 .prod-em{font-size:20px;margin-left:8px;}
 .prod-name{font-size:13px;font-weight:500;color:#222;}
 .prod-sub{font-size:10px;color:#aaa;}
@@ -193,18 +193,8 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
   </div>
 </div>
 <script>
-// 🛡️ CRITICAL RE-FIX: Standard synchronous execution loop for storage initialization
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  const val = params.get('v');
-  if (val === '627' || val === '628' || val === 'force') {
-    try { localStorage.clear(); } catch(e){}
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-})();
-
 // ── Config ──
-const STORAGE_KEY='moov_url_v28'; 
+const STORAGE_KEY='moov_url_v30'; 
 const VAT=0.18;
 
 const COLS = {
@@ -250,7 +240,7 @@ const PRODS=[
   {nk:'R',qk:'S', name:'Raspberry Soda 10 - פטל', short:'Raspberry Soda 10', heb:'פטל', nic:10,em:'🍓'},
   {nk:'T',qk:'U', name:'Watermelon 20 - אבטיח', short:'Watermelon 20', heb:'אבטיח', nic:20,em:'🍉'},
   {nk:'V',qk:'W', name:'Watermelon 14 - אבטיח', short:'Watermelon 14', heb:'אבטיח', nic:14,em:'🍉'},
-  {nk:'X',qk:'Y', name:'Banana 3 - בננה', short:'Banana 3', heb:'בננה', nic:3, em:'🍌'},
+  {nk:'X',qk:'Y', name:'Banana 3 - בננה', short:'Banana 3', heb:'บננה', nic:3, em:'🍌'},
   {nk:'Z',qk:'AA', name:'Orange 25 - תפוז', short:'Orange 25', heb:'תפוז', nic:25, em:'🍊'},
   {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול', short:'Double Apple 25', heb:'תפוח כפול', nic:3, em:'🍏🍏'},
 ];
@@ -474,15 +464,18 @@ function syncNav(){
   });
 }
 
+// 🛡️ CRITICAL RUNTIME RE-FIX: Full safe modular conditional sequence execution path
 function switchTab(tab){
   S.search='';S.expId=null;S.msg=null;S.showSuggest=false;
   S.tab=tab;S.screen='list';
   syncNav();setHeader();
-  if(tab==='invoices'&&S.isState==='idle')loadInvoices();
-  else if(tab==='receipts'&&S.rsState==='idle')loadReceipts();
-  else if(tab==='tax'&&S.tsState==='idle')loadTax();
-  if(tab==='invoices'&&S.rsState==='idle')loadReceipts();
-  else render();
+  
+  if(tab==='invoices' && S.isState==='idle') { loadInvoices(); }
+  if(tab==='receipts' && S.rsState==='idle') { loadReceipts(); }
+  if(tab==='tax' && S.tsState==='idle') { loadTax(); }
+  if(tab==='invoices' && S.rsState==='idle') { loadReceipts(); }
+  
+  render();
 }
 
 function goBack(){
@@ -600,7 +593,6 @@ function custField(f){
   </div>`;
 }
 
-// --- NEW TAX OVERPAYMENT FUNCTIONS ---
 let _invCustLookupTimer = null;
 function onInvCustIdInput(val) {
   S.iForm[COLS.docCustId] = val;
@@ -934,7 +926,7 @@ function renderReceiptForm(){
     </div>
     <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.recPayDate}) *</small></label>
       <input type="text" id="r-${COLS.recPayDate}" class="finput" value="${esc(rf[COLS.recPayDate]||tod())}"
-        oninput="uf('rForm','${COLS.recPayDate}',this.value);renderSaveBtnRec()">
+        oninput="uf('rForm','var name=S.rForm; name[COLS.recPayDate]=this.value;',this.value);renderSaveBtnRec()">
     </div>
     <div class="field"><label>צילום שיק <small>(עמודה ${COLS.recPhoto}) *</small></label>
       <input type="file" id="receipt-cheque-photo" accept="image/*" capture="environment"
@@ -1151,7 +1143,7 @@ function renderSetup(){
           placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
         <button class="save-url-btn" onclick="saveUrl('script-url-input','url-err')">✅ התחבר לגיליון</button>
       </div>
-      <div style="text-align:center;margin-top:24px;font-size:12px;color:#aaa">Version v6.28 (Stable Architecture)</div>
+      <div style="text-align:center;margin-top:24px;font-size:12px;color:#aaa">Version v6.28 (Stable Restored Architecture)</div>
     </div>
   </div>`;
 }
@@ -1210,40 +1202,28 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.28 (Stable Architecture)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.28 (Stable Restored Architecture)</div></div>`;
   return h;
 }
 
-function openSettings(){S.screen='settings';setHeader();render();}
+function setHeader(){
+  const hdr=document.getElementById('hdr');
+  const back=document.getElementById('back-btn');
+  const right=document.getElementById('right-btn');
+  const sub=document.getElementById('hdr-sub');
+  const isList=S.screen==='list';
+  const tab=S.tab;const color=tc();
 
-window.addEventListener('DOMContentLoaded',()=>{
-  S.cForm=efC();S.rForm=efR();S.tab='customers';S.screen='list';
-  setHeader();
-  syncNav();
-  requestAnimationFrame(syncNav);
+  hdr.style.background=S.screen==='settings'?'#37474f':color;
 
-  window.addEventListener('beforeunload',e=>{
-    e.preventDefault();
-    return e.returnValue='Are you sure you want to exit?';
-  });
-
-  history.pushState(null,'',location.href);
-  window.addEventListener('popstate',()=>{
-    if(S.screen!=='list'){
-      history.pushState(null,'',location.href);
-      goBack();
-    }else{
-      if(confirm('Are you sure you want to exit?')){
-        history.back();
-      }else{
-        history.pushState(null,'',location.href);
-      }
-    }
-  });
-
-  if(S.scriptUrl){render();pingSheets().then(()=>loadCustomers());}
-  else render();
-});
-</script>
-</body>
-</html>
+  const titles={
+    'list':TABS[tab]?.label,
+    'new-customer':'+ לקוח חדש',
+    'new-receipt':'+ קבלה חדשה',
+    'new-invoice':'+ חשבונית חדשה',
+    'new-tax':'+ חשמ"ק חדש',
+    'settings':'⚙️ הגדרות',
+  };
+  
+  if (!S.scriptUrl) {
+    document.getElementById('
