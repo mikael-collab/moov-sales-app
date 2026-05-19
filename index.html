@@ -46,7 +46,812 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .sbar{background:#fff;border-bottom:1px solid #ebebeb;padding:10px 12px;position:sticky;top:0;z-index:10;}
 .swrap{position:relative;}
 .sinput{width:100%;padding:10px 36px 10px 30px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:inherit;background:#f8f8f8;outline:none;direction:rtl;-webkit-appearance:none;}
-.sico">🔍</span>
+.sico{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+.sclr{position:absolute;left:9px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;line-height:1;}
+.smeta{display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:#aaa;}
+.sref{background:none;border:none;font-size:11px;font-family:inherit;cursor:pointer;}
+/* Cards */
+.card{margin:0 10px 5px;border-radius:11px;overflow:hidden;border:1.5px solid rgba(0,0,0,.06);box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.card.exp{border-color:var(--tc);box-shadow:0 3px 14px rgba(0,0,0,.12);}
+.card-hdr{padding:12px 14px;cursor:pointer;user-select:none;}
+.r1{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap;}
+.r2{display:flex;gap:9px;font-size:12px;color:#555;flex-wrap:wrap;align-items:center;}
+.r3{margin-top:5px;display:flex;justify-content:space-between;align-items:center;}
+.card-body{border-top:1.5px solid rgba(0,0,0,.07);padding:12px 14px 14px;background:#fff;}
+.cust-name{font-weight:600;font-size:15px;color:#1a1a1a;flex-shrink:0;max-width:44%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.biz-name{font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.toggle-hint{font-size:11px;}
+.id-badge{font-size:12px;color:#444;background:rgba(0,0,0,.09);border-radius:6px;padding:2px 8px;font-family:monospace;letter-spacing:1px;flex-shrink:0;}
+.copy-btn{border:1px solid rgba(0,0,0,.18);border-radius:6px;padding:2px 8px;font-size:11px;background:rgba(255,255,255,.6);color:#444;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.copy-btn.done{color:#fff;}
+.tag{font-size:11px;background:rgba(0,0,0,.08);border-radius:5px;padding:1px 7px;color:#444;white-space:nowrap;}
+.tag.blue{background:#ddeeff;color:#1a73e8;}
+.nbadge{color:#fff;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;display:inline-block;}
+/* Grid / Detail */
+.sec-t{font-size:11px;font-weight:600;color:#aaa;margin-bottom:8px;letter-spacing:.5px;}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.gcell{background:#f8f8f8;border-radius:8px;padding:8px 10px;border:.5px solid #ebebeb;}
+.gcell.wide{grid-column:span 2;}
+.glabel{font-size:10px;color:#aaa;margin-bottom:2px;}
+.gval{font-size:13px;font-weight:500;color:#222;word-break:break-all;}
+.dtable{background:#fff;border-radius:10px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:10px;}
+.dtable .dthead{padding:8px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;justify-content:space-between;}
+.dtrow{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-top:.5px solid #f0f0f0;}
+.dtlabel{font-size:12px;color:#666;flex-shrink:0;padding-left:8px;}
+.dtval{font-size:13px;font-weight:500;color:#222;text-align:left;direction:ltr;max-width:55%;overflow:hidden;text-overflow:ellipsis;}
+.prod-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:.5px solid #f0f0f0;}
+.prod-em{font-size:20px;margin-left:8px;}
+.prod-name{font-size:13px;font-weight:500;color:#222;}
+.prod-sub{font-size:10px;color:#aaa;}
+.prod-qty{font-size:15px;font-weight:700;}
+/* Sticky totals bar */
+.sticky-totals{
+  position:sticky;top:0;z-index:20;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 16px;margin:-14px -14px 14px;
+  color:#fff;
+  border-bottom:1.5px solid rgba(255,255,255,.2);
+}
+.sticky-totals .st-cans{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+.sticky-totals .st-total{font-size:19px;font-weight:700;}
+.fdivider{display:flex;align-items:center;gap:10px;margin:16px 0 13px;}
+.fdivider hr{flex:1;border:none;border-top:.5px solid #ddd;}
+.fdivider span{font-size:12px;font-weight:600;color:#aaa;white-space:nowrap;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:13px;font-weight:500;color:#555;margin-bottom:4px;}
+.field label small{font-size:11px;color:#bbb;font-weight:400;}
+.finput{display:block;width:100%;padding:10px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;font-family:inherit;background:#f8f8f8;outline:none;direction:rtl;-webkit-appearance:none;transition:border-color .2s;}
+.finput:focus{border-color:var(--tc,#1a73e8);background:#fff;}
+.finput.num{direction:ltr;text-align:right;font-family:monospace;letter-spacing:1px;}
+select.finput{cursor:pointer;}
+textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
+.irow{display:flex;gap:8px;}
+.dash-btn{padding:10px 16px;border-radius:10px;border:1.5px solid var(--tc,#1a73e8);background:transparent;color:var(--tc,#1a73e8);font-size:22px;font-weight:700;line-height:1;cursor:pointer;flex-shrink:0;}
+.save-btn{width:100%;padding:13px;border-radius:10px;color:#fff;border:none;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer;-webkit-appearance:none;transition:background 0.2s;}
+.save-btn:disabled{background:#ccc !important;cursor:not-allowed;}
+/* Product qty row in form */
+.prod-field{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:.5px solid #f0f0f0;direction:ltr;}
+.prod-field:last-child{border-bottom:none;}
+.pf-left{display:flex;align-items:center;gap:8px;}
+.pf-em{font-size:20px;margin-left:0;margin-right:8px;}
+.pf-name{font-size:13px;font-weight:500;color:#222;}
+.pf-sub{font-size:10px;color:#aaa;}
+.pf-input{width:72px;padding:7px 8px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:15px;font-weight:600;text-align:center;font-family:monospace;background:#f8f8f8;-webkit-appearance:none;outline:none;flex-shrink:0;}
+.pf-input:focus{border-color:var(--tc,#1a73e8);background:#fff;}
+/* Calc row */
+.calc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#f8f8f8;border-radius:8px;margin-bottom:6px;}
+.calc-label{font-size:12px;color:#666;}
+.calc-val{font-size:13px;font-weight:600;color:#222;}
+.calc-val.hi{color:var(--tc,#1a73e8);font-size:15px;}
+/* Customer suggest */
+.field-wrap{position:relative;}
+.suggest-box{position:absolute;top:100%;right:0;left:0;background:#fff;border:1.5px solid #e0e0e0;border-top:none;border-radius:0 0 10px 10px;max-height:150px;overflow-y:auto;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+.sug-item{padding:9px 13px;cursor:pointer;font-size:14px;color:#333;border-top:.5px solid #f5f5f5;}
+.sug-item:first-child{border-top:none;}
+.sug-item:active{background:#f0f4ff;}
+.sug-sub{font-size:11px;color:#aaa;margin-top:1px;}
+/* Alert */
+.alert{padding:12px 14px;border-radius:10px;font-weight:500;text-align:center;font-size:14px;margin-bottom:12px;}
+.alert.ok{background:#e6f4ea;color:#1e8e3e;}
+.alert.err{background:#fce8e6;color:#c62828;}
+/* Status */
+.status{padding:48px 16px;text-align:center;}
+.spinner{width:36px;height:36px;border:3px solid #f0f0f0;border-top-color:#1a73e8;border-radius:50%;margin:0 auto 14px;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Settings */
+.set-wrap{padding:14px 14px 40px;}
+.stitle{font-size:11px;font-weight:600;color:#aaa;margin:14px 0 6px;letter-spacing:.5px;}
+.stitle:first-child{margin-top:0;}
+.scard{background:#fff;border-radius:12px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:4px;}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-top:.5px solid #f0f0f0;}
+.srow:first-child{border-top:none;}
+.slabel{font-size:13px;color:#444;font-weight:500;}
+.sval{font-size:11px;color:#aaa;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;}
+.sbtn{background:none;border:none;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;}
+.sbtn.red{color:#c62828;}.sbtn.blue{color:#1a73e8;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle;}
+.diag-box{background:#111827;border-radius:10px;padding:12px;margin-top:10px;direction:ltr;text-align:left;}
+.diag-sheet{margin-bottom:12px;}
+.diag-name{font-size:12px;font-weight:600;color:#60a5fa;margin-bottom:5px;}
+.diag-grid{display:flex;flex-wrap:wrap;gap:4px;}
+.dcell{background:#1e3a5f;border-radius:4px;padding:2px 7px;font-size:10px;font-family:monospace;}
+.dk{color:#93c5fd;}.dv{color:#86efac;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
+.derr{color:#f87171;font-size:11px;}
+.url-input{width:100%;padding:12px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;font-family:inherit;background:#f8f8f8;outline:none;direction:ltr;text-align:left;-webkit-appearance:none;margin-bottom:10px;}
+.url-input:focus{border-color:#1a73e8;background:#fff;}
+.url-input.err{border-color:#c62828;}
+.url-err{font-size:12px;color:#c62828;margin-bottom:8px;display:none;}
+.save-url-btn{width:100%;padding:13px;border-radius:10px;background:#1a73e8;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;}
+/* Setup */
+.setup-screen{display:flex;flex-direction:column;height:100%;}
+.setup-hero{background:linear-gradient(135deg,#1a73e8,#0d47a1);padding:36px 24px 28px;text-align:center;color:#fff;flex-shrink:0;}
+.setup-hero .logo{font-size:48px;margin-bottom:8px;}
+.setup-hero h2{font-size:22px;font-weight:700;margin-bottom:3px;}
+.setup-hero p{font-size:13px;opacity:.8;line-height:1.5;margin:0;}
+.setup-body{flex:1;overflow-y:auto;padding:18px 14px 30px;}
+.setup-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;border:.5px solid #e8e8e8;}
+.setup-card h3{font-size:14px;font-weight:600;color:#222;margin-bottom:10px;}
+.step-row{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;}
+.step-num{background:#1a73e8;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
+.step-txt{font-size:13px;color:#444;line-height:1.5;flex:1;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:3px;}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);max-width:360px;width:calc(100% - 32px);padding:13px 16px;border-radius:12px;font-size:14px;font-weight:600;text-align:center;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:slideUp .2s ease;}
+.toast.err{background:#c62828;color:#fff;}
+.toast.ok{background:#1e8e3e;color:#fff;}
+@keyframes slideUp{from{opacity:0;bottom:60px}to{opacity:1;bottom:80px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toast-container"></div>
+  <div class="hdr" id="hdr">
+    <div class="hdr-row">
+      <button class="hdr-btn" id="back-btn"></button>
+      <div class="hdr-mid"><h1 id="hdr-title">לקוחות</h1><p id="hdr-sub">מיקאל קולמן | MOOV</p></div>
+      <button class="hdr-btn hidden" id="right-btn"></button>
+    </div>
+  </div>
+  <div id="content"></div>
+  <div class="bnav" id="bnav">
+    <button class="bnav-btn" data-tab="customers" onclick="switchTab('customers')"><span class="ico">👥</span><span class="lbl">לקוחות</span></button>
+    <button class="bnav-btn" data-tab="invoices"  onclick="switchTab('invoices')"><span class="ico">📄</span><span class="lbl">חשבוניות</span></button>
+    <button class="bnav-btn" data-tab="receipts"  onclick="switchTab('receipts')"><span class="ico">🧾</span><span class="lbl">קבלות</span></button>
+    <button class="bnav-btn" data-tab="tax"       onclick="switchTab('tax')"><span class="ico">📋</span><span class="lbl">חשמ"ק</span></button>
+  </div>
+</div>
+<script>
+// ── Config ──
+const STORAGE_KEY='moov_url_v15'; 
+const VAT=0.18;
+
+// ─────────────────────────────────────────────────────────
+// ⚙️ CENTRAL MAPPING (CONFIG) ⚙️
+// ─────────────────────────────────────────────────────────
+const COLS = {
+  docCustId: 'A',      
+  docCustName: 'B',    
+  docDate: 'C',        
+  price: 'AD',         
+  subtotal: 'AE',      
+  discount: 'AF',      
+  afterDisc: 'AG',     
+  
+  invTerms: 'AH',      
+  invTotalVat: 'AI',   
+  invNum: 'AJ',        
+  invPayType: 'AK',    
+  invPayAmt: 'AL',     
+  invPayDate: 'AM',    
+  invChkNum: 'AN',     
+  invNotes: 'AO',      
+  
+  taxTotalVat: 'AH',   
+  taxPayType: 'AI',    
+  taxPayAmt: 'AJ',     
+  taxPayDate: 'AK',    
+  taxChkNum: 'AL',     
+  taxPhoto: 'AM',      
+  taxNotes: 'AN',      
+  taxNum: 'AO',        
+
+  recInvNum: 'A',      
+  recPayType: 'B',     
+  recPayAmt: 'C',      
+  recPayDate: 'D',     
+  recChkNum: 'E',      
+  recPhoto: 'F',       
+  recNotes: 'G',       
+  recCustName: 'H',    
+  recCustId: 'I',      
+  recNum: 'J',         
+
+  custName: 'A',       
+  custId: 'B',         
+  custBiz: 'C',        
+  custPhone: 'D',      
+  custEmail: 'E',      
+  custStreet: 'F',     
+  custCity: 'G',       
+  custBankHolder: 'H', 
+  custBankName: 'I',   
+  custBankBranch: 'J', 
+  custBankAcct: 'K'    
+};
+// ─────────────────────────────────────────────────────────
+
+const TABS={
+  customers:{label:'לקוחות',         color:'#1a73e8',bg:'#e8f0fe'},
+  invoices: {label:'חשבוניות',        color:'#d67000',bg:'#fff3e0'},
+  receipts: {label:'קבלות',           color:'#1e8e3e',bg:'#e6f4ea'},
+  tax:      {label:'חשבוניות/קבלות', color:'#7b1fa2',bg:'#f3e5f5'},
+};
+const SHEETS={customers:'לקוחות',invoices:'חשבוניות',receipts:'קבלות',tax:'חשבוניות/קבלות'};
+const PAYMENT_TYPES=['מזומן','שיק'];
+
+const CF=[
+  {k:COLS.custName,label:'שם לקוח',      mode:'text',req:true},
+  {k:COLS.custId,label:'ת"ז / ח"פ',   mode:'num', copy:true},
+  {k:COLS.custBiz,label:'שם העסק',       mode:'text'},
+  {k:COLS.custPhone,label:'טלפון',         mode:'tel'},
+  {k:COLS.custEmail,label:'כתובת מייל',    mode:'email'},
+  {k:COLS.custStreet,label:'רחוב ומספר',    mode:'text'},
+  {k:COLS.custCity,label:'עיר',           mode:'text'},
+  {k:COLS.custBankHolder,label:'שם בעל החשבון', mode:'text',bank:true},
+  {k:COLS.custBankName,label:'שם הבנק',       mode:'text',bank:true},
+  {k:COLS.custBankBranch,label:'מספר הסניף',    mode:'num', bank:true},
+  {k:COLS.custBankAcct,label:'מספר חשבון',    mode:'num', bank:true},
+];
+
+const PRODS=[
+  {nk:'D',qk:'E', name:'Blueberry Mint 10 - אוכמניות',     short:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
+  {nk:'F',qk:'G', name:'Blueberry Mint 6 - אוכמניות',      short:'Blueberry Mint 6',  heb:'אוכמניות',    nic:6, em:'🫐'},
+  {nk:'H',qk:'I', name:'Jalapeno Lime 14 - חלפיניו ליים',  short:'Jalapeno Lime 14',  heb:'חלפיניו ליים',nic:14,em:'🌶'},
+  {nk:'J',qk:'K', name:'Jalapeno Lime 6 - חלפיניו ליים',   short:'Jalapeno Lime 6',   heb:'חלפיניו ליים',nic:6, em:'🌶'},
+  {nk:'L',qk:'M', name:'Peppermint 20 - מנטה',             short:'Peppermint 20',     heb:'מנטה',        nic:20,em:'🌿'},
+  {nk:'N',qk:'O', name:'Peppermint 10 - מנטה',             short:'Peppermint 10',     heb:'מנטה',        nic:10,em:'🌿'},
+  {nk:'P',qk:'Q', name:'Peppermint 3 - מנטה',              short:'Peppermint 3',      heb:'מנטה',        nic:3, em:'🌿'},
+  {nk:'R',qk:'S', name:'Raspberry Soda 10 - פטל',          short:'Raspberry Soda 10', heb:'פטל',         nic:10,em:'🍓'},
+  {nk:'T',qk:'U', name:'Watermelon 20 - אבטיח',            short:'Watermelon 20',     heb:'אבטיח',       nic:20,em:'🍉'},
+  {nk:'V',qk:'W', name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
+  {nk:'X',qk:'Y', name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
+  {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25, em:'🍊'},
+  {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
+];
+
+const INV_TAIL=[
+  {k:COLS.invTerms,label:'תנאי תשלום'},
+  {k:COLS.invTotalVat,label:'סה"כ כולל מע"מ',money:true,hi:true},
+  {k:COLS.invNum,label:'מספר חשבונית'},
+  {k:COLS.invPayType,label:'סוג תשלום'},
+  {k:COLS.invPayAmt,label:'סכום התשלום',money:true},
+  {k:COLS.invPayDate,label:'תאריך תשלום / תאריך פרעון שיק'},
+  {k:COLS.invChkNum,label:'מספר שיק'},
+  {k:COLS.invNotes,label:'הערות',wide:true},
+];
+const TAX_TAIL=[
+  {k:COLS.taxTotalVat,label:'סה"כ כולל מע"מ',money:true,hi:true},
+  {k:COLS.taxPayType,label:'סוג תשלום'},
+  {k:COLS.taxPayAmt,label:'סכום התשלום',money:true},
+  {k:COLS.taxPayDate,label:'תאריך תשלום / תאריך פרעון שיק'},
+  {k:COLS.taxChkNum,label:'מספר שיק'},
+  {k:COLS.taxPhoto,label:'צילום שיק'},
+  {k:COLS.taxNotes,label:'הערות',wide:true},
+  {k:COLS.taxNum,label:'מספר חשבונית מס / קבלה'},
+];
+const RF=[
+  {k:COLS.recInvNum,label:'מספר חשבונית',                 icon:'🧾'},
+  {k:COLS.recPayType,label:'סוג תשלום',                     icon:'💳'},
+  {k:COLS.recPayAmt,label:'סכום התשלום',                   icon:'₪',money:true},
+  {k:COLS.recPayDate,label:'תאריך תשלום / תאריך פרעון שיק',icon:'📅'},
+  {k:COLS.recChkNum,label:'מספר שיק',                      icon:'#'},
+  {k:COLS.recPhoto,label:'צילום שיק',                     icon:'📷'},
+  {k:COLS.recNotes,label:'הערות',                         icon:'📝',wide:true},
+  {k:COLS.recCustName,label:'שם לקוח',                       icon:'👤'},
+  {k:COLS.recCustId,label:'ת"ז / ח"פ',                     icon:'🪪'},
+  {k:COLS.recNum,label:'מספר קבלה',                     icon:'🔢'},
+];
+
+function setElValue(id, val) { const el = document.getElementById(id); if (el && el.value !== val) el.value = val; }
+function setElText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function setElDisplay(id, display) { const el = document.getElementById(id); if (el) el.style.display = display; }
+
+function getSavedUrl() { try { return localStorage.getItem(STORAGE_KEY) || ''; } catch(e) { return ''; } }
+function saveUrlToLocal(url) { try { localStorage.setItem(STORAGE_KEY, url); } catch(e) { console.warn('Storage blocked'); } }
+function clearUrlFromLocal() { try { localStorage.removeItem(STORAGE_KEY); } catch(e) {} }
+
+const S={
+  tab:'customers',screen:'list',
+  customers:[],csState:'idle',
+  invoices:[], isState:'idle',
+  receipts:[], rsState:'idle',
+  tax:[],      tsState:'idle',
+  search:'',expId:null,
+  cForm:{},rForm:{},iForm:{},
+  saving:false,msg:null,
+  copied:null,copiedTimer:null,
+  scriptUrl:getSavedUrl(),
+  availableSheets:[],
+  diagData:{},diagRunning:false,
+  errors:{},
+  suggest:[],showSuggest:false,
+};
+
+const tc=()=>TABS[S.tab].color;
+function efC(){const o={};CF.forEach(f=>o[f.k]='');return o;}
+
+function efR(){
+  const o = {
+    _custName:'', _custId:'', _invTotal:'', _invDate:'',
+    _photoDataUrl:'', _photoBase64:'',
+    _openInvs:[], _showOpenInvs:false, _overInvNum:''  
+  };
+  o[COLS.recInvNum]=''; o[COLS.recPayType]=''; o[COLS.recPayAmt]=''; o[COLS.recPayDate]=tod();
+  o[COLS.recChkNum]=''; o[COLS.recPhoto]=''; o[COLS.recNotes]='';
+  return o;
+}
+
+function taxFormErrors(){
+  const f=S.iForm;
+  const calc=calcInv(f);
+  const total=calc.withVat;
+  const paid=parseFloat(f[COLS.taxPayAmt]||0);
+  const isOver=f[COLS.taxPayType]==='שיק'&&total>0&&paid>total+0.5;
+  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
+  if(!f[COLS.taxPayType])return 'בחר סוג תשלום';
+  if(!f[COLS.taxPayAmt]?.trim())return 'הזן סכום תשלום';
+  if(f[COLS.taxPayType]==='מזומן'&&total>0&&paid>total+0.5)
+    return `מזומן לא יכול לעלות על ₪${Math.round(total).toLocaleString('he-IL')}`;
+  if(isOver&&!f._overInvNum?.trim())
+    return 'הזן מספר חשבונית עבור ההפרש';
+  if(f[COLS.taxPayType]==='שיק'){
+    if(!f[COLS.taxChkNum]?.trim())return 'הזן מספר שיק';
+    if(!f[COLS.taxPayDate]?.trim())return 'הזן תאריך פרעון שיק';
+    if(!f._photoTaken)return 'צלם את השיק';
+  }
+  return null;
+}
+
+function invoiceFormErrors() {
+  const f=S.iForm;
+  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
+  return null;
+}
+
+function receiptFormErrors(){
+  const rf=S.rForm;
+  if(!rf[COLS.recPayType])return 'בחר סוג תשלום';
+  if(!rf[COLS.recPayAmt]?.trim())return 'הזן סכום תשלום';
+  const paid=parseFloat(rf[COLS.recPayAmt])||0;
+  const balance=parseFloat(rf._invTotal)||0;
+  if(rf[COLS.recPayType]==='מזומן'&&balance>0&&paid>balance+0.5)
+    return `מזומן לא יכול לעלות על יתרה: ₪${Math.round(balance).toLocaleString('he-IL')}`;
+  if(rf[COLS.recPayType]==='שיק'&&balance>0&&paid>balance+0.5&&!rf._overInvNum?.trim())
+    return 'הזן מספר חשבונית עבור ההפרש';
+  if(rf[COLS.recInvNum]?.trim()){
+    const found=S.invoices.find(r=>nz(r[COLS.invNum])===rf[COLS.recInvNum].trim() || nz(r[COLS.taxNum])===rf[COLS.recInvNum].trim());
+    if(!found)return 'מספר חשבונית לא קיים במערכת';
+  }
+  if(rf[COLS.recPayType]==='שיק'){
+    if(!rf[COLS.recChkNum]?.trim())return 'הזן מספר שיק';
+    if(!rf[COLS.recPayDate]?.trim())return 'הזן תאריך פרעון שיק';
+    if(!rf._photoTaken)return 'צלם את השיק';
+  }
+  return null;
+}
+
+function efI(isTax){
+  const o={};
+  o[COLS.docCustId]=''; o[COLS.docCustName]=''; o[COLS.docDate]=tod();
+  o._openInvs=[]; o._overInvNum=''; 
+  PRODS.forEach(p=>{o[p.nk]=p.name;o[p.qk]='0';});
+  o[COLS.price]='13.00'; o[COLS.subtotal]=''; o[COLS.discount]=''; o[COLS.afterDisc]='';
+  
+  if(!isTax){
+    o[COLS.invTerms]=''; o[COLS.invTotalVat]=''; o[COLS.invNum]='';
+    o[COLS.invPayType]='מזומן'; o[COLS.invPayAmt]=''; o[COLS.invPayDate]='';
+    o[COLS.invChkNum]=''; o[COLS.invNotes]='';
+  }else{
+    o[COLS.taxTotalVat]=''; o[COLS.taxPayType]=''; o[COLS.taxPayAmt]='';
+    o[COLS.taxPayDate]=tod(); o[COLS.taxChkNum]=''; o[COLS.taxPhoto]='';
+    o[COLS.taxNotes]=''; o[COLS.taxNum]='';
+  }
+  return o;
+}
+
+function tod(){
+  const d=new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function dateToISO(s){
+  if(!s)return new Date().toISOString().slice(0,10);
+  const p=s.split('/');
+  if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+  return new Date().toISOString().slice(0,10);
+}
+function isoToHeb(s){
+  if(!s)return '';
+  const p=s.split('-');
+  if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];
+  return s;
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
+function fmt(x){
+  const n=parseFloat((x||'').toString().replace(/[^0-9.]/g,''));
+  if(isNaN(n)||n===0)return x||'';
+  return '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2});
+}
+function fmtNum(n){return n.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtPhone(x){
+  if(!x)return x;
+  const d=x.replace(/\D/g,'');
+  if(d.length===10&&d.startsWith('0'))return d.slice(0,3)+'-'+d.slice(3);
+  if(d.length===9&&d.startsWith('0'))return d.slice(0,2)+'-'+d.slice(2);
+  return x;
+}
+function isBusy(e){const m=(e?.message||'').toLowerCase();return m.includes('quota')||m.includes('rate')||m.includes('limit')||m.includes('429');}
+
+function rowBg(r,isExp){
+  if(isExp)return'#ffffff';
+  const bg=(r._bg||'#ffffff').toLowerCase().replace(/\s/g,'');
+  return(bg==='#ffffff'||bg==='#fff'||bg===''||bg==='white')?'#ffffff':bg;
+}
+
+function isInvRed(r) {
+  const bg = (r._bgInv || r._bg || '#ffffff').toLowerCase().replace(/[^0-9a-f]/g, '');
+  if (bg.length < 6) return false;
+  if (bg === 'ff0000') return true;
+  const R = parseInt(bg.slice(0, 2), 16);
+  const G = parseInt(bg.slice(2, 4), 16);
+  const B = parseInt(bg.slice(4, 6), 16);
+  if (R > 180 && G < 80 && B < 80) return true;
+  return false;
+}
+
+function calcInv(f){
+  const price=parseFloat(f[COLS.price])||0;
+  const totalQty=PRODS.reduce((s,p)=>s+(parseInt(f[p.qk])||0),0);
+  const aa=price*totalQty;
+  const disc=parseFloat(f[COLS.discount])||0;
+  const ac=aa*(1-disc/100);
+  const withVat=ac*(1+VAT);
+  return{totalQty,aa,disc,ac,withVat};
+}
+
+// ── API ──
+async function apiFetch(params){
+  if(!S.scriptUrl)throw new Error('NO_URL');
+  const r=await fetch(S.scriptUrl+'?'+new URLSearchParams(params));
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();
+  if(d.error)throw new Error(d.error+(d.available?' | '+d.available.join(', '):''));
+  return d;
+}
+
+function apiPost(body){
+  if(!S.scriptUrl) return Promise.reject(new Error('NO_URL'));
+  return fetch(S.scriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(body),
+    mode: 'no-cors'
+  }).then(() => { return {status: 'ok'}; })
+    .catch((e) => { throw new Error('Network Connection Failed'); });
+}
+
+async function pingSheets(){
+  try{
+    const d=await apiFetch({});
+    if(d.sheets){
+      S.availableSheets=d.sheets;
+      d.sheets.forEach(n=>{
+        n=n.trim();
+        if(n==='לקוחות')              SHEETS.customers=n;
+        else if(n.includes('/'))      SHEETS.tax=n;
+        else if(/^חשבוניות$/.test(n)) SHEETS.invoices=n;
+        else if(/^קבלות$/.test(n))    SHEETS.receipts=n;
+      });
+    }
+  }catch(e){console.error('ping',e);}
+}
+
+async function runDiagnose(){
+  S.diagRunning=true;render();S.diagData={};
+  for(const tab of['customers','invoices','receipts','tax']){
+    try{
+      const d=await apiFetch({sheet:SHEETS[tab],limit:1});
+      S.diagData[tab]={sheetName:SHEETS[tab],firstRow:(d.data||[])[0]||null};
+    }catch(e){S.diagData[tab]={sheetName:SHEETS[tab],error:e.message};}
+  }
+  S.diagRunning=false;render();
+}
+
+// ── Loaders ──
+async function loadAny(tab,stateKey,limit,req){
+  S[stateKey]='loading';render();
+  try{
+    const p={sheet:SHEETS[tab]};
+    if(limit)p.limit=limit;
+    if(req)p.require=req;
+    const d=await apiFetch(p);
+    S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i,_row:i+2})); 
+    S[stateKey]='ok';delete S.errors[tab];
+  }catch(e){
+    S[stateKey]=isBusy(e)?'busy':'error';
+    S.errors[tab]=e.message;
+  }
+  render();
+}
+
+const loadCustomers=()=>loadAny('customers','csState',0, COLS.custId);
+const loadInvoices =()=>loadAny('invoices', 'isState',0, COLS.docCustId);
+const loadReceipts =()=>loadAny('receipts', 'rsState',0, COLS.recInvNum);
+const loadTax      =()=>loadAny('tax',      'tsState',0, COLS.docCustId);
+
+// ── Nav ──
+function syncNav(){
+  document.querySelectorAll('.bnav-btn').forEach(btn=>{
+    const t=btn.dataset.tab;const cfg=TABS[t];const on=t===S.tab;
+    btn.style.color=on?cfg.color:'#aaa';
+    btn.style.background=on?cfg.bg:'transparent';
+    btn.style.borderTopColor=on?cfg.color:'transparent';
+  });
+}
+
+function switchTab(tab){
+  S.tab=tab;S.screen='list';S.search='';S.expId=null;S.msg=null;S.showSuggest=false;
+  syncNav();setHeader();
+  if(tab==='invoices'&&S.isState==='idle')loadInvoices();
+  else if(tab==='receipts'&&S.rsState==='idle')loadReceipts();
+  else if(tab==='tax'&&S.tsState==='idle')loadTax();
+  if(tab==='invoices'&&S.rsState==='idle')loadReceipts();
+  else render();
+}
+
+function goBack(){
+  S.screen='list';S.msg=null;S.cForm=efC();S.rForm=efR();S.iForm={};
+  S.showSuggest=false;setHeader();render();
+}
+function scrollToTop(){requestAnimationFrame(()=>{const el=document.getElementById('content');if(el)el.scrollTop=0;});}
+function openNewCustomer(){S.screen='new-customer';S.cForm=efC();S.msg=null;setHeader();render();scrollToTop();}
+
+function isInvOpen(r){
+  if(isInvRed(r)) return false; 
+  const bg=(r._bg||'#ffffff').toLowerCase().replace(/[^0-9a-f]/g,'');
+  if(bg.length<6)return true;
+  const R=parseInt(bg.slice(0,2),16);
+  const G=parseInt(bg.slice(2,4),16);
+  const B=parseInt(bg.slice(4,6),16);
+  return!(G>R+40&&G>B+20&&G>120);
+}
+
+function openNewReceipt(){
+  S.screen='new-receipt';S.rForm=efR();S.msg=null;S.showSuggest=false;
+  if(S.isState==='idle')loadInvoices();
+  if(S.rsState==='idle')loadReceipts();
+  setHeader();render();scrollToTop();
+}
+
+function parseMoney(v){return parseFloat((v||'').toString().replace(/[^0-9.]/g,''))||0;}
+
+function getInvBalance(invNum){
+  if(!invNum)return 0;
+  const inv=S.invoices.find(r=>nz(r[COLS.invNum])===invNum);
+  if(!inv)return 0;
+  if(isInvRed(inv)) return 0; 
+  
+  const total=parseMoney(inv[COLS.invTotalVat]);
+  const paid=S.receipts
+    .filter(r=>nz(r[COLS.recInvNum])===invNum)
+    .reduce((s,r)=>s+parseMoney(r[COLS.recPayAmt]),0);
+  return Math.max(0,total-paid);
+}
+
+function openInvsFor(custId){
+  if(!custId)return[];
+  return S.invoices.filter(r=>r[COLS.docCustId]===custId&&isInvOpen(r));
+}
+
+function openNewReceiptFromInv(invId){
+  const r=S.invoices.find(x=>x._id===invId);
+  if(!r)return;
+  const rf=efR();
+  rf[COLS.recInvNum]=nz(r[COLS.invNum])||'';
+  rf._custId=nz(r[COLS.docCustId])||'';
+  rf._custName=nz(r[COLS.docCustName])||'';
+  rf._invDate=nz(r[COLS.docDate])||'';
+  const invTotal=parseMoney(r[COLS.invTotalVat])||parseMoney(r[COLS.taxTotalVat])||0;
+  const paidSoFar=S.receipts
+    .filter(rec=>nz(rec[COLS.recInvNum])===rf[COLS.recInvNum])
+    .reduce((s,rec)=>s+parseMoney(rec[COLS.recPayAmt]),0);
+  rf._invTotal=String(Math.max(0,invTotal-paidSoFar));
+  rf._openInvs=openInvsFor(rf._custId);
+  rf._showOpenInvs=false;
+  S.rForm=rf;S.tab='receipts';S.screen='new-receipt';S.msg=null;S.showSuggest=false;
+  if(S.rsState==='idle')loadReceipts();
+  syncNav();setHeader();render();scrollToTop();
+}
+
+function openNewInvoice(isTax){
+  S.screen=isTax?'new-tax':'new-invoice';
+  S.iForm=efI(isTax);S.msg=null;S.showSuggest=false;
+  setHeader();render();scrollToTop();
+}
+function openSettings(){S.screen='settings';setHeader();render();}
+
+function setHeader(){
+  const hdr=document.getElementById('hdr');
+  const back=document.getElementById('back-btn');
+  const right=document.getElementById('right-btn');
+  const sub=document.getElementById('hdr-sub');
+  const isList=S.screen==='list';
+  const tab=S.tab;const color=tc();
+
+  hdr.style.background=S.screen==='settings'?'#37474f':color;
+
+  const titles={
+    'list':TABS[tab]?.label,
+    'new-customer':'+ לקוח חדש',
+    'new-receipt':'+ קבלה חדשה',
+    'new-invoice':'+ חשבונית חדשה',
+    'new-tax':'+ חשמ"ק חדש',
+    'settings':'⚙️ הגדרות',
+  };
+  document.getElementById('hdr-title').textContent=titles[S.screen]||TABS[tab]?.label||'';
+
+  if(sub){sub.className='';sub.textContent='מיקאל קולמן | MOOV';}
+
+  back.classList.remove('hidden');
+  if(isList){
+    back.textContent='⚙️';
+    back.style.fontSize='16px';
+    back.onclick=openSettings;
+  }else{
+    back.textContent='←';
+    back.style.fontSize='20px';
+    back.onclick=goBack;
+  }
+
+  if(S.screen==='settings'){
+    right.classList.add('hidden');
+  }else if(isList){
+    right.classList.remove('hidden');
+    right.textContent='+';
+    right.style.fontSize='24px';
+    right.onclick=()=>{
+      if(tab==='customers')openNewCustomer();
+      else if(tab==='receipts')openNewReceipt();
+      else if(tab==='invoices')openNewInvoice(false);
+      else openNewInvoice(true);
+    };
+  }else{
+    right.classList.add('hidden');
+  }
+}
+
+function render(){
+  syncNav();
+  const el=document.getElementById('content');
+  const pos=el.scrollTop;
+
+  if(!S.scriptUrl&&S.screen!=='settings'){
+    el.innerHTML=renderSetup();
+    document.getElementById('bnav').style.display='none';
+    el.scrollTop=pos;bindAll();return;
+  }
+  document.getElementById('bnav').style.display='flex';
+
+  const scr=S.screen;
+  if(scr==='settings')          el.innerHTML=renderSettings();
+  else if(scr==='new-customer') el.innerHTML=renderCustForm();
+  else if(scr==='new-receipt')  el.innerHTML=renderReceiptForm();
+  else if(scr==='new-invoice')  el.innerHTML=renderInvForm(false);
+  else if(scr==='new-tax')      el.innerHTML=renderInvForm(true);
+  else if(S.tab==='customers')  el.innerHTML=renderCustList();
+  else if(S.tab==='invoices')   el.innerHTML=renderDocList(S.invoices,S.isState,false);
+  else if(S.tab==='receipts')   el.innerHTML=renderRecList();
+  else                          el.innerHTML=renderDocList(S.tax,S.tsState,true);
+
+  el.scrollTop=pos;bindAll();
+}
+
+function renderSetup(){
+  return`<div class="setup-screen">
+    <div class="setup-hero"><div class="logo">📊</div><h2>MOOV Sales App</h2><p>חיבור חד-פעמי ל-Google Sheets שלך</p></div>
+    <div class="setup-body">
+      <div class="setup-card">
+        <h3>🔗 הדבק את ה-URL של ה-Apps Script</h3>
+        <div class="url-err" id="url-err"></div>
+        <input class="url-input" id="script-url-input" type="url" inputmode="url"
+          placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
+        <button class="save-url-btn" onclick="saveUrl('script-url-input','url-err')">✅ התחבר לגיליון</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderSettings(){
+  const connected=!!S.scriptUrl;
+  let h=`<div class="set-wrap">
+    <div class="stitle">חיבור</div>
+    <div class="scard">
+      <div class="srow"><span class="slabel"><span class="dot" style="background:${connected?'#1e8e3e':'#c62828'}"></span>מצב</span>
+        <span class="sval" style="color:${connected?'#1e8e3e':'#c62828'}">${connected?'מחובר ✓':'לא מחובר'}</span></div>
+      ${connected?`<div class="srow"><span class="slabel">URL</span><span class="sval">...${esc(S.scriptUrl.slice(-28))}</span></div>`:''}
+    </div>
+    <div class="stitle">${connected?'עדכן URL':'הגדר URL'}</div>
+    <div class="scard" style="padding:14px">
+      <div class="url-err" id="url-err2"></div>
+      <input class="url-input" id="script-url-input2" type="url" inputmode="url"
+        placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
+      <button class="save-url-btn" onclick="saveUrl('script-url-input2','url-err2')">${connected?'🔄 עדכן URL':'✅ התחבר'}</button>
+    </div>`;
+
+  if(connected){
+    h+=`<div class="stitle">נתונים</div><div class="scard">
+      ${[['customers','לקוחות','csState'],['invoices','חשבוניות','isState'],['receipts','קבלות','rsState'],['tax','חשמ"ק','tsState']].map(([k,lbl,sk],i)=>{
+        const st=S[sk];const cnt=S[k].length;const err=S.errors[k]||'';
+        return`<div class="srow"${i===0?' style="border-top:none"':''}>
+          <span class="slabel" style="font-size:12px">${lbl}</span>
+          <span style="font-size:11px;color:${st==='ok'?(cnt>0?'#1e8e3e':'#f59e0b'):st==='error'?'#c62828':'#aaa'}">
+            ${st==='ok'?cnt+' שורות':st==='error'?'❌ שגיאה':st==='loading'?'טוען...':'לא טעון'}
+          </span></div>${err?`<div style="padding:3px 14px 8px;font-size:10px;color:#c62828;direction:ltr">${esc(err.slice(0,100))}</div>`:''}`;
+      }).join('')}
+    </div>
+    <div class="stitle">אבחון</div>
+    <div class="scard" style="padding:14px">
+      <button class="save-url-btn" style="background:${S.diagRunning?'#ccc':'#37474f'}" ${S.diagRunning?'disabled':''} onclick="runDiagnose()">
+        ${S.diagRunning?'⏳ מאבחן...':'🔬 הרץ אבחון'}</button>`;
+    if(Object.keys(S.diagData).length){
+      h+=`<div class="diag-box">`;
+      ['customers','invoices','receipts','tax'].forEach(tab=>{
+        const d=S.diagData[tab];if(!d)return;
+        h+=`<div class="diag-sheet"><div class="diag-name">${esc(d.sheetName)}</div>`;
+        if(d.error)h+=`<div class="derr">❌ ${esc(d.error)}</div>`;
+        else if(!d.firstRow)h+=`<div style="color:#6b7280;font-size:11px">📭 ריק</div>`;
+        else{
+          const entries=Object.entries(d.firstRow).filter(([k,v])=>k!=='_bg'&&k!=='_bgInv'&&v&&String(v).trim());
+          h+=entries.length?`<div class="diag-grid">${entries.slice(0,20).map(([k,v])=>`<div class="dcell"><span class="dk">${k}:</span><span class="dv">${esc(String(v).slice(0,14))}</span></div>`).join('')}</div>`:`<div style="color:#6b7280;font-size:11px">⚠️ ריק</div>`;
+        }
+        h+=`</div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>
+    <div class="stitle">פעולות</div>
+    <div class="scard">
+      <div class="srow"><span class="slabel">רענן הכל</span><button class="sbtn blue" onclick="refreshAll()">↻ טען מחדש</button></div>
+      <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
+    </div>`;
+  }
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.26 (Restored Stable Engine)</div></div>`;
+  return h;
+}
+
+function saveUrl(inputId,errId){
+  const inp=document.getElementById(inputId);
+  const errEl=document.getElementById(errId);
+  const val=(inp?.value||'').trim();
+  if(!val||!val.startsWith('https://script.google.com')){
+    if(inp)inp.classList.add('err');
+    if(errEl){errEl.textContent='URL לא תקין';errEl.style.display='block';}return;
+  }
+  S.scriptUrl=val;saveUrlToLocal(val);
+  resetAll();S.screen='list';S.tab='customers';
+  document.getElementById('bnav').style.display='flex';
+  setHeader();syncNav();pingSheets().then(()=>loadCustomers());
+}
+function clearUrl(){
+  if(!confirm('למחוק את ה-URL?'))return;
+  S.scriptUrl='';clearUrlFromLocal();
+  resetAll();S.screen='list';document.getElementById('bnav').style.display='none';
+  setHeader();render();
+}
+function resetAll(){
+  S.csState='idle';S.isState='idle';S.rsState='idle';S.tsState='idle';
+  S.customers=[];S.invoices=[];S.receipts=[];S.tax=[];
+  S.availableSheets=[];S.diagData={};S.errors={};
+}
+function refreshAll(){resetAll();S.screen='list';setHeader();pingSheets().then(()=>loadCustomers());}
+
+function filteredC(){
+  if(!S.search.trim())return S.customers;
+  const q=S.search.toLowerCase();
+  const keys = [COLS.custName, COLS.custId, COLS.custBiz, COLS.custPhone, COLS.custEmail, COLS.custStreet, COLS.custCity];
+  return S.customers.filter(c=>keys.some(k=>(c[k]||'').toLowerCase().includes(q)));
+}
+function renderCustList(){
+  const st=S.csState;const fc=filteredC();const color=tc();
+  let h=`<div class="sbar">
+    <div class="swrap">
+      <input class="sinput" id="sinput" type="text" placeholder='חיפוש: שם, ת"ז, טלפון, עיר...' value="${esc(S.search)}">
+      <span class="sico">🔍</span>
       ${S.search?`<button class="sclr" onclick="clearSearch()">×</button>`:''}
     </div>
     <div class="smeta">
@@ -274,7 +1079,7 @@ function renderInvForm(isTax){
       <div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
       <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
     if(calc.disc>0)h+=`<div class="calc-row"><span class="calc-label">אחרי הנחה ${calc.disc}%</span><span class="calc-val">₪${fmtNum(calc.ac)}</span></div>`;
-    h+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 18%</span><span class="calc-val hi" style="--tc:${color}">₪${fmtNum(calc.withVat)}</span></div>
+    h+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 18%</span><span class="calc-val hi" style="--tc:${color}">₪${Math.round(calc.withVat).toLocaleString('he-IL')}</span></div>
     </div>`;
   }else{
     h+=`<div id="calc-preview"></div>`;
@@ -289,8 +1094,8 @@ function renderInvForm(isTax){
     const isChq=f[COLS.taxPayType]==='שיק';
     const isCash=f[COLS.taxPayType]==='מזומן';
     const paid=parseFloat(f[COLS.taxPayAmt]||0);
-    const total=Math.round(calc.withVat);
-    const isOver=isChq && total>0 && paid>total+0.5;
+    const total = Math.round(calc.withVat);
+    const isOver = isChq && total > 0 && paid > total + 0.5;
 
     h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
 
@@ -405,6 +1210,7 @@ function buildOpenInvsHtml() {
   return h;
 }
 
+// 🛡️ Safe mount container: Guaranteed never to glitch layout
 function renderOpenInvs() {
   const container = document.getElementById('open-invs-container');
   if(container) container.innerHTML = buildOpenInvsHtml();
@@ -546,7 +1352,7 @@ function renderRecList(){
               :`<span style="font-size:11px;color:#1e8e3e">✓ שולם</span>`;})()} 
         </div>
         <div class="r3" style="justify-content:flex-end">
-          <span class="toggle-hint" style="color:${isE?color:'#bbb'}">${isE?'▲ סגור':'▼ פרטים'}</span>
+          <span class="toggle-hint" style="color:${isE?color:#bbb}">הערות</span>
         </div>
       </div>`;
     if(isE){
@@ -860,6 +1666,7 @@ function onInvCustSearch(val){
   }else if(box){box.remove();}
 }
 
+// 🛡️ RE-FIXED SELECTION BUILDER: Invoices now successfully auto-load on customer drop
 function pickCustomer(name,id){
   S.rForm._custName=name;
   S.rForm._custId=id;
@@ -963,6 +1770,7 @@ function onReceiptInvNumInput(val){
       S.rForm._invDate='';
       setElDisplay('receipt-inv-total', 'none');
     }
+    renderOpenInvs();
     renderSaveBtnRec();
   }, 400);
 }
@@ -1070,7 +1878,8 @@ async function saveCust(){
   const isEdit=!!S.cForm._editId;
   S.saving=true;S.msg=null;render();
   try{
-    await apiFetch({action: isEdit?'updateCustomer':'addCustomer', payload: JSON.stringify(S.cForm), editRow: S.cForm._editRow||''});
+    const url = S.scriptUrl + '?' + new URLSearchParams({ write: '1', payload: JSON.stringify({ action: isEdit?'updateCustomer':'addCustomer', data: S.cForm, editRow: S.cForm._editRow||'' }) });
+    await fetch(url);
     if(isEdit){
       const idx=S.customers.findIndex(c=>c._id===S.cForm._editId);
       if(idx>=0)S.customers[idx]={...S.customers[idx],...S.cForm};
@@ -1080,7 +1889,7 @@ async function saveCust(){
     S.msg={t:'s',m:isEdit?'פרטי הלקוח עודכנו!':'הלקוח נשמר בהצלחה!'};S.saving=false;render();
     setTimeout(()=>{S.screen='list';S.cForm=efC();S.msg=null;setHeader();render();},1500);
   }catch(e){
-    showToast('❌ '+(e.message||'שגיאה'), 'err');
+    showToast('❌ Network connection dropped', 'err');
     S.saving=false;
     render();
   }
@@ -1149,7 +1958,7 @@ async function saveReceipt(){
     showToast(isOverpay&&inv2?'✅ נשמרו 2 קבלות!':'✅ הקבלה נשמרה!','ok',2500);
     setTimeout(()=>{S.screen='list';S.rForm=efR();S.msg=null;setHeader();render();},1600);
   }catch(e){
-    showToast('❌ Error: Network Connection Failed','err');
+    showToast('❌ Error: Save rejected by server','err');
     S.saving=false;
     render(); 
   }
@@ -1216,11 +2025,11 @@ async function saveInv(isTax){
     
     const isChq = f[COLS.taxPayType] === 'שיק';
     const paidAmt = parseFloat(f[COLS.taxPayAmt] || 0);
-    const invTotal = Math.round(calc.withVat); // Strict whole integer grounding
+    const invTotal = Math.round(calc.withVat); 
     const isOverpay = isChq && invTotal > 0 && paidAmt > invTotal + 0.5;
 
     if (isTax && isOverpay && f._overInvNum?.trim()) {
-      const excess = Math.round(paidAmt - invTotal); // Clear integer rounding
+      const excess = Math.round(paidAmt - invTotal); // Clear rounded integer grounding
       const recData = {
         [COLS.recInvNum]: f._overInvNum.trim(),
         [COLS.recPayType]: f[COLS.taxPayType],
@@ -1246,7 +2055,7 @@ async function saveInv(isTax){
       setHeader();if(isTax)loadTax();else loadInvoices();
     },2500);
   }catch(e){
-    showToast('❌ Error: Network Connection Failed', 'err');
+    showToast('❌ Error: Save rejected by server', 'err');
     S.saving=false;
     render(); 
   }
