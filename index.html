@@ -193,10 +193,11 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
   </div>
 </div>
 <script>
-// 🛡️ INITIAL INLINE ENGINE REFRESH CACHE RESET
+// 🛡️ CRITICAL RE-FIX: Standard synchronous execution loop for storage initialization
 (function() {
-  const p = new URLSearchParams(window.location.search);
-  if (p.get('v') === '627' || p.get('v') === '628') {
+  const params = new URLSearchParams(window.location.search);
+  const val = params.get('v');
+  if (val === '627' || val === '628' || val === 'force') {
     try { localStorage.clear(); } catch(e){}
     window.history.replaceState({}, document.title, window.location.pathname);
   }
@@ -599,6 +600,7 @@ function custField(f){
   </div>`;
 }
 
+// --- NEW TAX OVERPAYMENT FUNCTIONS ---
 let _invCustLookupTimer = null;
 function onInvCustIdInput(val) {
   S.iForm[COLS.docCustId] = val;
@@ -724,4 +726,524 @@ function renderInvForm(isTax){
     h+=`<div id="calc-preview" style="background:#f8f8f8;border-radius:10px;padding:4px;margin-bottom:12px">
       <div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
       <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
-    if(calc.disc>0)h+=`<div class="calc-row"><span class="calc-label">אחרי הנ
+    if(calc.disc>0)h+=`<div class="calc-row"><span class="calc-label">אחרי הנחה ${calc.disc}%</span><span class="calc-val">₪${fmtNum(calc.ac)}</span></div>`;
+    h+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 18%</span><span class="calc-val hi" style="--tc:${color}">₪${Math.round(calc.withVat).toLocaleString('he-IL')}</span></div>
+    </div>`;
+  }else{
+    h+=`<div id="calc-preview"></div>`;
+  }
+
+  h+=`<div class="field"><label>הנחה % <small>(עמודה ${COLS.discount})</small></label>
+    <input type="text" inputmode="numeric" class="finput num" value="${esc(f[COLS.discount])}" placeholder="0"
+      oninput="uf('iForm','${COLS.discount}',this.value);refreshCalc()">
+  </div>`;
+
+  if(isTax){
+    const isChq=f[COLS.taxPayType]==='שיק';
+    const isCash=f[COLS.taxPayType]==='מזומן';
+    const paid=parseFloat(f[COLS.taxPayAmt]||0);
+    const total = Math.round(calc.withVat);
+    const isOver = isChq && total > 0 && paid > total + 0.5;
+
+    h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
+
+    <div class="field"><label>סוג תשלום <small>(עמודה ${COLS.taxPayType}) *</small></label>
+      <select class="finput" onchange="uf('iForm','${COLS.taxPayType}',this.value);render()">
+        <option value="">-- בחר --</option>
+        ${PAYMENT_TYPES.map(pt=>`<option${f[COLS.taxPayType]===pt?' selected':''}>${pt}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="field"><label>סכום התשלום ₪ <small>(עמודה ${COLS.taxPayAmt}) *</small></label>
+      <input type="text" inputmode="decimal" class="finput num" value="${esc(f[COLS.taxPayAmt])}"
+        oninput="uf('iForm','${COLS.taxPayAmt}',this.value);renderSaveBtn()"
+        onchange="uf('iForm','${COLS.taxPayAmt}',this.value);render()">
+    </div>
+
+    ${isCash?`
+    <div class="field"><label>תאריך תשלום <small>(עמודה ${COLS.taxPayDate})</small></label>
+      <input type="text" class="finput" value="${esc(f[COLS.taxPayDate]||tod())}" readonly
+        style="background:#f0f0f0;color:#888;cursor:default">
+    </div>`:''}
+
+    ${isChq?`
+    <div class="field"><label>מספר שיק <small>(עמודה ${COLS.taxChkNum}) *</small></label>
+      <input type="text" inputmode="numeric" id="taxChkNum" class="finput num" value="${esc(f[COLS.taxChkNum])}"
+        oninput="uf('iForm','${COLS.taxChkNum}',this.value);renderSaveBtn()">
+    </div>
+    <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.taxPayDate}) *</small></label>
+      <input type="text" id="taxPayDate" class="finput" value="${esc(f[COLS.taxPayDate]||tod())}"
+        oninput="uf('iForm','${COLS.taxPayDate}',this.value);renderSaveBtn()">
+    </div>
+    <div class="field"><label>צילום שיק <small>(עמודה ${COLS.taxPhoto}) *</small></label>
+      <input type="file" id="cheque-photo" accept="image/*" capture="environment"
+        style="position:absolute;width:1px;height:1px;opacity:0;" onchange="onPhotoChange(this)">
+      <button type="button" class="finput"
+        style="text-align:center;cursor:pointer;background:${f._photoTaken?'#e6f4ea':'#f8f8f8'};color:${f._photoTaken?'#1e8e3e':'#555'};font-size:14px;"
+        onclick="document.getElementById('cheque-photo').click()">
+        ${f._photoTaken?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
+      </button>
+      ${f._photoDataUrl?`<img src="${f._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
+    </div>
+    ${isOver?`
+    <div style="background:#fff8e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
+      ⚠️ השיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — סמן חשבונית פתוחה לעיל, או הזן מספר חשבונית ידנית עבור ההפרש
+    </div>
+    <div class="field"><label>מספר חשבונית עבור ההפרש *</label>
+      <input type="text" inputmode="numeric" id="inv-overInvNum" class="finput num" value="${esc(f._overInvNum||'')}"
+        placeholder="מספר חשבונית"
+        oninput="uf('iForm','_overInvNum',this.value); renderTaxOpenInvs(); renderSaveBtn();">
+    </div>`:''}
+    `:''}
+
+    <div class="field"><label>הערות <small>(עמודה ${COLS.taxNotes})</small></label>
+      <textarea class="finput" rows="3" id="inv-notes"
+        oninput="uf('iForm','${COLS.taxNotes}',this.value)">${esc(f[COLS.taxNotes])}</textarea>
+    </div>`;
+  }
+
+  const validErr = isTax ? taxFormErrors() : invoiceFormErrors();
+  const btnDisabled = S.saving || !!validErr;
+  const btnLabel = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור חשמ"ק' : '💾 שמור חשבונית'));
+  
+  h+=`<button id="btn-save-inv" class="save-btn" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveInv(${isTax})">
+    ${btnLabel}</button></div>`;
+  return h;
+}
+
+function suggestHtmlReceipt(){
+  return`<div class="suggest-box" id="suggest-box">
+    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c[COLS.custName]||'')}','${esc(c[COLS.custId]||'')}')">
+      <div>${esc(c[COLS.custBiz]||c[COLS.custName]||'—')}</div>
+      <div class="sug-sub">${c[COLS.custBiz]&&c[COLS.custName]?esc(c[COLS.custName])+' · ':''}${c[COLS.custId]?esc(c[COLS.custId]):''}</div>
+    </div>`).join('')}
+  </div>`;
+}
+function suggestHtmlInv(){
+  return`<div class="suggest-box" id="suggest-box">
+    ${S.suggest.slice(0,6).map(c=>`<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c[COLS.custId]||'')}','${esc(c[COLS.custBiz]||c[COLS.custName]||'')}')">
+      <div>${esc(c[COLS.custBiz]||c[COLS.custName]||'—')}</div>
+      <div class="sug-sub">${c[COLS.custBiz]&&c[COLS.custName]?esc(c[COLS.custName])+' · ':''}${c[COLS.custId]?esc(c[COLS.custId]):''}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function buildOpenInvsHtml() {
+  const rf = S.rForm;
+  if(!rf._openInvs || !rf._openInvs.length) return '';
+  let h = `<div class="fdivider"><hr><span>📄 חשבוניות פתוחות</span><hr></div>
+  <div class="dtable" style="margin-bottom:12px">
+    <div class="dthead" style="background:${tc()}"><span>בחר חשבונית לתשלום</span><span>${rf._openInvs.length} פתוחות</span></div>`;
+  rf._openInvs.forEach((inv,i)=>{
+    const invNum=nz(inv[COLS.invNum])||'—';
+    const invDate=nz(inv[COLS.docDate])||'';
+    const balance=getInvBalance(invNum);
+    const rawTotal=parseFloat(nz(inv[COLS.invTotalVat]))||0;
+    const hasPartial=balance<rawTotal-0.1;
+    const selected=rf[COLS.recInvNum]===invNum;
+    h+=`<div class="dtrow" style="cursor:pointer;${selected?`background:${tc()}15;`:''}${i===0?'border-top:none':''}"
+      onclick="pickReceiptInv('${esc(invNum)}','${balance}','${esc(invDate)}')">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:${selected?tc():'#222'}">#${esc(invNum)}</div>
+        <div style="font-size:11px;color:#888">${esc(invDate)}</div>
+        ${hasPartial?`<div style="font-size:10px;color:#e65100">שולם חלקית: ₪${Math.round(rawTotal-balance).toLocaleString('he-IL')}</div>`:''}
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:14px;font-weight:700;color:${tc()}">יתרה: ${fmt(String(balance))}</div>
+        ${selected?`<div style="font-size:10px;color:${tc()}">✓ נבחרה</div>`:''}
+      </div>
+    </div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function renderOpenInvs() {
+  const container = document.getElementById('open-invs-container');
+  if(container) container.innerHTML = buildOpenInvsHtml();
+}
+
+function renderReceiptForm(){
+  const color=tc();const rf=S.rForm;
+  const isChk=rf[COLS.recPayType]==='שיק';
+  const isCash=rf[COLS.recPayType]==='מזומן';
+
+  let h=`<div class="fwrap" style="--tc:${color}">`;
+
+  h+=`<div class="field"><label>מספר חשבונית <small>(עמודה ${COLS.recInvNum})</small></label>
+    <input type="text" inputmode="numeric" id="r-${COLS.recInvNum}" class="finput num" value="${esc(rf[COLS.recInvNum])}"
+      placeholder="הזן מספר חשבונית לחיפוש אוטומטי"
+      oninput="onReceiptInvNumInput(this.value)">
+  </div>`;
+
+  h+=`<div class="field"><label>חיפוש לקוח / שם עסק</label>
+      <div class="field-wrap">
+        <input type="text" id="r-H" class="finput" value="${esc(rf._custName)}"
+          placeholder="הקלד לחיפוש..."
+          oninput="onCustSearch(this.value)" autocomplete="off">
+        ${S.showSuggest&&S.suggest.length?suggestHtmlReceipt():''}
+      </div>
+    </div>
+    <div class="field"><label>ת"ז / ח"פ</label>
+      <input type="text" inputmode="numeric" id="r-I" class="finput num" value="${esc(rf._custId)}"
+        placeholder="ת\"ז או ח\"פ..."
+        oninput="onCustIdInput(this.value)">
+    </div>`;
+
+  h+=`<div id="open-invs-container">${buildOpenInvsHtml()}</div>`;
+
+  h+=`<div id="receipt-inv-total" style="display:${rf._invTotal?'flex':'none'};background:#f8f8f8;border-radius:8px;padding:9px 13px;margin-bottom:12px;justify-content:space-between">
+    <span style="font-size:13px;color:#666">יתרה לתשלום</span>
+    <span class="rcb-total" id="rcb-total-val" style="font-size:15px;font-weight:700;color:${color}">${rf._invTotal?fmt(rf._invTotal):''}</span>
+  </div>`;
+
+  h+=`<div class="fdivider"><hr><span>💳 תשלום</span><hr></div>
+
+  <div class="field"><label>סוג תשלום <small>(עמודה ${COLS.recPayType}) *</small></label>
+    <div style="display:flex;gap:8px">
+      ${PAYMENT_TYPES.map(pt=>{
+        const sel=rf[COLS.recPayType]===pt;
+        return`<button type="button" onmousedown="event.preventDefault()"
+          onclick="onReceiptPayTypeChange('${pt}')"
+          style="flex:1;padding:12px;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;
+          border:2px solid ${sel?color:'#e0e0e0'};
+          background:${sel?color:'#f8f8f8'};
+          color:${sel?'#fff':'#555'}">
+          ${pt==='מזומן'?'💵 מזומן':'🏦 שיק'}
+        </button>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <div class="field"><label>סכום התשלום ₪ <small>(עמודה ${COLS.recPayAmt}) *</small></label>
+    <input type="text" inputmode="decimal" class="finput num" id="r-${COLS.recPayAmt}" value="${esc(rf[COLS.recPayAmt])}"
+      oninput="uf('rForm','${COLS.recPayAmt}',this.value);renderSaveBtnRec()">
+  </div>
+
+  <div id="receipt-cash-date" style="display:${isCash?'block':'none'}">
+    <div class="field"><label>תאריך תשלום <small>(עמודה ${COLS.recPayDate})</small></label>
+      <input type="text" class="finput" value="${esc(rf[COLS.recPayDate]||tod())}" readonly
+        style="background:#f0f0f0;color:#888;cursor:default">
+    </div>
+  </div>
+
+  <div id="receipt-chk-fields" style="display:${isChk?'block':'none'}">
+    <div class="field"><label>מספר שיק <small>(עמודה ${COLS.recChkNum}) *</small></label>
+      <input type="text" inputmode="numeric" id="r-${COLS.recChkNum}" class="finput num" value="${esc(rf[COLS.recChkNum])}"
+        oninput="uf('rForm','${COLS.recChkNum}',this.value);renderSaveBtnRec()">
+    </div>
+    <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.recPayDate}) *</small></label>
+      <input type="text" id="r-${COLS.recPayDate}" class="finput" value="${esc(rf[COLS.recPayDate]||tod())}"
+        oninput="uf('rForm','${COLS.recPayDate}',this.value);renderSaveBtnRec()">
+    </div>
+    <div class="field"><label>צילום שיק <small>(עמודה ${COLS.recPhoto}) *</small></label>
+      <input type="file" id="receipt-cheque-photo" accept="image/*" capture="environment"
+        style="position:absolute;width:1px;height:1px;opacity:0;" onchange="onReceiptPhotoChange(this)">
+      <button type="button" class="finput"
+        style="text-align:center;cursor:pointer;background:${rf._photoTaken?'#e6f4ea':'#f8f8f8'};color:${rf._photoTaken?'#1e8e3e':'#555'};font-size:14px;"
+        onclick="document.getElementById('receipt-cheque-photo').click()">
+        ${rf._photoTaken?'✅ תמונה צולמה — לחץ לשינוי':'📷 צלם שיק'}
+      </button>
+      ${rf._photoDataUrl?`<img src="${rf._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">`:''}
+    </div>
+    ${(function(){const paid=parseFloat(rf[COLS.recPayAmt])||0;const total=parseFloat(rf._invTotal)||0;
+      return isChk&&total>0&&paid>total+0.5?`
+      <div style="background:#fff8e1;border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:#e65100">
+        ⚠️ שיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — הזן מספר חשבונית להפרש
+      </div>
+      <div class="field"><label>מספר חשבונית עבור ההפרש *</label>
+        <input type="text" inputmode="numeric" id="r-overinv" class="finput num" value="${esc(rf._overInvNum||'')}">
+      </div>`:'';})()}
+  </div>
+
+  <div class="field"><label>הערות <small>(עמודה ${COLS.recNotes})</small></label>
+    <textarea class="finput" id="r-${COLS.recNotes}" rows="3" oninput="uf('rForm','${COLS.recNotes}',this.value)">${esc(rf[COLS.recNotes])}</textarea>
+  </div>`;
+
+  const validErr = receiptFormErrors();
+  const btnDisabled = S.saving || !!validErr;
+  const btnLabel = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
+  
+  h+=`<button type="button" id="btn-save-rec" class="save-btn" onmousedown="captureReceiptFields()" style="background:${btnDisabled?'#ccc':color}" ${btnDisabled?'disabled':''} onclick="saveReceipt()">
+    ${btnLabel}</button></div>`;
+  return h;
+}
+
+function renderRecList(){
+  const {receipts:data,rsState:state}=S;const color=tc();
+  if(state==='error')return errScreen(S.errors.receipts,'loadReceipts()','קבלות',color);
+  if(state!=='ok')return statusHtml(state,'loadReceipts()','קבלות');
+  if(!data.length)return`<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
+    <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
+  let h=`<div style="padding-bottom:24px">`;
+  [...data].reverse().forEach((r,i)=>{
+    const id=`rec-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
+    const num=nz(r[COLS.recNum])||nz(r[COLS.recInvNum])||`#${i+1}`;
+    h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
+      <div class="card-hdr" onclick="tog('${id}')">
+        <div class="r1" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span class="nbadge" style="background:${color}">קבלה ${esc(num)}</span>
+            ${nz(r[COLS.recCustName])?`<span style="font-weight:600;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(r[COLS.recCustName])}</span>`:''}
+          </div>
+          ${nz(r[COLS.recPayAmt])?`<span style="font-size:15px;font-weight:700;color:${color}">${fmt(r[COLS.recPayAmt])}</span>`:''}
+        </div>
+        <div class="r2">
+          ${nz(r[COLS.recPayType])?`<span class="tag">${esc(r[COLS.recPayType])}</span>`:''}
+          ${nz(r[COLS.recPayDate])?`<span>📅 ${esc(r[COLS.recPayDate])}</span>`:''}
+          ${nz(r[COLS.recInvNum])?`<span style="color:#bbb">חשב׳ ${esc(r[COLS.recInvNum])}</span>`:''}
+          ${nz(r[COLS.recChkNum])?`<span class="tag blue">🏦 שיק ${esc(r[COLS.recChkNum])}</span>`:''}
+          ${(function(){if(!nz(r[COLS.recInvNum]))return'';const bal=getInvBalance(r[COLS.recInvNum]);
+            return bal>0.5?`<span style="font-size:11px;color:#e65100">יתרה: ₪${Math.round(bal).toLocaleString('he-IL')}</span>`
+              :`<span style="font-size:11px;color:#1e8e3e">✓ שולם</span>`;})()} 
+        </div>
+        <div class="r3" style="justify-content:flex-end">
+          <span class="toggle-hint" style="color:${isE?color:#bbb}">הערות</span>
+        </div>
+      </div>`;
+    if(isE){
+      h+=`<div class="card-body"><div class="g2" style="margin-bottom:8px">`;
+      RF.filter(f=>!f.wide&&nz(r[f.k])).forEach(f=>{
+        h+=`<div class="gcell"><div class="glabel">${f.icon} ${f.label}</div>
+          <div class="gval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
+      });
+      h+=`</div>`;
+      RF.filter(f=>f.wide&&nz(r[f.k])).forEach(f=>{
+        h+=`<div class="gcell wide" style="margin-bottom:8px"><div class="glabel">${f.icon} ${f.label}</div>
+          <div class="gval">${esc(r[f.k])}</div></div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+  return h+`</div>`;
+}
+
+function renderDocList(data,state,isTax){
+  const label=isTax?'חשבוניות/קבלות':'חשבוניות';
+  const reload=isTax?'loadTax()':'loadInvoices()';
+  const color=tc();const errMsg=S.errors[isTax?'tax':'invoices'];
+  const totalKey=isTax?COLS.taxTotalVat:COLS.invTotalVat;
+  const numKey=isTax?COLS.taxNum:COLS.invNum;
+  const tail=isTax?TAX_TAIL:INV_TAIL;
+  if(state==='error')return errScreen(S.errors[isTax?'tax':'invoices'],reload,label,color);
+  if(state!=='ok')return statusHtml(state,reload,label);
+  if(!data.length)return`<div class="status">
+    <p style="font-size:36px;margin-bottom:10px">${isTax?'📋':'📄'}</p>
+    <p style="color:#999;margin-bottom:6px">אין ${label} שהושלמו</p>
+    <p style="font-size:12px;color:#bbb;margin-bottom:16px">רק שורות עם סכום מאושר יוצגו</p>
+    <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">↻ רענן</button>
+  </div>`;
+
+  let h=`<div style="padding-bottom:24px">`;
+
+  [...data].reverse().forEach((r,i)=>{
+    const id=`${isTax?'t':'v'}-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
+    const totVAT=nz(r[totalKey]);const invNum=nz(r[numKey]);
+    const bizName=nz(r[COLS.docCustName]);const custId=nz(r[COLS.docCustId]);const date=nz(r[COLS.docDate]);
+    const prods=PRODS.filter(p=>{const q=parseFloat(r[p.qk]);return!isNaN(q)&&q>0;});
+    const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
+    const balance=(!isTax&&invNum)?getInvBalance(invNum):null;
+    const isRed = (!isTax && invNum) ? isInvRed(r) : false;
+    const hasPartialPay=balance!==null&&balance>0&&balance<parseMoney(totVAT)-0.5;
+
+    h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
+      <div class="card-hdr" onclick="tog('${id}')">
+        <div class="r1">
+          ${invNum?`<span class="nbadge" style="background:${color}">#${esc(invNum)}</span>`:''}
+          <span style="font-weight:600;font-size:14px;color:#222;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(bizName||custId||'—')}</span>
+          <div style="text-align:left;flex-shrink:0">
+            ${totVAT?`<div style="font-size:15px;font-weight:700;color:${color}">${fmt(totVAT)}</div>`:''}
+            ${hasPartialPay?`<div style="font-size:11px;font-weight:700;color:#e65100">יתרה: ₪${Math.round(balance).toLocaleString('he-IL')}</div>`:''}
+            ${isRed ? `<div style="font-size:11px;color:#c62828;font-weight:600">סגור (מסומן באדום)</div>` : (balance===0&&totVAT?`<div style="font-size:11px;color:#1e8e3e;font-weight:600">✓ שולם</div>`:'')}
+          </div>
+        </div>
+        <div class="r2">
+          ${date?`<span>📅 ${esc(date)}</span>`:''}
+          ${prods.slice(0,3).map(p=>`<span class="tag">${p.em} ×${r[p.qk]}</span>`).join('')}
+          ${prods.length>3?`<span style="font-size:11px;color:#888">+${prods.length-3}</span>`:''}
+          ${totItems>0?`<span style="font-size:11px;color:#aaa;margin-right:auto">${totItems} יח'</span>`:''}
+        </div>
+        <div class="r3" style="justify-content:flex-end">
+          <span class="toggle-hint" style="color:${isE?color:'#bbb'}">${isE?'▲ סגור':'▼ פרטים'}</span>
+        </div>
+      </div>`;
+    if(isE){
+      h+=`<div class="card-body">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+          ${custId?`<span class="id-badge">${esc(custId)}</span>`:''}
+          ${bizName?`<span style="font-size:13px;font-weight:600">${esc(bizName)}</span>`:''}
+          ${date?`<span style="font-size:12px;color:#888;margin-right:auto">📅 ${esc(date)}</span>`:''}
+        </div>`;
+      if(prods.length){
+        h+=`<div class="dtable" style="margin-bottom:10px">
+          <div class="dthead" style="background:${color}"><span>פירוט הזמנה</span><span>${totItems} יח'</span></div>`;
+        prods.forEach(p=>{
+          h+=`<div class="prod-row">
+            <div style="display:flex;align-items:center">
+              <span class="prod-em">${p.em}</span>
+              <div><div class="prod-name">${p.short}</div><div class="prod-sub">${p.heb} • ${p.nic}mg</div></div>
+            </div>
+            <span class="prod-qty" style="color:${color}">${r[p.qk]} יח'</span>
+          </div>`;
+        });
+        h+=`</div>`;
+      }
+      const pricing=[
+        nz(r[COLS.price])&&{l:'מחיר ליחידה (לפני מע"מ)',vv:fmt(r[COLS.price])},
+        nz(r[COLS.subtotal])&&{l:'סה"כ לפני מע"מ',vv:fmt(r[COLS.subtotal])},
+        nz(r[COLS.discount])&&{l:'הנחה',vv:r[COLS.discount]+'%',disc:true},
+        nz(r[COLS.afterDisc])&&{l:'סה"כ אחר הנחה (לפני מע"מ)',vv:fmt(r[COLS.afterDisc])},
+        totVAT&&{l:'סה"כ כולל מע"מ',vv:fmt(totVAT),hi:true},
+        hasPartialPay&&{l:'שולם עד כה',vv:`₪${Math.round(parseMoney(totVAT)-balance).toLocaleString('he-IL')}`,paid:true},
+        hasPartialPay&&{l:'יתרה לתשלום',vv:`₪${Math.round(balance).toLocaleString('he-IL')}`,bal:true},
+        isRed&&{l:'סטטוס',vv:'סגור / בוטל (אדום)',red:true},
+        balance===0&&totVAT&&!isRed&&{l:'סטטוס',vv:'✓ שולם במלואו',done:true},
+      ].filter(Boolean);
+      
+      if(pricing.length){
+        h+=`<div class="dtable" style="margin-bottom:10px">`;
+        pricing.forEach((row,ri)=>{
+          const bgStyle=row.hi?`background:${color}15`:row.bal?'background:#fff3e0':row.done?'background:#e6f4ea':row.red?'background:#fce8e6':'';
+          const valColor=row.hi?color:row.disc?'#c62828':row.bal?'#e65100':row.done?'#1e8e3e':row.red?'#c62828':row.paid?'#555':'#222';
+          const valSize=row.hi||row.bal?15:13;
+          h+=`<div class="dtrow" style="${ri===0?'border-top:none;':''}${bgStyle}">
+            <span class="dtlabel">${row.l}</span>
+            <span class="dtval" style="color:${valColor};font-size:${valSize}px;font-weight:${row.hi||row.bal||row.done?700:500}">${row.vv}</span>
+          </div>`;
+        });
+        h+=`</div>`;
+      }
+      const payF=tail.filter(f=>nz(r[f.k]));
+      if(payF.length){
+        h+=`<div class="dtable"><div style="padding:7px 12px;background:#f5f5f5;border-bottom:.5px solid #ebebeb;font-size:12px;font-weight:600;color:#666">פרטי תשלום</div>`;
+        payF.filter(f=>!f.wide).forEach((f,fi)=>{h+=`<div class="dtrow"${fi===0?' style="border-top:none"':''}>
+          <span class="dtlabel">${f.label}</span>
+          <span class="dtval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</span>
+        </div>`;});
+        payF.filter(f=>f.wide).forEach(f=>{h+=`<div style="padding:8px 12px;border-top:.5px solid #f0f0f0">
+          <div class="glabel">${f.label}</div>
+          <div style="font-size:13px;color:#222;margin-top:2px">${esc(r[f.k])}</div></div>`;});
+        h+=`</div>`;
+      }
+      if(!isTax&&isInvOpen(r)){
+        h+=`<button onclick="openNewReceiptFromInv(${r._id})"
+          style="width:100%;margin-top:10px;padding:11px;border-radius:8px;border:1.5px solid ${color};
+          background:transparent;color:${color};font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">
+          🧾 צור קבלה לחשבונית זו
+        </button>`;
+      }
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+  return h+`</div>`;
+}
+
+function renderSetup(){
+  return`<div class="setup-screen">
+    <div class="setup-hero"><div class="logo">📊</div><h2>MOOV Sales App</h2><p>חיבור חד-פעמי ל-Google Sheets שלך</p></div>
+    <div class="setup-body">
+      <div class="setup-card">
+        <h3>🔗 הדבק את ה-URL של ה-Apps Script</h3>
+        <div class="url-err" id="url-err"></div>
+        <input class="url-input" id="script-url-input" type="url" inputmode="url"
+          placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
+        <button class="save-url-btn" onclick="saveUrl('script-url-input','url-err')">✅ התחבר לגיליון</button>
+      </div>
+      <div style="text-align:center;margin-top:24px;font-size:12px;color:#aaa">Version v6.28 (Stable Architecture)</div>
+    </div>
+  </div>`;
+}
+
+function renderSettings(){
+  const connected=!!S.scriptUrl;
+  let h=`<div class="set-wrap">
+    <div class="stitle">חיבור</div>
+    <div class="scard">
+      <div class="srow"><span class="slabel"><span class="dot" style="background:${connected?'#1e8e3e':'#c62828'}"></span>מצב</span>
+        <span class="sval" style="color:${connected?'#1e8e3e':'#c62828'}">${connected?'מחובר ✓':'לא מחובר'}</span></div>
+      ${connected?`<div class="srow"><span class="slabel">URL</span><span class="sval">...${esc(S.scriptUrl.slice(-28))}</span></div>`:''}
+    </div>
+    <div class="stitle">${connected?'עדכן URL':'הגדר URL'}</div>
+    <div class="scard" style="padding:14px">
+      <div class="url-err" id="url-err2"></div>
+      <input class="url-input" id="script-url-input2" type="url" inputmode="url"
+        placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
+      <button class="save-url-btn" onclick="saveUrl('script-url-input2','url-err2')">${connected?'🔄 עדכן URL':'✅ התחבר'}</button>
+    </div>`;
+
+  if(connected){
+    h+=`<div class="stitle">נתונים</div><div class="scard">
+      ${[['customers','לקוחות','csState'],['invoices','חשבוניות','isState'],['receipts','קבלות','rsState'],['tax','חשמ"ק','tsState']].map(([k,lbl,sk],i)=>{
+        const st=S[sk];const cnt=S[k].length;const err=S.errors[k]||'';
+        return`<div class="srow"${i===0?' style="border-top:none"':''}>
+          <span class="slabel" style="font-size:12px">${lbl}</span>
+          <span style="font-size:11px;color:${st==='ok'?(cnt>0?'#1e8e3e':'#f59e0b'):st==='error'?'#c62828':'#aaa'}">
+            ${st==='ok'?cnt+' שורות':st==='error'?'❌ שגיאה':st==='loading'?'טוען...':'לא טעון'}
+          </span></div>${err?`<div style="padding:3px 14px 8px;font-size:10px;color:#c62828;direction:ltr">${esc(err.slice(0,100))}</div>`:''}`;
+      }).join('')}
+    </div>
+    <div class="stitle">אבחון</div>
+    <div class="scard" style="padding:14px">
+      <button class="save-url-btn" style="background:${S.diagRunning?'#ccc':'#37474f'}" ${S.diagRunning?'disabled':''} onclick="runDiagnose()">
+        ${S.diagRunning?'⏳ מאבחן...':'🔬 הרץ אבחון'}</button>`;
+    if(Object.keys(S.diagData).length){
+      h+=`<div class="diag-box">`;
+      ['customers','invoices','receipts','tax'].forEach(tab=>{
+        const d=S.diagData[tab];if(!d)return;
+        h+=`<div class="diag-sheet"><div class="diag-name">${esc(d.sheetName)}</div>`;
+        if(d.error)h+=`<div class="derr">❌ ${esc(d.error)}</div>`;
+        else if(!d.firstRow)h+=`<div style="color:#6b7280;font-size:11px">📭 ריק</div>`;
+        else{
+          const entries=Object.entries(d.firstRow).filter(([k,v])=>k!=='_bg'&&k!=='_bgInv'&&v&&String(v).trim());
+          h+=entries.length?`<div class="diag-grid">${entries.slice(0,20).map(([k,v])=>`<div class="dcell"><span class="dk">${k}:</span><span class="dv">${esc(String(v).slice(0,14))}</span></div>`).join('')}</div>`:`<div style="color:#6b7280;font-size:11px">⚠️ ריק</div>`;
+        }
+        h+=`</div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>
+    <div class="stitle">פעולות</div>
+    <div class="scard">
+      <div class="srow"><span class="slabel">רענן הכל</span><button class="sbtn blue" onclick="refreshAll()">↻ טען מחדש</button></div>
+      <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
+    </div>`;
+  }
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.28 (Stable Architecture)</div></div>`;
+  return h;
+}
+
+function openSettings(){S.screen='settings';setHeader();render();}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  S.cForm=efC();S.rForm=efR();S.tab='customers';S.screen='list';
+  setHeader();
+  syncNav();
+  requestAnimationFrame(syncNav);
+
+  window.addEventListener('beforeunload',e=>{
+    e.preventDefault();
+    return e.returnValue='Are you sure you want to exit?';
+  });
+
+  history.pushState(null,'',location.href);
+  window.addEventListener('popstate',()=>{
+    if(S.screen!=='list'){
+      history.pushState(null,'',location.href);
+      goBack();
+    }else{
+      if(confirm('Are you sure you want to exit?')){
+        history.back();
+      }else{
+        history.pushState(null,'',location.href);
+      }
+    }
+  });
+
+  if(S.scriptUrl){render();pingSheets().then(()=>loadCustomers());}
+  else render();
+});
+</script>
+</body>
+</html>
