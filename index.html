@@ -202,7 +202,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 </div>
 <script>
 // ── Config ──
-const STORAGE_KEY='moov_url_v13'; 
+const STORAGE_KEY='moov_url_v14'; 
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -483,7 +483,6 @@ function rowBg(r,isExp){
   return(bg==='#ffffff'||bg==='#fff'||bg===''||bg==='white')?'#ffffff':bg;
 }
 
-// 🛡️ STRICT RED DETECTOR
 function isInvRed(r) {
   const bg = (r._bgInv || r._bg || '#ffffff').toLowerCase().replace(/[^0-9a-f]/g, '');
   if (bg.length < 6) return false;
@@ -515,7 +514,7 @@ async function apiFetch(params){
   return d;
 }
 
-// 🛡️ RESTORED NETWORK CALL: 'no-cors' is required by Google.
+// 🛡️ CRITICAL FIX: mode 'no-cors' is essential for Google Apps Script. 
 function apiPost(body){
   if(!S.scriptUrl) return Promise.reject(new Error('NO_URL'));
   return fetch(S.scriptUrl, {
@@ -812,7 +811,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.24 (Final Fix - Strict Range Safety)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.25 (Final Fix - Copy Paste Resolution)</div></div>`;
   return h;
 }
 
@@ -2056,6 +2055,7 @@ async function saveInv(isTax){
       setHeader();if(isTax)loadTax();else loadInvoices();
     },2500);
   }catch(e){
+    // Catches the error and blocks the UI from fake-saving
     showToast('❌ Error: '+ e.message, 'err');
     S.saving=false;
     render(); // Hard UI reset
