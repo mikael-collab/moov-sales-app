@@ -27,7 +27,7 @@
     body {
       background-color: var(--bg-color);
       color: var(--text-color);
-      padding-bottom: 70px;
+      padding-bottom: 75px;
     }
 
     header {
@@ -119,6 +119,10 @@
     .btn-secondary {
       background-color: var(--secondary-color);
     }
+    
+    .btn-warning {
+      background-color: var(--warning-color);
+    }
 
     .nav-tabs {
       position: fixed;
@@ -134,8 +138,8 @@
     .tab-item {
       flex: 1;
       text-align: center;
-      padding: 12px 5px;
-      font-size: 0.8rem;
+      padding: 12px 2px;
+      font-size: 0.78rem;
       font-weight: bold;
       color: var(--text-light);
       cursor: pointer;
@@ -191,6 +195,12 @@
     }
 
     .notification-banner.info {
+      background-color: #e2f0fd;
+      color: #0c5460;
+      display: block;
+    }
+
+    .notification-banner.warning {
       background-color: #fff3cd;
       color: #856404;
       display: block;
@@ -225,7 +235,7 @@
 
   <header>
     מרכז מכירות נייד - Sales Hub
-    <span class="version-tag">מערכת משוחזרת v6.28</span>
+    <span class="version-tag">מערכת משוחזרת v6.28 (ניהול הגדרות מובנה)</span>
   </header>
 
   <div class="container">
@@ -448,10 +458,25 @@
         <h3>רשימת לקוחות מאומתים</h3>
         <button class="btn btn-secondary" style="margin-bottom:12px;" onclick="loadDataFromBackend()">רענן נתוני שרת</button>
         <div id="customersListContainer" style="max-height:400px; overflow-y:auto;">
-          <p style="text-align:center; color:var(--text-light); padding:20px;">אין נתוני לקוחות זמינים בזיכרון המקומי. לחץ רענן.</p>
+          <p style="text-align:center; color:var(--text-light); padding:20px;">אין נתוני לקוחות זמינים בזיכרון המקומי.</p>
         </div>
       </div>
     </div>
+
+    <div id="pageSettings" class="app-page">
+      <div class="app-card">
+        <h3>הגדרות תצורת מערכת</h3>
+        <p style="font-size:0.85rem; margin-bottom:15px; color:var(--text-light);">
+          הזן כאן את כתובת ה-Web App שקיבלת מ-Google Apps Script לאחר ביצוע ה-Deployment.
+        </p>
+        <div class="form-group">
+          <label>כתובת ה-URL של השרת (Backend Script Exec URL):</label>
+          <input type="url" id="uiConfigBackendUrl" class="form-control" placeholder="https://script.google.com/macros/s/.../exec" style="direction:ltr; text-align:left;">
+        </div>
+        <button class="btn btn-warning" onclick="saveSystemConfiguration()">שמור תצורה במכשיר זה</button>
+      </div>
+    </div>
+
   </div>
 
   <div class="nav-tabs">
@@ -459,15 +484,14 @@
     <div class="tab-item" onclick="switchTab(this, 'pageTax')">חשבונית/קבלה</div>
     <div class="tab-item" onclick="switchTab(this, 'pageReceipts')">קבלות</div>
     <div class="tab-item" onclick="switchTab(this, 'pageCustomers')">לקוחות</div>
+    <div class="tab-item" style="color:var(--warning-color);" onclick="switchTab(this, 'pageSettings')">⚙️ הגדרות</div>
   </div>
 
   <script>
     // System Global Variables State Cache
     let cachedCustomers = [];
     let cachedOpenInvoices = [];
-
-    // Replace this string with the published Apps Script Web App URL after deployment
-    const BACKEND_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_Placeholder_Deployment_ID/exec";
+    let BACKEND_SCRIPT_URL = localStorage.getItem('sales_hub_backend_url') || "";
 
     window.addEventListener('DOMContentLoaded', () => {
       // Set today's date as default in all date pickers
@@ -476,9 +500,26 @@
       document.getElementById('tax_docDate').value = today;
       document.getElementById('rec_recPayDate').value = today;
       
-      // Initial state fetch from Google Sheets Architecture
-      loadDataFromBackend();
+      // Put the saved URL in the configuration screen input box
+      if (BACKEND_SCRIPT_URL) {
+        document.getElementById('uiConfigBackendUrl').value = BACKEND_SCRIPT_URL;
+        loadDataFromBackend();
+      } else {
+        showGlobalNotification("ברוכים הבאים! אנא עברו ללשונית 'הגדרות' כדי להזין את כתובת ה-URL של השרת שלכם.", "warning");
+      }
     });
+
+    function saveSystemConfiguration() {
+      const urlInput = document.getElementById('uiConfigBackendUrl').value.trim();
+      if(!urlInput || !urlInput.startsWith("https://")) {
+        alert("נא להזין כתובת URL תקינה המתחילה ב-https");
+        return;
+      }
+      localStorage.setItem('sales_hub_backend_url', urlInput);
+      BACKEND_SCRIPT_URL = urlInput;
+      showGlobalNotification("ההגדרות נשמרו בהצלחה במכשיר! מפעיל סנכרון נתונים...", "success");
+      loadDataFromBackend();
+    }
 
     function switchTab(element, pageId) {
       document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
@@ -493,6 +534,11 @@
     }
 
     function loadDataFromBackend() {
+      if (!BACKEND_SCRIPT_URL) {
+        showGlobalNotification("לא ניתן לסנכרן נתונים: כתובת השרת חסרה. אנא הגדר אותה בלשונית הגדרות.", "warning");
+        return;
+      }
+
       showGlobalNotification("טוען נתונים תשתיתיים מבסיס הנתונים...", "info");
       
       // Fetch Customers
@@ -517,7 +563,7 @@
           }
         }).catch(err => {
           console.error("Error checking active balances:", err);
-          showGlobalNotification("המערכת פועלת במצב לא מקוון חלקי.", "info");
+          showGlobalNotification("המערכת פועלת במצב לא מקוון חלקי. ודא כי הכתובת בהגדרות מדויקת.", "warning");
         });
     }
 
@@ -525,7 +571,6 @@
       const invSelect = document.getElementById('invCustSelect');
       const taxSelect = document.getElementById('taxCustSelect');
       
-      // Clear options keeping item 0
       invSelect.innerHTML = '<option value="">בחר לקוח...</option>';
       taxSelect.innerHTML = '<option value="">בחר לקוח...</option>';
       
@@ -560,7 +605,6 @@
       document.getElementById(`${idPrefix}_lblAfterDisc`).innerText = afterDisc.toFixed(2);
       document.getElementById(`${idPrefix}_lblVat`).innerText = vatCalculated.toFixed(2);
       
-      // Save directly to hidden input fields targeting backend exact names
       document.getElementById(`${idPrefix}_subtotal`).value = subtotal;
       document.getElementById(`${idPrefix}_afterDisc`).value = afterDisc;
       
@@ -571,9 +615,6 @@
       }
     }
 
-    /**
-     * Rule 4: Automated Tax Overpayment detection engine view rules
-     */
     function evaluateOverpaymentRule() {
       const payType = document.getElementById('tax_taxPayType').value;
       const paidAmt = parseFloat(document.getElementById('tax_taxPayAmt').value || 0);
@@ -637,12 +678,14 @@
       window.scrollTo(0, 0);
     }
 
-    /**
-     * Network Communication Layer Execution Script Handler
-     * Strictly executes write commands using query parameters combined with mode: 'no-cors'
-     */
     function handleFormSubmit(event, actionName) {
       event.preventDefault();
+      
+      if (!BACKEND_SCRIPT_URL) {
+        showGlobalNotification("שגיאה: אין כתובת שרת מוגדרת. עבור ללשונית הגדרות תחילה.", "warning");
+        return;
+      }
+
       showGlobalNotification("משדר נתונים בצורה מאובטחת לשרת...", "info");
       
       const formElement = event.target;
@@ -651,25 +694,21 @@
       
       queryParams.append('action', actionName);
       
-      // Append form fields to query parameters securely
       for (let pair of formData.entries()) {
         queryParams.append(pair[0], pair[1]);
       }
       
       const finalExecutionUrl = `${BACKEND_SCRIPT_URL}?${queryParams.toString()}`;
       
-      // Mobile-optimized Network Communication Layer via no-cors cross-origin protection
       fetch(finalExecutionUrl, {
         method: 'GET',
         mode: 'no-cors',
         cache: 'no-cache'
       })
       .then(() => {
-        // Since no-cors yields an opaque response, we confirm the client broadcast immediately
         showGlobalNotification("הנתונים שודרו בהצלחה ונרשמו ב-Google Sheets!", "success");
         formElement.reset();
         
-        // Reset dynamic visual feedback containers safely
         if(actionName === 'submitTax') {
           document.getElementById('overpaymentLookupBox').style.display = 'none';
           document.getElementById('tax_lblSubtotal').innerText = "0.00";
@@ -681,7 +720,6 @@
           document.getElementById('inv_lblVat').innerText = "0.00";
         }
         
-        // Dynamic state reload
         setTimeout(loadDataFromBackend, 1500);
       })
       .catch(error => {
