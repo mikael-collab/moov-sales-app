@@ -145,6 +145,8 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 .scard{background:#fff;border-radius:12px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:4px;}
 .srow{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-top:.5px solid #f0f0f0;}
 .srow:first-child{border-top:none;}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-top:.5px solid #f0f0f0;}
+.srow:first-child{border-top:none;}
 .slabel{font-size:13px;color:#444;font-weight:500;}
 .sval{font-size:11px;color:#aaa;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;}
 .sbtn{background:none;border:none;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;}
@@ -259,7 +261,7 @@ const COLS = {
   custEmail: 'E',      
   custStreet: 'F',     
   custCity: 'G',       
-  custBankHolder: 'H', 
+  custTerms: 'H',      // תנאי תשלום
   custBankName: 'I',   
   custBankBranch: 'J', 
   custBankAcct: 'K'    
@@ -283,7 +285,7 @@ const CF=[
   {k:COLS.custEmail,label:'כתובת מייל',    mode:'email'},
   {k:COLS.custStreet,label:'רחוב ומספר',    mode:'text'},
   {k:COLS.custCity,label:'עיר',           mode:'text'},
-  {k:COLS.custBankHolder,label:'שם בעל החשבון', mode:'text',bank:true},
+  {k:COLS.custTerms,label:'תנאי תשלום',    mode:'select', options: ['מזומן', 'שוטף', 'שוטף+30', 'שוטף+60', 'שוטף+90', 'שוטף+120', 'מזומן כנגד חשבונית']},
   {k:COLS.custBankName,label:'שם הבנק',       mode:'text',bank:true},
   {k:COLS.custBankBranch,label:'מספר הסניף',    mode:'num', bank:true},
   {k:COLS.custBankAcct,label:'מספר חשבון',    mode:'num', bank:true},
@@ -854,7 +856,7 @@ function renderCustList(){
 }
 function cCard(c,i){
   const isE=S.expId===c._id;const bg=rowBg(c,isE);const cpd=S.copied===`${c._id}-id`;
-  const color=tc();const bank=c[COLS.custBankHolder]||c[COLS.custBankName]||c[COLS.custBankBranch]||c[COLS.custBankAcct];
+  const color=tc();const bank=c[COLS.custBankName]||c[COLS.custBankBranch]||c[COLS.custBankAcct];
   return`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
     <div class="card-hdr" onclick="tog(${c._id})">
       <div class="r1">
@@ -927,6 +929,14 @@ function custField(f){
         oninput="uf('cForm','${f.k}',this.value.replace(/[^0-9-]/g,''))">
       <button class="dash-btn" onclick="addDashC()">-</button>
     </div></div>`;
+  if(f.mode==='select'){
+    return`<div class="field"><label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
+      <select id="fc-${f.k}" class="finput" onchange="uf('cForm','${f.k}',this.value)">
+        <option value="">-- בחר --</option>
+        ${f.options.map(opt=>`<option value="${esc(opt)}"${S.cForm[f.k]===opt?' selected':''}>${esc(opt)}</option>`).join('')}
+      </select>
+    </div>`;
+  }
   const im=f.mode==='num'?'numeric':f.mode==='tel'?'tel':f.mode==='email'?'email':'text';
   return`<div class="field"><label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
     <input type="${f.mode==='email'?'email':f.mode==='tel'?'tel':'text'}" inputmode="${im}"
