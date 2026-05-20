@@ -75,7 +75,6 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .glabel{font-size:10px;color:#aaa;margin-bottom:2px;}
 .gval{font-size:13px;font-weight:500;color:#222;word-break:break-all;}
 .dtable{background:#fff;border-radius:10px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:10px;}
-.dtable{background:#fff;border-radius:10px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:10px;}
 .dthead{padding:8px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;justify-content:space-between;}
 .dtrow{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-top:.5px solid #f0f0f0;}
 .dtlabel{font-size:12px;color:#666;flex-shrink:0;padding-left:8px;}
@@ -554,7 +553,7 @@ async function loadAny(tab,stateKey,limit,req){
     if(limit)p.limit=limit;
     if(req)p.require=req;
     const d=await apiFetch(p);
-    S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i,_row:i+2})); 
+    S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i,_row: r._rowIndex ? parseInt(r._rowIndex) : (i+2)})); 
     
     // Self-healing check: Bind Sheet's exact payment terms directly to the UI form elements
     if (tab === 'customers' && d.termsOptions && d.termsOptions.length) {
@@ -915,7 +914,7 @@ function cCardBody(c,color){
 }
 
 function renderCustForm(){
-  const color=tc();const isEdit=!!S.cForm._editId;
+  const color=tc();const isEdit=(S.cForm._editId !== undefined && S.cForm._editId !== null);
   let h=`<div class="fwrap" style="--tc:${color}">`;
   if(S.msg)h+=alertHtml(S.msg);
   h+=`<div class="sec-t">${isEdit?'✏️ עריכת לקוח':'פרטי לקוח'}</div>`;
@@ -1867,7 +1866,10 @@ async function saveCust(){
     return;
   }
   if(S.cForm[COLS.custPhone])S.cForm[COLS.custPhone]=fmtPhone(S.cForm[COLS.custPhone]);
-  const isEdit=!!S.cForm._editId;
+  
+  // FIXED: Explicitly check for null/undefined editId to support editing customer index 0 correctly
+  const isEdit=(S.cForm._editId !== undefined && S.cForm._editId !== null);
+  
   S.saving=true;S.msg=null;render();
   try{
     if(isEdit){
