@@ -262,7 +262,8 @@ const COLS = {
   custTerms: 'H',      // תנאי תשלום (Column H)
   custBankName: 'I',   
   custBankBranch: 'J', 
-  custBankAcct: 'K'    
+  custBankAcct: 'K',
+  custNotes: 'L'       // הערות לקוח (Column L)
 };
 // ─────────────────────────────────────────────────────────
 
@@ -284,6 +285,7 @@ const CF=[
   {k:COLS.custStreet,label:'רחוב ומספר',    mode:'text'},
   {k:COLS.custCity,label:'עיר',           mode:'text'},
   {k:COLS.custTerms,label:'תנאי תשלום',    mode:'select', options: ['מזומן', 'שוטף', 'שוטף 15', 'שוטף 30', 'שוטף 45', 'שוטף 60', 'שוטף 90', 'שוטף 120', 'מזומן כנגד חשבונית']},
+  {k:COLS.custNotes,label:'הערות לקוח',    mode:'text'},
   {k:COLS.custBankName,label:'שם הבנק',       mode:'text',bank:true},
   {k:COLS.custBankBranch,label:'מספר הסניף',    mode:'num', bank:true},
   {k:COLS.custBankAcct,label:'מספר חשבון',    mode:'num', bank:true},
@@ -370,10 +372,11 @@ function efR(){
   const o = {
     _custName:'', _custId:'', _invTotal:'', _invDate:'',
     _photoDataUrl:'', _photoBase64:'',
-    _openInvs:[], _showOpenInvs:false, _overInvNum:''  
+    _openInvs:[], _showOpenInvs:false, _overInvNum:'',
+    _custEditRow:null, _custEditId:null
   };
   o[COLS.recInvNum]=''; o[COLS.recPayType]=''; o[COLS.recPayAmt]=''; o[COLS.recPayDate]=tod();
-  o[COLS.recChkNum]=''; o[COLS.recPhoto]=''; o[COLS.recNotes]='';
+  o[COLS.recChkNum]=''; o[COLS.recPhoto]=''; o[COLS.recNotes]=''; o[COLS.custNotes]='';
   return o;
 }
 
@@ -430,12 +433,15 @@ function efI(isTax){
   const o={};
   o[COLS.docCustId]=''; o[COLS.docCustName]=''; o[COLS.docDate]=tod();
   o._openInvs=[]; o._overInvNum=''; 
+  o._custEditRow=null; o._custEditId=null;
+  o[COLS.custNotes]='';
   PRODS.forEach(p=>{o[p.nk]=p.name;o[p.qk]='0';});
   o[COLS.price]='13.00'; o[COLS.subtotal]=''; o[COLS.discount]=''; o[COLS.afterDisc]='';
   
   if(!isTax){
     o[COLS.invTerms]=''; o[COLS.invTotalVat]=''; o[COLS.invNum]='';
-    o[COLS.invPayType]='מזומן'; o[COLS.invPayAmt]=''; o[COLS.invPayDate]='';
+    o[COLS.invPayType]=''; // FIXED: Empty as requested
+    o[COLS.invPayAmt]=''; o[COLS.invPayDate]='';
     o[COLS.invChkNum]=''; o[COLS.invNotes]='';
   }else{
     o[COLS.taxTotalVat]=''; o[COLS.taxPayType]=''; o[COLS.taxPayAmt]='';
@@ -802,7 +808,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.30 (Dynamic Dropdowns)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.31 (Unified Customer Notes)</div></div>`;
   return h;
 }
 
@@ -831,6 +837,12 @@ function resetAll(){
   S.availableSheets=[];S.diagData={};S.errors={};
 }
 function refreshAll(){resetAll();S.screen='list';setHeader();pingSheets().then(()=>loadCustomers());}
+
+function getCustNotesById(custId) {
+  if (!custId) return '';
+  const cust = S.customers.find(c => c[COLS.custId] === custId);
+  return cust ? cust[COLS.custNotes] : '';
+}
 
 function filteredC(){
   if(!S.search.trim())return S.customers;
@@ -879,6 +891,8 @@ function cCard(c,i){
         ${c[COLS.custEmail]?`<span style="direction:ltr;overflow:hidden;text-overflow:ellipsis;max-width:160px">✉ ${esc(c[COLS.custEmail])}</span>`:''}
         ${(c[COLS.custStreet]||c[COLS.custCity])?`<span>📍 ${esc([c[COLS.custStreet],c[COLS.custCity]].filter(Boolean).join(', '))}</span>`:''}
       </div>
+      <!-- Customer Notes Displayed Dynamically in the card header for visual transparency -->
+      ${c[COLS.custNotes]?`<div style="font-size:12px;color:#856404;background:#fff3cd;padding:4px 8px;border-radius:6px;margin-top:6px;display:inline-block;max-width:100%;text-align:right;white-space:normal;word-break:break-word;">📝 הערות: ${esc(c[COLS.custNotes])}</div>`:''}
       <div class="r3">
         ${bank&&!isE?`<span class="tag">🏦 פרטי בנק</span>`:'<span></span>'}
         <span class="toggle-hint" style="color:${isE?color:'#bbb'}">${isE?'▲ סגור':'▼ פרטים'}</span>
@@ -960,6 +974,15 @@ function onInvCustIdInput(val) {
   clearTimeout(_invCustLookupTimer);
   _invCustLookupTimer = setTimeout(() => {
     S.iForm._openInvs = openInvsFor(val.trim());
+    
+    // Auto-populate Customer notes on ID input change
+    const cust = S.customers.find(c => c[COLS.custId] === val.trim());
+    S.iForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+    S.iForm._custEditRow = cust ? cust._row : null;
+    S.iForm._custEditId = cust ? cust._id : null;
+    const notesField=document.getElementById('inv-custNotes');
+    if(notesField)notesField.value = S.iForm[COLS.custNotes];
+    
     renderTaxOpenInvs();
   }, 400);
 }
@@ -1043,6 +1066,12 @@ function renderInvForm(isTax){
       placeholder="הזן ת\"ז או ח\"פ..."
       oninput="onInvCustIdInput(this.value)">
   </div>
+  <!-- Customer Notes field inside Invoice/Tax document form -->
+  <div class="field"><label>הערות לקוח <small>(יישמר ישירות בכרטיס הלקוח)</small></label>
+    <input type="text" id="inv-custNotes" class="finput" value="${esc(f[COLS.custNotes]||'')}"
+      placeholder="הזן או ערוך הערות לקוח..."
+      oninput="uf('iForm','${COLS.custNotes}',this.value)">
+  </div>
   <div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
     <input type="date" id="inv-date" class="finput" style="direction:ltr;text-align:left"
       value="${dateToISO(f[COLS.docDate])}" max="${dateToISO(tod())}"
@@ -1076,7 +1105,7 @@ function renderInvForm(isTax){
       <div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
       <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
     if(calc.disc>0)h+=`<div class="calc-row"><span class="calc-label">אחרי הנחה ${calc.disc}%</span><span class="calc-val">₪${fmtNum(calc.ac)}</span></div>`;
-    h+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 18%</span><span class="calc-val hi" style="--tc:${color}">₪${fmtNum(calc.withVat)}</span></div>
+    h+=`<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 18%</span><span class="calc-val hi" style="--tc:${color}">₪${Math.round(calc.withVat).toLocaleString('he-IL')}</span></div>
     </div>`;
   }else{
     h+=`<div id="calc-preview"></div>`;
@@ -1238,6 +1267,12 @@ function renderReceiptForm(){
       <input type="text" inputmode="numeric" id="r-I" class="finput num" value="${esc(rf._custId)}"
         placeholder="ת\"ז או ח\"פ..."
         oninput="onCustIdInput(this.value)">
+    </div>
+    <!-- Customer Notes field inside Receipt document form -->
+    <div class="field"><label>הערות לקוח <small>(יישמר ישירות בכרטיס הלקוח)</small></label>
+      <input type="text" id="r-custNotes" class="finput" value="${esc(rf[COLS.custNotes]||'')}"
+        placeholder="הזן או ערוך הערות לקוח..."
+        oninput="uf('rForm','${COLS.custNotes}',this.value)">
     </div>`;
 
   h+=`<div id="open-invs-container">${buildOpenInvsHtml()}</div>`;
@@ -1330,6 +1365,10 @@ function renderRecList(){
   [...data].reverse().forEach((r,i)=>{
     const id=`rec-${r._id}`;const isE=S.expId===id;const bg=rowBg(r,isE);
     const num=nz(r[COLS.recNum])||nz(r[COLS.recInvNum])||`#${i+1}`;
+    
+    const custId = nz(r[COLS.recCustId]);
+    const cNotes = getCustNotesById(custId);
+    
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1" style="justify-content:space-between">
@@ -1353,7 +1392,10 @@ function renderRecList(){
         </div>
       </div>`;
     if(isE){
-      h+=`<div class="card-body"><div class="g2" style="margin-bottom:8px">`;
+      h+=`<div class="card-body">
+        <!-- Unified customer notes dynamically queried for receipts list -->
+        ${cNotes?`<div style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;text-align:right;">📝 <strong>הערות לקוח:</strong> ${esc(cNotes)}</div>`:''}
+        <div class="g2" style="margin-bottom:8px">`;
       RF.filter(f=>!f.wide&&nz(r[f.k])).forEach(f=>{
         h+=`<div class="gcell"><div class="glabel">${f.icon} ${f.label}</div>
           <div class="gval" style="color:${f.money?color:'#222'}">${f.money?fmt(r[f.k]):esc(r[f.k])}</div></div>`;
@@ -1396,6 +1438,8 @@ function renderDocList(data,state,isTax){
     const totItems=prods.reduce((s,p)=>s+(parseFloat(r[p.qk])||0),0);
     const balance=(!isTax&&invNum)?getInvBalance(invNum):null;
     const hasPartialPay=balance!==null&&balance<parseMoney(totVAT)-0.5;
+    
+    const cNotes = getCustNotesById(custId);
 
     h+=`<div class="card${isE?' exp':''}" style="background:${bg};${isE?`--tc:${color}`:''}">
       <div class="card-hdr" onclick="tog('${id}')">
@@ -1424,7 +1468,10 @@ function renderDocList(data,state,isTax){
           ${custId?`<span class="id-badge">${esc(custId)}</span>`:''}
           ${bizName?`<span style="font-size:13px;font-weight:600">${esc(bizName)}</span>`:''}
           ${date?`<span style="font-size:12px;color:#888;margin-right:auto">📅 ${esc(date)}</span>`:''}
-        </div>`;
+        </div>
+        <!-- Unified customer notes dynamically queried for documents lists -->
+        ${cNotes?`<div style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;text-align:right;">📝 <strong>הערות לקוח:</strong> ${esc(cNotes)}</div>`:''}
+        `;
       if(prods.length){
         h+=`<div class="dtable" style="margin-bottom:10px">
           <div class="dthead" style="background:${color}"><span>פירוט הזמנה</span><span>${totItems} יח'</span></div>`;
@@ -1628,6 +1675,14 @@ function onCustIdInput(val) {
   clearTimeout(_invLookupTimer);
   _invLookupTimer = setTimeout(()=>{
     S.rForm._openInvs = openInvsFor(val.trim());
+    
+    // Auto populate notes
+    const cust = S.customers.find(c => c[COLS.custId] === val.trim());
+    S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+    S.rForm._custEditRow = cust ? cust._row : null;
+    S.rForm._custEditId = cust ? cust._id : null;
+    setElValue('r-custNotes', S.rForm[COLS.custNotes]);
+    
     renderOpenInvs();
   }, 400);
 }
@@ -1666,8 +1721,15 @@ function pickCustomer(name,id){
   S.rForm._openInvs=openInvsFor(id);
   S.rForm._showOpenInvs=true;
 
+  // Load customer notes and row index for saving
+  const cust = S.customers.find(c => c[COLS.custId] === id);
+  S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  S.rForm._custEditRow = cust ? cust._row : null;
+  S.rForm._custEditId = cust ? cust._id : null;
+
   setElValue('r-H', name);
   setElValue('r-I', id);
+  setElValue('r-custNotes', S.rForm[COLS.custNotes]);
 
   if(S.rForm._openInvs.length===1){
     const inv=S.rForm._openInvs[0];
@@ -1702,6 +1764,9 @@ function captureReceiptFields(){
   const rh=g('r-H'); if(rh) S.rForm._custName=rh;
   const ri=g('r-I'); if(ri) S.rForm._custId=ri;
   
+  // Capture notes field
+  const rcn=g('r-custNotes'); if(rcn !== undefined) S.rForm[COLS.custNotes] = rcn;
+  
   const ov=g('r-overinv').trim();S.rForm._overInvNum=ov||S.rForm._overInvNum;
   const gEl=document.getElementById('r-'+COLS.recNotes);if(gEl)S.rForm[COLS.recNotes]=gEl.value;
 }
@@ -1717,6 +1782,7 @@ function clearReceiptCustomer(){
   S.rForm[COLS.recInvNum]='';S.rForm._invTotal='';S.rForm._invDate='';
   setElValue('r-H', '');
   setElValue('r-I', '');
+  setElValue('r-custNotes', '');
   setElValue('r-'+COLS.recInvNum, '');
   setElDisplay('receipt-inv-total', 'none');
   renderOpenInvs();
@@ -1750,8 +1816,15 @@ function onReceiptInvNumInput(val){
       S.rForm._invTotal=String(getInvBalance(val.trim()));
       S.rForm._invDate=nz(found[COLS.docDate])||'';
       
+      // Auto populate notes
+      const cust = S.customers.find(c => c[COLS.custId] === S.rForm._custId);
+      S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+      S.rForm._custEditRow = cust ? cust._row : null;
+      S.rForm._custEditId = cust ? cust._id : null;
+      
       setElValue('r-H', S.rForm._custName);
       setElValue('r-I', S.rForm._custId);
+      setElValue('r-custNotes', S.rForm[COLS.custNotes]);
 
       if(S.rForm._invTotal) {
           setElDisplay('receipt-inv-total', 'flex');
@@ -1762,6 +1835,7 @@ function onReceiptInvNumInput(val){
       S.rForm._invDate='';
       setElDisplay('receipt-inv-total', 'none');
     }
+    renderOpenInvs();
     renderSaveBtnRec();
   }, 400);
 }
@@ -1838,11 +1912,23 @@ function pickInvCust(custId,bizName){
   S.iForm[COLS.docCustId]=custId;
   S.iForm[COLS.docCustName]=bizName||''; 
   S.iForm._openInvs=openInvsFor(custId); // FETCH OPEN INVOICES
+  
+  // FIXED: Copy customer notes & row index for auto-saving
+  const cust = S.customers.find(c => c[COLS.custId] === custId);
+  S.iForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  S.iForm._custEditRow = cust ? cust._row : null;
+  S.iForm._custEditId = cust ? cust._id : null;
+  
   S.showSuggest=false;S.suggest=[];
   const inp=document.getElementById('inv-custName');
   if(inp)inp.value=bizName||'';
   const idField=document.getElementById('inv-custId');
   if(idField)idField.value=custId||'';
+  
+  // Populate UI notes input directly
+  const notesField=document.getElementById('inv-custNotes');
+  if(notesField)notesField.value = S.iForm[COLS.custNotes];
+  
   document.getElementById('suggest-box')?.remove();
   renderTaxOpenInvs(); // UPDATE THE UI
   renderSaveBtn();
@@ -1858,6 +1944,21 @@ function editCust(custId){
   S.cForm._editRow=c._row;  
   S.screen='new-customer';S.msg=null;
   setHeader();render();
+}
+
+async function updateCustomerNotesIfNeeded(custEditId, custEditRow, notesVal) {
+  if (!custEditRow) return;
+  const cust = S.customers.find(c => c._id === custEditId);
+  if (!cust) return;
+  if ((cust[COLS.custNotes] || '') !== (notesVal || '')) {
+    const updatedData = {};
+    CF.forEach(f => {
+      updatedData[f.k] = cust[f.k] || '';
+    });
+    updatedData[COLS.custNotes] = notesVal || '';
+    await apiPost({action: 'updateCustomer', data: updatedData, editRow: custEditRow});
+    cust[COLS.custNotes] = notesVal || ''; // Update in local cache
+  }
 }
 
 async function saveCust(){
@@ -1942,6 +2043,11 @@ async function saveReceipt(){
       };
       await apiPost({action:'addReceipt', data:data2, photoBase64: rf._photoBase64 || ''});
       S.receipts.push({...data2,_id:S.receipts.length,_bg:'#ffffff'});
+    }
+
+    // Save customer notes if changed
+    if (rf._custEditRow && rf[COLS.custNotes] !== undefined) {
+      await updateCustomerNotesIfNeeded(rf._custEditId, rf._custEditRow, rf[COLS.custNotes]);
     }
 
     S.saving=false;
@@ -2033,6 +2139,11 @@ async function saveInv(isTax){
       S.receipts.push({...recData, _id:S.receipts.length, _bg:'#ffffff'});
     }
     // --------------------------------------------------------
+    
+    // Save customer notes if changed
+    if (f._custEditRow && f[COLS.custNotes] !== undefined) {
+      await updateCustomerNotesIfNeeded(f._custEditId, f._custEditRow, f[COLS.custNotes]);
+    }
     
     S.msg={t:'s',m:(isTax?'חשמ"ק':'חשבונית')+' נשמרה! '+(qtySummary||'ללא כמויות')};
     S.saving=false;render();
