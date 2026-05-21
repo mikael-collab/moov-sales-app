@@ -262,8 +262,9 @@ const COLS = {
   custTerms: 'H',      // תנאי תשלום (Column H)
   custBankName: 'I',   
   custBankBranch: 'J', 
-  custBankAcct: 'K',
-  custNotes: 'L'       // הערות לקוח (Column L)
+  custBankAcct: 'K',   // מספר חשבון (Column K)
+  custBankHolder: 'L', // שם בעל החשבון (Column L)
+  custNotes: 'M'       // הערות לקוח (Column M)
 };
 // ─────────────────────────────────────────────────────────
 
@@ -286,6 +287,7 @@ const CF=[
   {k:COLS.custCity,label:'עיר',           mode:'text'},
   {k:COLS.custTerms,label:'תנאי תשלום',    mode:'select', options: ['מזומן', 'שוטף', 'שוטף 15', 'שוטף 30', 'שוטף 45', 'שוטף 60', 'שוטף 90', 'שוטף 120', 'מזומן כנגד חשבונית']},
   {k:COLS.custNotes,label:'הערות לקוח',    mode:'text'},
+  {k:COLS.custBankHolder,label:'שם בעל החשבון', mode:'text',bank:true},
   {k:COLS.custBankName,label:'שם הבנק',       mode:'text',bank:true},
   {k:COLS.custBankBranch,label:'מספר הסניף',    mode:'num', bank:true},
   {k:COLS.custBankAcct,label:'מספר חשבון',    mode:'num', bank:true},
@@ -304,7 +306,7 @@ const PRODS=[
   {nk:'V',qk:'W', name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
   {nk:'X',qk:'Y', name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
   {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25, em:'🍊'},
-  {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
+  {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   feed:'תפוח כפול',   nic:3, em:'🍏🍏'},
 ];
 
 const INV_TAIL=[
@@ -440,7 +442,7 @@ function efI(isTax){
   
   if(!isTax){
     o[COLS.invTerms]=''; o[COLS.invTotalVat]=''; o[COLS.invNum]='';
-    o[COLS.invPayType]=''; // FIXED: Empty as requested
+    o[COLS.invPayType]=''; // Fixed Empty
     o[COLS.invPayAmt]=''; o[COLS.invPayDate]='';
     o[COLS.invChkNum]=''; o[COLS.invNotes]='';
   }else{
@@ -652,6 +654,13 @@ function openNewReceiptFromInv(invId){
   rf._invTotal=String(Math.max(0,invTotal-paidSoFar));
   rf._openInvs=openInvsFor(rf._custId);
   rf._showOpenInvs=false;
+  
+  // Auto populate customer notes on invoice-to-receipt generation
+  const cust = S.customers.find(c => c[COLS.custId] === rf._custId);
+  rf[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  rf._custEditRow = cust ? cust._row : null;
+  rf._custEditId = cust ? cust._id : null;
+  
   S.rForm=rf;S.tab='receipts';S.screen='new-receipt';S.msg=null;S.showSuggest=false;
   if(S.rsState==='idle')loadReceipts();
   syncNav();setHeader();render();scrollToTop();
@@ -808,7 +817,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.31 (Unified Customer Notes)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.33 (Unified Customer Notes)</div></div>`;
   return h;
 }
 
@@ -947,7 +956,7 @@ function custField(f){
   if(f.k===COLS.custId)return`<div class="field"><label>${f.label} <small>(עמודה ${f.k}${f.req?' *':''})</small></label>
     <div class="irow">
       <input type="text" inputmode="numeric" id="f-id" class="finput num" value="${vv}"
-        oninput="uf('cForm','${f.k}',this.value.replace(/[^0-9-]/g,''))">
+        oninput="uf('f-id','${f.k}',this.value.replace(/[^0-9-]/g,''))">
       <button class="dash-btn" onclick="addDashC()">-</button>
     </div></div>`;
   if(f.mode==='select'){
@@ -1544,6 +1553,15 @@ function showToast(msg,type,duration){
   _toastTimer=setTimeout(()=>{c.innerHTML='';},duration||4000);
 }
 
+// Fixed target bug to edit properties cleanly
+function uf(id, k, val) {
+  if (id === 'f-id') {
+    S.cForm[k] = val;
+    return;
+  }
+  S[id][k] = val;
+}
+
 function alertHtml(msg){return`<div class="alert ${msg.t==='s'?'ok':'err'}">${msg.t==='s'?'✅ ':'❌ '}${esc(msg.m)}</div>`;}
 function errScreen(errMsg,reload,label,color){
   return`<div class="status"><p style="font-size:30px;margin-bottom:10px">⚠️</p>
@@ -1591,9 +1609,7 @@ async function cp(text,key){
   S.copied=key;render();
   S.copiedTimer=setTimeout(()=>{S.copied=null;render();},2000);
 }
-function uf(formKey,k,val){
-  S[formKey][k]=val;
-}
+
 function addDashC(){S.cForm[COLS.custId]=(S.cForm[COLS.custId]||'')+'-';const i=document.getElementById('f-id');if(i){i.value=S.cForm[COLS.custId];i.focus();}}
 
 function updateInvBar(){
@@ -1953,7 +1969,7 @@ async function updateCustomerNotesIfNeeded(custEditId, custEditRow, notesVal) {
   if ((cust[COLS.custNotes] || '') !== (notesVal || '')) {
     const updatedData = {};
     CF.forEach(f => {
-      updatedData[f.k] = cust[f.k] || '';
+      updatedData[f.k] = cust[f.k] || ''; 
     });
     updatedData[COLS.custNotes] = notesVal || '';
     await apiPost({action: 'updateCustomer', data: updatedData, editRow: custEditRow});
