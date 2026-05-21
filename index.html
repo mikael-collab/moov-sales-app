@@ -297,7 +297,7 @@ const PRODS=[
   {nk:'D',qk:'E', name:'Blueberry Mint 10 - אוכמניות',     short:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
   {nk:'F',qk:'G', name:'Blueberry Mint 6 - אוכמניות',      short:'Blueberry Mint 6',  heb:'אוכמניות',    nic:6, em:'🫐'},
   {nk:'H',qk:'I', name:'Jalapeno Lime 14 - חלפיניו ליים',  short:'Jalapeno Lime 14',  heb:'חלפיניו ליים',nic:14,em:'🌶'},
-  {nk:'J',qk:'K', name:'Jalapeno Lime 6 - חלפיניו ליים',   short:'Jalapeno Lime 6',   heb:'חלפיניו ליים',nic:6, em:'🌶'},
+  {nk:'J',qk:'K', name:'Jalapeno Lime 6 - חלפיניย ליים',   short:'Jalapeno Lime 6',   heb:'חלפיניו ליים',nic:6, em:'🌶'},
   {nk:'L',qk:'M', name:'Peppermint 20 - מנטה',             short:'Peppermint 20',     heb:'מנטה',        nic:20,em:'🌿'},
   {nk:'N',qk:'O', name:'Peppermint 10 - מנטה',             short:'Peppermint 10',     heb:'מנטה',        nic:10,em:'🌿'},
   {nk:'P',qk:'Q', name:'Peppermint 3 - מנטה',              short:'Peppermint 3',      heb:'מנטה',        nic:3, em:'🌿'},
@@ -306,7 +306,7 @@ const PRODS=[
   {nk:'V',qk:'W', name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
   {nk:'X',qk:'Y', name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
   {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25, em:'🍊'},
-  {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   feed:'תפוח כפול',   nic:3, em:'🍏🍏'},
+  {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
 ];
 
 const INV_TAIL=[
@@ -406,6 +406,7 @@ function taxFormErrors(){
 function invoiceFormErrors() {
   const f=S.iForm;
   if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
+  if(!f[COLS.invNum]?.trim())return 'מספר חשבונית הוא שדה חובה';
   return null;
 }
 
@@ -442,7 +443,7 @@ function efI(isTax){
   
   if(!isTax){
     o[COLS.invTerms]=''; o[COLS.invTotalVat]=''; o[COLS.invNum]='';
-    o[COLS.invPayType]=''; // Fixed Empty
+    o[COLS.invPayType]=''; // Empty as requested
     o[COLS.invPayAmt]=''; o[COLS.invPayDate]='';
     o[COLS.invChkNum]=''; o[COLS.invNotes]='';
   }else{
@@ -817,7 +818,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.33 (Unified Customer Notes)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.34 (Unique Key Checking)</div></div>`;
   return h;
 }
 
@@ -1188,6 +1189,23 @@ function renderInvForm(isTax){
       <textarea class="finput" rows="3" id="inv-notes"
         oninput="uf('iForm','${COLS.taxNotes}',this.value)">${esc(f[COLS.taxNotes])}</textarea>
     </div>`;
+  } else {
+    // FIXED: Added fields for regular Invoice Specific details (invNum, invTerms, invNotes)
+    h+=`<div class="fdivider"><hr><span>📄 פרטי חשבונית</span><hr></div>
+    <div class="field"><label>מספר חשבונית <small>(עמודה ${COLS.invNum}) *</small></label>
+      <input type="text" inputmode="numeric" id="f-invNum" class="finput num" value="${esc(f[COLS.invNum]||'')}"
+        placeholder="הזן מספר חשבונית..."
+        oninput="uf('iForm','${COLS.invNum}',this.value);renderSaveBtn()">
+    </div>
+    <div class="field"><label>תנאי תשלום <small>(עמודה ${COLS.invTerms})</small></label>
+      <input type="text" class="finput" value="${esc(f[COLS.invTerms]||'')}"
+        placeholder="שוטף, שוטף+30 וכד'..."
+        oninput="uf('iForm','${COLS.invTerms}',this.value)">
+    </div>
+    <div class="field"><label>הערות חשבונית <small>(עמודה ${COLS.invNotes})</small></label>
+      <textarea class="finput" rows="3" id="inv-notes" placeholder="הוסף הערות לחשבונית..."
+        oninput="uf('iForm','${COLS.invNotes}',this.value)">${esc(f[COLS.invNotes]||'')}</textarea>
+    </div>`;
   }
 
   const validErr = isTax ? taxFormErrors() : invoiceFormErrors();
@@ -1553,15 +1571,6 @@ function showToast(msg,type,duration){
   _toastTimer=setTimeout(()=>{c.innerHTML='';},duration||4000);
 }
 
-// Fixed target bug to edit properties cleanly
-function uf(id, k, val) {
-  if (id === 'f-id') {
-    S.cForm[k] = val;
-    return;
-  }
-  S[id][k] = val;
-}
-
 function alertHtml(msg){return`<div class="alert ${msg.t==='s'?'ok':'err'}">${msg.t==='s'?'✅ ':'❌ '}${esc(msg.m)}</div>`;}
 function errScreen(errMsg,reload,label,color){
   return`<div class="status"><p style="font-size:30px;margin-bottom:10px">⚠️</p>
@@ -1608,6 +1617,15 @@ async function cp(text,key){
   if(S.copiedTimer)clearTimeout(S.copiedTimer);
   S.copied=key;render();
   S.copiedTimer=setTimeout(()=>{S.copied=null;render();},2000);
+}
+
+// Adjusted targeting bug to edit properties cleanly
+function uf(id, k, val) {
+  if (id === 'f-id') {
+    S.cForm[k] = val;
+    return;
+  }
+  S[id][k] = val;
 }
 
 function addDashC(){S.cForm[COLS.custId]=(S.cForm[COLS.custId]||'')+'-';const i=document.getElementById('f-id');if(i){i.value=S.cForm[COLS.custId];i.focus();}}
@@ -1897,6 +1915,7 @@ function onPhotoChange(input){
   input.value='';
 }
 
+// Unified image photo capture handler
 function onReceiptPhotoChange(input){
   if(!input.files||!input.files[0])return;
   showToast('⏳ מעבד תמונה...', 'ok', 2000);
