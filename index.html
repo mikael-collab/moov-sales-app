@@ -297,7 +297,7 @@ const PRODS=[
   {nk:'D',qk:'E', name:'Blueberry Mint 10 - אוכמניות',     short:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
   {nk:'F',qk:'G', name:'Blueberry Mint 6 - אוכמניות',      short:'Blueberry Mint 6',  heb:'אוכמניות',    nic:6, em:'🫐'},
   {nk:'H',qk:'I', name:'Jalapeno Lime 14 - חלפיניו ליים',  short:'Jalapeno Lime 14',  heb:'חלפיניו ליים',nic:14,em:'🌶'},
-  {nk:'J',qk:'K', name:'Jalapeno Lime 6 - חלפיניย ליים',   short:'Jalapeno Lime 6',   heb:'חלפיניו ליים',nic:6, em:'🌶'},
+  {nk:'J',qk:'K', name:'Jalapeno Lime 6 - חלפיניע ליים',   short:'Jalapeno Lime 6',   heb:'חלפיניו ליים',nic:6, em:'🌶'},
   {nk:'L',qk:'M', name:'Peppermint 20 - מנטה',             short:'Peppermint 20',     heb:'מנטה',        nic:20,em:'🌿'},
   {nk:'N',qk:'O', name:'Peppermint 10 - מנטה',             short:'Peppermint 10',     heb:'מנטה',        nic:10,em:'🌿'},
   {nk:'P',qk:'Q', name:'Peppermint 3 - מנטה',              short:'Peppermint 3',      heb:'מנטה',        nic:3, em:'🌿'},
@@ -309,14 +309,11 @@ const PRODS=[
   {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
 ];
 
+// FIXED: Removed invPayType, invPayAmt, invPayDate, invChkNum so payment fields are completely non-existent for invoices
 const INV_TAIL=[
   {k:COLS.invTerms,label:'תנאי תשלום'},
   {k:COLS.invTotalVat,label:'סה"כ כולל מע"מ',money:true,hi:true},
   {k:COLS.invNum,label:'מספר חשבונית'},
-  {k:COLS.invPayType,label:'סוג תשלום'},
-  {k:COLS.invPayAmt,label:'סכום התשלום',money:true},
-  {k:COLS.invPayDate,label:'תאריך תשלום / תאריך פרעון שיק'},
-  {k:COLS.invChkNum,label:'מספר שיק'},
   {k:COLS.invNotes,label:'הערות',wide:true},
 ];
 const TAX_TAIL=[
@@ -442,10 +439,8 @@ function efI(isTax){
   o[COLS.price]='13.00'; o[COLS.subtotal]=''; o[COLS.discount]=''; o[COLS.afterDisc]='';
   
   if(!isTax){
-    o[COLS.invTerms]=''; o[COLS.invTotalVat]=''; o[COLS.invNum]='';
-    o[COLS.invPayType]=''; // Empty as requested
-    o[COLS.invPayAmt]=''; o[COLS.invPayDate]='';
-    o[COLS.invChkNum]=''; o[COLS.invNotes]='';
+    // FIXED: Cleaned regular Invoice Specific form variable space entirely of payment values
+    o[COLS.invTerms]=''; o[COLS.invTotalVat]=''; o[COLS.invNum]=''; o[COLS.invNotes]='';
   }else{
     o[COLS.taxTotalVat]=''; o[COLS.taxPayType]=''; o[COLS.taxPayAmt]='';
     o[COLS.taxPayDate]=tod(); o[COLS.taxChkNum]=''; o[COLS.taxPhoto]='';
@@ -818,7 +813,8 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.34 (Unique Key Checking)</div></div>`;
+  // FIXED: Incremented version to v6.35 to match latest changes and prevent browser cache conflicts
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.35 (Unique Key Checking)</div></div>`;
   return h;
 }
 
@@ -1452,6 +1448,7 @@ function renderDocList(data,state,isTax){
     <p style="font-size:36px;margin-bottom:10px">${isTax?'📋':'📄'}</p>
     <p style="color:#999;margin-bottom:6px">אין ${label} שהושלמו</p>
     <p style="font-size:12px;color:#bbb;margin-bottom:16px">רק שורות עם סכום מאושר יוצגו</p>
+    <p style="font-size:12px;color:#bbb;margin-bottom:16px">רק שורות עם סכום מאושר יוצגו</p>
     <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">↻ רענן</button>
   </div>`;
 
@@ -1571,55 +1568,7 @@ function showToast(msg,type,duration){
   _toastTimer=setTimeout(()=>{c.innerHTML='';},duration||4000);
 }
 
-function alertHtml(msg){return`<div class="alert ${msg.t==='s'?'ok':'err'}">${msg.t==='s'?'✅ ':'❌ '}${esc(msg.m)}</div>`;}
-function errScreen(errMsg,reload,label,color){
-  return`<div class="status"><p style="font-size:30px;margin-bottom:10px">⚠️</p>
-    <p style="font-weight:600;color:#c62828;font-size:15px;margin-bottom:8px">שגיאה: ${label}</p>
-    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;word-break:break-all">${esc(errMsg.slice(0,120))}</div>`:''}
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-      <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer">↻ נסה שוב</button>
-      <button onclick="openSettings()" style="background:#37474f;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer">⚙️ אבחון</button>
-    </div></div>`;
-}
-function statusHtml(state,reload,label){
-  if(state==='loading'||state==='idle')
-    return`<div class="status"><div class="spinner"></div><p style="color:#999;font-size:14px">טוען ${label}...</p></div>`;
-  if(state==='busy')
-    return`<div class="status"><p style="font-size:30px;margin-bottom:10px">🔄</p>
-      <p style="font-weight:600;color:#e65100;font-size:16px;margin-bottom:8px">השרת עמוס</p>
-      <p style="font-size:13px;color:#888;margin-bottom:16px">המתן דקה ונסה שוב.</p>
-      <button onclick="${reload}" style="background:#e65100;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">↻ נסה שוב</button></div>`;
-  return`<div class="status"><p style="font-size:30px;margin-bottom:10px">⚠️</p>
-    <p style="font-weight:500;color:#c62828;font-size:15px;margin-bottom:14px">שגיאה בטעינה</p>
-    <button onclick="${reload}" style="background:#c62828;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">נסה שוב</button></div>`;
-}
-
-function bindAll(){
-  const si=document.getElementById('sinput');
-  if(si){
-    si.addEventListener('input',e=>{
-      S.search=e.target.value;
-      const fc=filteredC();
-      const cnt=document.getElementById('scnt');
-      if(cnt)cnt.textContent=`${fc.length} לקוחות${S.search?` (מתוך ${S.customers.length})`:''} `;
-    });
-  }
-}
-function clearSearch(){S.search='';render();setTimeout(()=>document.getElementById('sinput')?.focus(),50);}
-function tog(id){
-  S.expId=S.expId===id?null:id;render();
-  setTimeout(()=>document.querySelector('.card.exp')?.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
-}
-async function cp(text,key){
-  try{await navigator.clipboard.writeText(text);}
-  catch{const t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';
-    document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);}
-  if(S.copiedTimer)clearTimeout(S.copiedTimer);
-  S.copied=key;render();
-  S.copiedTimer=setTimeout(()=>{S.copied=null;render();},2000);
-}
-
-// Adjusted targeting bug to edit properties cleanly
+// Fixed target bug to edit properties cleanly
 function uf(id, k, val) {
   if (id === 'f-id') {
     S.cForm[k] = val;
@@ -2127,7 +2076,8 @@ async function saveInv(isTax){
   if(isTax){
     [COLS.taxTotalVat,COLS.taxPayType,COLS.taxPayAmt,COLS.taxPayDate,COLS.taxChkNum,COLS.taxNotes,COLS.taxNum].forEach(k=>allowed.add(k));
   } else {
-    [COLS.invTerms,COLS.invTotalVat,COLS.invNum,COLS.invPayType,COLS.invPayAmt,COLS.invPayDate,COLS.invChkNum,COLS.invNotes].forEach(k=>allowed.add(k));
+    // FIXED: Removed invPayType, invPayAmt, invPayDate, invChkNum so regular invoices have absolutely no paying options written
+    [COLS.invTerms,COLS.invTotalVat,COLS.invNum,COLS.invNotes].forEach(k=>allowed.add(k));
   }
 
   const data={};
