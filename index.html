@@ -401,7 +401,7 @@ function taxFormErrors(){
   return null;
 }
 
-// FIXED: Cleaned up invoiceFormErrors validation according to manually inputted book-keeping number requirements
+// FIXED: Cleaned up invoiceFormErrors validation according to manually inputted book-keeping number requirements (Invoice number is not required in validation anymore)
 function invoiceFormErrors() {
   const f=S.iForm;
   const calc=calcInv(f);
@@ -819,7 +819,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.44 (Dynamic Fields)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.45 (Dynamic Fields)</div></div>`;
   return h;
 }
 
@@ -986,13 +986,18 @@ function onInvCustIdInput(val) {
   _invCustLookupTimer = setTimeout(() => {
     S.iForm._openInvs = openInvsFor(val.trim());
     
-    // Auto-populate Customer notes on ID input change
+    // Auto-populate Customer notes and payment terms on ID input change
     const cust = S.customers.find(c => c[COLS.custId] === val.trim());
     S.iForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+    S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : ''; // AUTO-POPULATE TERMS
     S.iForm._custEditRow = cust ? cust._row : null;
     S.iForm._custEditId = cust ? cust._id : null;
+    
     const notesField=document.getElementById('inv-custNotes');
     if(notesField)notesField.value = S.iForm[COLS.custNotes];
+    
+    const termsField=document.getElementById('inv-custTerms');
+    if(termsField)termsField.value = S.iForm[COLS.invTerms];
     
     renderTaxOpenInvs();
   }, 400);
@@ -1191,7 +1196,8 @@ function renderInvForm(isTax){
         oninput="uf('iForm','${COLS.taxNotes}',this.value)">${esc(f[COLS.taxNotes])}</textarea>
     </div>`;
   } else {
-    // FIXED: Hiding the Invoice Number field and removing mandatory flag as they are added manually in the sheet later
+    // FIXED: Hiding the Invoice Number field and removing mandatory flag as they are added manually in the sheet later.
+    // FIXED: תנאי תשלום is now Read-Only (only editable inside the Customers profile tab)
     h+=`<div class="fdivider"><hr><span>📄 פרטי חשבונית</span><hr></div>
     <div class="field" style="display:none;"><label>מספר חשבונית <small>(עמודה ${COLS.invNum}) *</small></label>
       <input type="text" inputmode="numeric" id="f-invNum" class="finput num" value="${esc(f[COLS.invNum]||'')}"
@@ -1199,9 +1205,9 @@ function renderInvForm(isTax){
         oninput="uf('iForm','${COLS.invNum}',this.value);renderSaveBtn()">
     </div>
     <div class="field"><label>תנאי תשלום <small>(עמודה ${COLS.invTerms})</small></label>
-      <input type="text" class="finput" value="${esc(f[COLS.invTerms]||'')}"
-        placeholder="שוטף, שוטף+30 וכד'..."
-        oninput="uf('iForm','${COLS.invTerms}',this.value)">
+      <input type="text" id="inv-custTerms" class="finput" value="${esc(f[COLS.invTerms]||'')}" readonly
+        style="background:#f0f0f0;color:#888;cursor:not-allowed;"
+        placeholder="יילקח אוטומטית מכרטיס הלקוח...">
     </div>
     <div class="field"><label>הערות חשבונית <small>(עמודה ${COLS.invNotes})</small></label>
       <textarea class="finput" rows="3" id="inv-notes" placeholder="הוסף הערות לחשבונית..."
@@ -1642,6 +1648,10 @@ function refreshCalc(){
   if(S.screen==='new-invoice')S.iForm[COLS.invTotalVat]=calc.withVat>0?String(Math.round(calc.withVat)):'';
   else S.iForm[COLS.taxTotalVat]=calc.withVat>0?String(Math.round(calc.withVat)):'';
   updateInvBar();
+  
+  // FIXED: Execute renderSaveBtn() on quantity changes so the Save button state recalculates properly
+  renderSaveBtn();
+  
   const preview=document.getElementById('calc-preview');
   if(!preview)return;
   if(calc.totalQty>0&&parseFloat(f[COLS.price])>0){
@@ -1945,9 +1955,10 @@ function pickInvCust(custId,bizName){
   S.iForm[COLS.docCustName]=bizName||''; 
   S.iForm._openInvs=openInvsFor(custId); // FETCH OPEN INVOICES
   
-  // FIXED: Copy customer notes & row index for auto-saving
+  // FIXED: Copy customer notes, payment terms & row index for auto-saving
   const cust = S.customers.find(c => c[COLS.custId] === custId);
   S.iForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : ''; // AUTO-POPULATE TERMS
   S.iForm._custEditRow = cust ? cust._row : null;
   S.iForm._custEditId = cust ? cust._id : null;
   
@@ -1957,9 +1968,12 @@ function pickInvCust(custId,bizName){
   const idField=document.getElementById('inv-custId');
   if(idField)idField.value=custId||'';
   
-  // Populate UI notes input directly
+  // Populate UI notes and terms input directly
   const notesField=document.getElementById('inv-custNotes');
   if(notesField)notesField.value = S.iForm[COLS.custNotes];
+  
+  const termsField=document.getElementById('inv-custTerms');
+  if(termsField)termsField.value = S.iForm[COLS.invTerms];
   
   document.getElementById('suggest-box')?.remove();
   renderTaxOpenInvs(); // UPDATE THE UI
