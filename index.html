@@ -589,15 +589,21 @@ async function apiFetch(params) {
   return d;
 }
 
-function apiPost(body) {
-  if (!S.scriptUrl) return Promise.resolve({ status: 'ok' });
-  return fetch(S.scriptUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(body),
-    mode: 'no-cors'
-  }).then(() => { return { status: 'ok' }; })
-    .catch((e) => { console.error(e); return { status: 'ok' }; });
+async function apiPost(body) {
+  if (!S.scriptUrl) return { status: 'ok' };
+  try {
+    const sendBody = Object.assign({}, body);
+    delete sendBody.photoBase64; // excluded — large base64 handled separately via embedDirect
+    const url = S.scriptUrl + '?' + new URLSearchParams({ write: '1', payload: JSON.stringify(sendBody) });
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (d && d.error) throw new Error(d.error);
+    return d;
+  } catch(e) {
+    console.error('apiPost:', e.message);
+    throw e;
+  }
 }
 
 async function pingSheets() {
@@ -2196,9 +2202,7 @@ async function executeSaveInv(isTax, calc) {
         [COLS.recPayAmt]: String(excess),
         [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
         [COLS.recChkNum]: f[COLS.taxChkNum] || '',
-        [COLS.recNotes]: 'יתרת שיק מחשמ"ק שנוצר עכשיו',
-        [COLS.recCustName]: f[COLS.docCustName] || '',
-        [COLS.recCustId]: f[COLS.docCustId] || ''
+        [COLS.recNotes]: 'יתרת שיק מחשמ"ק שנוצר עכשיו'
       };
       await apiPost({ action: 'addReceipt', data: recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
       S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
