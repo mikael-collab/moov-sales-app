@@ -186,6 +186,17 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <body>
 <div id="app">
   <div id="toast-container"></div>
+  <!-- Custom Premium Confirm Modal for Sandboxed Frame Modals -->
+  <div id="confirm-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(2px);">
+    <div style="background:#fff; width:90%; max-width:400px; padding:20px; border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,0.25); direction:rtl; text-align:right;">
+      <h3 id="confirm-title" style="font-size:16px; font-weight:700; margin-bottom:10px; color:#1a1a1a;">⚠️ שים לב</h3>
+      <p id="confirm-text" style="font-size:14px; line-height:1.6; color:#444; margin-bottom:20px; white-space:pre-line;"></p>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button id="confirm-yes" style="padding:10px 20px; border-radius:10px; border:none; background:#1a73e8; color:#fff; font-size:14px; font-weight:600; cursor:pointer; transition: background 0.2s;">כן, המשך</button>
+        <button id="confirm-no" style="padding:10px 20px; border-radius:10px; border:1.5px solid #e0e0e0; background:#fff; color:#555; font-size:14px; font-weight:600; cursor:pointer; transition: background 0.2s;">ביטול</button>
+      </div>
+    </div>
+  </div>
   <div class="hdr" id="hdr">
     <div class="hdr-row">
       <button class="hdr-btn" id="back-btn"></button>
@@ -424,7 +435,7 @@ function receiptFormErrors(){
   
   const recInvNumStr = String(rf[COLS.recInvNum] || '').trim();
   if(recInvNumStr){
-    // FIXED: Corrected reference error by using rf[COLS.recInvNum].trim() instead of undefined val.trim()
+    // Corrected reference scope of search checks to rf[COLS.recInvNum] instead of the crashed undefined "val" token
     const found = S.invoices.find(r => 
       (nz(r[COLS.invNum]) && String(r[COLS.invNum]).trim() === recInvNumStr) || 
       (nz(r[COLS.taxNum]) && String(r[COLS.taxNum]).trim() === recInvNumStr)
@@ -481,7 +492,6 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// FIXED: Defined nz as it is used to filter valid elements inside invoice matching
 function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
 function fmt(x){
   const n=parseFloat((x||'').toString().replace(/[^0-9.]/g,''));
@@ -522,7 +532,7 @@ async function apiFetch(params){
   return d;
 }
 
-// RESTORED: fix fetch response type in apiPost to bypass opaque response failures
+// fix fetch response type in apiPost to bypass opaque response failures
 function apiPost(body){
   if(!S.scriptUrl) return Promise.resolve({status:'ok'});
   return fetch(S.scriptUrl, {
@@ -827,8 +837,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  // FIXED: Bumped Version label to v6.50
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.50 (Receipt Save Fix)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.51 (Sandboxed Modal & Scope Fix)</div></div>`;
   return h;
 }
 
@@ -846,10 +855,11 @@ function saveUrl(inputId,errId){
   setHeader();syncNav();pingSheets().then(()=>loadCustomers());
 }
 function clearUrl(){
-  if(!confirm('למחוק את ה-URL?'))return;
-  S.scriptUrl='';clearUrlFromLocal();
-  resetAll();S.screen='list';document.getElementById('bnav').style.display='none';
-  setHeader();render();
+  showConfirm('נקה חיבור', 'למחוק את ה-URL?', function() {
+    S.scriptUrl='';clearUrlFromLocal();
+    resetAll();S.screen='list';document.getElementById('bnav').style.display='none';
+    setHeader();render();
+  });
 }
 function resetAll(){
   S.csState='idle';S.isState='idle';S.rsState='idle';S.tsState='idle';
@@ -1661,7 +1671,7 @@ function refreshCalc(){
   else S.iForm[COLS.taxTotalVat]=calc.withVat>0?String(Math.round(calc.withVat)):'';
   updateInvBar();
   
-  // FIXED: Execute renderSaveBtn() on quantity changes so the Save button state recalculates properly
+  // Execute renderSaveBtn() on quantity changes so the Save button state recalculates properly
   renderSaveBtn();
   
   const preview=document.getElementById('calc-preview');
@@ -2051,7 +2061,7 @@ async function saveCust(){
   }
 }
 
-// RESTORED: saveReceipt helper function
+// FIXED: Native blocking confirm modal replaced with premium sandboxed confirm dialog flow
 async function saveReceipt(){
   if(S.saving)return;
   captureReceiptFields();
@@ -2061,14 +2071,25 @@ async function saveReceipt(){
   const rf=S.rForm;
   const paid=parseFloat(rf[COLS.recPayAmt])||0;
   const balance=parseFloat(rf._invTotal)||0;
+  
+  if(balance>0.5 && paid<balance-0.5){
+    const diff=Math.round(balance-paid).toLocaleString('he-IL');
+    showConfirm('⚠️ תשלום חלקי', 'שולם: ₪' + Math.round(paid).toLocaleString('he-IL') + '\nיתרה: ₪' + Math.round(balance).toLocaleString('he-IL') + '\nנותר: ₪' + diff + '\n\nהאם ברצונך להמשיך בשמירת הקבלה?', function() {
+      executeSaveReceipt();
+    });
+  } else {
+    executeSaveReceipt();
+  }
+}
+
+// FIXED: Isolated actual save execution context away from the confirm wait wrapper
+async function executeSaveReceipt() {
+  const rf = S.rForm;
+  const paid=parseFloat(rf[COLS.recPayAmt])||0;
+  const balance=parseFloat(rf._invTotal)||0;
   const isOverpay=rf[COLS.recPayType]==='שיק'&&balance>0.5&&paid>balance+0.5;
   const excess=isOverpay?Math.round((paid-balance)*100)/100:0;
   const inv2=rf._overInvNum?.trim()||'';
-
-  if(balance>0.5&&paid<balance-0.5){
-    const diff=Math.round(balance-paid).toLocaleString('he-IL');
-    if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nיתרה: ₪${Math.round(balance).toLocaleString('he-IL')}\nנותר: ₪${diff}\n\nלהמשיך?`))return;
-  }
 
   const g1Notes=isOverpay
     ?`שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה חשבונית זו ₪${Math.round(balance).toLocaleString('he-IL')}. ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2||'—'}${rf[COLS.recNotes]?.trim()?' | '+rf[COLS.recNotes].trim():''}`
@@ -2118,7 +2139,7 @@ async function saveReceipt(){
   }catch(e){showToast('❌ '+(e.message||'שגיאה'),'err');S.saving=false;renderSaveBtnRec();}
 }
 
-// RESTORED: saveInv helper function
+// FIXED: Native blocking confirm modal replaced with premium sandboxed confirm dialog flow
 async function saveInv(isTax){
   const f=S.iForm;
   const calc=calcInv(f);
@@ -2139,14 +2160,27 @@ async function saveInv(isTax){
     const total=calc.withVat;
     if(total>0&&paid<total-0.5){
       const diff=Math.round(total-paid).toLocaleString('he-IL');
-      if(!confirm(`⚠️ תשלום חלקי\nשולם: ₪${Math.round(paid).toLocaleString('he-IL')}\nלתשלום: ₪${Math.round(total).toLocaleString('he-IL')}\nיתרה: ₪${diff}\n\nלהמשיך?`))return;
+      showConfirm('⚠️ תשלום חלקי', 'שולם: ₪' + Math.round(paid).toLocaleString('he-IL') + '\nלתשלום: ₪' + Math.round(total).toLocaleString('he-IL') + '\nיתרה: ₪' + diff + '\n\nהאם ברצונך להמשיך בשמירה?', function() {
+        executeSaveInv(isTax, calc);
+      });
+    } else {
+      executeSaveInv(isTax, calc);
     }
+  } else {
+    executeSaveInv(isTax, calc);
+  }
+}
 
-    if(f[COLS.taxPayType]==='שיק'&&total>0&&paid>total+0.5&&f._overInvNum?.trim()){
-      const diff=Math.round(paid-total).toLocaleString('he-IL');
-      const note=`ההפרש ₪${diff} שולם עבור חשבונית מספר ${f._overInvNum.trim()}`;
-      f[COLS.taxNotes]=f[COLS.taxNotes]?.trim()?(f[COLS.taxNotes].trim()+' | '+note):note;
-    }
+// FIXED: Isolated actual save execution context away from the confirm wait wrapper
+async function executeSaveInv(isTax, calc) {
+  const f = S.iForm;
+  const paid=parseFloat(f[COLS.taxPayAmt]||0);
+  const total=calc.withVat;
+  
+  if(isTax && f[COLS.taxPayType]==='שיק'&&total>0&&paid>total+0.5&&f._overInvNum?.trim()){
+    const diff=Math.round(paid-total).toLocaleString('he-IL');
+    const note=`ההפרש ₪${diff} שולם עבור חשבונית מספר ${f._overInvNum.trim()}`;
+    f[COLS.taxNotes]=f[COLS.taxNotes]?.trim()?(f[COLS.taxNotes].trim()+' | '+note):note;
   }
   
   const qkCols=PRODS.map(p=>p.qk); 
@@ -2155,13 +2189,13 @@ async function saveInv(isTax){
   if(isTax){
     [COLS.taxTotalVat,COLS.taxPayType,COLS.taxPayAmt,COLS.taxPayDate,COLS.taxChkNum,COLS.taxNotes,COLS.taxNum].forEach(k=>allowed.add(k));
   } else {
-    // FIXED: Removed invPayType, invPayAmt, invPayDate, invChkNum so regular invoices have absolutely no paying options written
+    // Removed invPayType, invPayAmt, invPayDate, invChkNum so regular invoices have absolutely no paying options written
     [COLS.invTerms,COLS.invTotalVat,COLS.invNum,COLS.invNotes].forEach(k=>allowed.add(k));
   }
 
   const data={};
   allowed.forEach(k=>{
-    const val=(f[k]||'').toString();
+    const val=(f[k]||'').toString().trim();
     const isQty=qkCols.includes(k);
     data[k]=(isQty&&(val===''||val==='0'))?'':val;
   });
@@ -2246,6 +2280,28 @@ function renderSaveBtnRec(){
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
 }
 
+// FIXED: Custom non-blocking modal handler function to replace browser version confirm blocking dialogs
+function showConfirm(title, text, onYes, onNo) {
+  const modal = document.getElementById('confirm-modal');
+  const tEl = document.getElementById('confirm-title');
+  const bodyEl = document.getElementById('confirm-text');
+  const yesBtn = document.getElementById('confirm-yes');
+  const noBtn = document.getElementById('confirm-no');
+  if (!modal) return;
+  tEl.textContent = title;
+  bodyEl.textContent = text;
+  modal.style.display = 'flex';
+  
+  yesBtn.onclick = function() {
+    modal.style.display = 'none';
+    if (onYes) onYes();
+  };
+  noBtn.onclick = function() {
+    modal.style.display = 'none';
+    if (onNo) onNo();
+  };
+}
+
 // RESTORED: bindAll function to bind search input correctly
 function bindAll(){
   const si=document.getElementById('sinput');
@@ -2300,11 +2356,11 @@ window.addEventListener('DOMContentLoaded',()=>{
       history.pushState(null,'',location.href);
       goBack();
     }else{
-      if(confirm('האם אתה בטוח שברצונך לצאת מהאפליקציה?')){
+      showConfirm('יציאה מהאפליקציה', 'האם אתה בטוח שברצונך לצאת מהאפליקציה?', function() {
         history.back();
-      }else{
+      }, function() {
         history.pushState(null,'',location.href);
-      }
+      });
     }
   });
 
