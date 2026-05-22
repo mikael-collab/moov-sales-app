@@ -411,7 +411,6 @@ function invoiceFormErrors() {
   return null;
 }
 
-// FIXED: Corrected reference scope of search checks to rf[COLS.recInvNum] instead of the crashed undefined "val" token
 function receiptFormErrors(){
   const rf=S.rForm;
   if(!rf[COLS.recPayType])return 'בחר סוג תשלום';
@@ -425,6 +424,7 @@ function receiptFormErrors(){
   
   const recInvNumStr = String(rf[COLS.recInvNum] || '').trim();
   if(recInvNumStr){
+    // FIXED: Corrected reference error by using rf[COLS.recInvNum].trim() instead of undefined val.trim()
     const found = S.invoices.find(r => 
       (nz(r[COLS.invNum]) && String(r[COLS.invNum]).trim() === recInvNumStr) || 
       (nz(r[COLS.taxNum]) && String(r[COLS.taxNum]).trim() === recInvNumStr)
@@ -522,6 +522,7 @@ async function apiFetch(params){
   return d;
 }
 
+// RESTORED: fix fetch response type in apiPost to bypass opaque response failures
 function apiPost(body){
   if(!S.scriptUrl) return Promise.resolve({status:'ok'});
   return fetch(S.scriptUrl, {
@@ -772,9 +773,6 @@ function renderSetup(){
   </div>`;
 }
 
-// FIXED: Defined nz as it is used to filter valid elements inside invoice matching
-function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
-
 function renderSettings(){
   const connected=!!S.scriptUrl;
   let h=`<div class="set-wrap">
@@ -829,7 +827,8 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.49 (Receipt Save Fix)</div></div>`;
+  // FIXED: Bumped Version label to v6.50
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.50 (Receipt Save Fix)</div></div>`;
   return h;
 }
 
@@ -1154,7 +1153,10 @@ function renderInvForm(isTax){
     <div class="field"><label>סוג תשלום <small>(עמודה ${COLS.taxPayType}) *</small></label>
       <select class="finput" onchange="uf('iForm','${COLS.taxPayType}',this.value);render()">
         <option value="">-- בחר --</option>
-        ${PAYMENT_TYPES.map(pt=>`<option${f[COLS.taxPayType]===pt?' selected':''}>${pt}</option>`).join('')}
+        ${PAYMENT_TYPES.map(pt=>{
+          const sel=f[COLS.taxPayType]===pt;
+          return`<option${sel?' selected':''}>${pt}</option>`;
+        }).join('')}
       </select>
     </div>
 
@@ -1193,7 +1195,7 @@ function renderInvForm(isTax){
     <div style="background:#fff8e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
       ⚠️ השיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — בחר חשבונית פתוחה עבור ההפרש
     </div>
-    <div id="tax-open-invs-container">${buildOpenInvsHtml()}</div>
+    <div id="tax-open-invs-container">${buildTaxOpenInvsHtml()}</div>
     <div class="field"><label>או הזן מספר חשבונית ידנית *</label>
       <input type="text" inputmode="numeric" id="inv-overInvNum" class="finput num" value="${esc(f._overInvNum||'')}"
         placeholder="מספר חשבונית"
@@ -2233,7 +2235,7 @@ function renderSaveBtn(){
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור חשמ"ק' : '💾 שמור חשבונית'));
 }
 
-// FIXED: renderSaveBtnRec helper function now completely eliminates the invalid isTax reference which causes silent save crashes
+// FIXED: renderSaveBtnRec helper function completely eliminates the invalid isTax reference which causes silent save crashes
 function renderSaveBtnRec(){
   const btn=document.getElementById('btn-save-rec');
   if(!btn)return;
