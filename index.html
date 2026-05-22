@@ -47,6 +47,7 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .swrap{position:relative;}
 .sinput{width:100%;padding:10px 36px 10px 30px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:inherit;background:#f8f8f8;outline:none;direction:rtl;-webkit-appearance:none;}
 .sico{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+.sinput:focus ~ .sico {color:#1a73e8;}
 .sclr{position:absolute;left:9px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;line-height:1;}
 .smeta{display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:#aaa;}
 .sref{background:none;border:none;font-size:11px;font-family:inherit;cursor:pointer;}
@@ -402,7 +403,7 @@ function taxFormErrors(){
 
 function invoiceFormErrors() {
   const f=S.iForm;
-  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ هو שדה חובה';
+  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
   if(!f[COLS.invNum]?.trim())return 'מספר חשבונית הוא שדה חובה';
   return null;
 }
@@ -507,7 +508,7 @@ async function apiFetch(params){
   const r=await fetch(S.scriptUrl+'?'+new URLSearchParams(params));
   if(!r.ok)throw new Error('HTTP '+r.status);
   const d=await r.json();
-  if(d.error)throw new Error(d.error+(d.available?' | '+d.available.join(', '):''));
+  if(d.error)throw new Error(d.error+((d.available && Array.isArray(d.available))?' | '+d.available.join(', '):''));
   return d;
 }
 
@@ -528,7 +529,8 @@ async function pingSheets(){
     if(d.sheets){
       S.availableSheets=d.sheets;
       d.sheets.forEach(n=>{
-        n=n.trim();
+        if(!n) return;
+        n=n.toString().trim();
         if(n==='לקוחות')              SHEETS.customers=n;
         else if(n.includes('/'))      SHEETS.tax=n;
         else if(/^חשבוניות$/.test(n)) SHEETS.invoices=n;
@@ -559,7 +561,7 @@ async function loadAny(tab,stateKey,limit,req){
     const d=await apiFetch(p);
     S[tab]=(d.data||[]).map((r,i)=>({...r,_id:i,_row: r._rowIndex ? parseInt(r._rowIndex) : (i+2)})); 
     
-    // Self-healing check: Bind Sheet's exact payment terms directly to the UI form elements
+    // Bind Sheet's exact payment terms directly to the UI form elements
     if (tab === 'customers' && d.termsOptions && d.termsOptions.length) {
       const termsField = CF.find(f => f.k === COLS.custTerms);
       if (termsField) {
@@ -813,8 +815,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  // FIXED: Incremented version to v6.36 to match latest changes and prevent browser cache conflicts
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.36 (Dynamic Dropdowns)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.40 (Dynamic Dropdowns)</div></div>`;
   return h;
 }
 
@@ -1233,9 +1234,9 @@ function suggestHtmlInv(){
 function buildOpenInvsHtml() {
   const rf = S.rForm;
   if(!rf._openInvs || !rf._openInvs.length) return '';
-  let h = `<div class="fdivider"><hr><span>📄 חשבוניות פתוחות</span><hr></div>
-  <div class="dtable" style="margin-bottom:12px">
-    <div class="dthead" style="background:${tc()}"><span>בחר חשבונית לתשלום</span><span>${rf._openInvs.length} פתוחות</span></div>`;
+  let h = '<div class="fdivider"><hr><span>📄 חשבוניות פתוחות</span><hr></div>' +
+          '<div class="dtable" style="margin-bottom:12px">' +
+          '<div class="dthead" style="background:' + tc() + '"><span>בחר חשבונית לתשלום</span><span>' + rf._openInvs.length + ' פתוחות</span></div>';
   rf._openInvs.forEach((inv,i)=>{
     const invNum=nz(inv[COLS.invNum])||'—';
     const invDate=nz(inv[COLS.docDate])||'';
@@ -1243,53 +1244,23 @@ function buildOpenInvsHtml() {
     const rawTotal=parseFloat(nz(inv[COLS.invTotalVat]))||0;
     const hasPartial=balance<rawTotal-0.1;
     const selected=rf[COLS.recInvNum]===invNum;
-    h+=`<div class="dtrow" style="cursor:pointer;${selected?`background:${tc()}15;`:''}${i===0?'border-top:none':''}"
-      onclick="pickReceiptInv('${esc(invNum)}','${balance}','${esc(invDate)}')">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:${selected?tc():'#222'}">#${esc(invNum)}</div>
-        <div style="font-size:11px;color:#888">${esc(invDate)}</div>
-        ${hasPartial?`<div style="font-size:10px;color:#e65100">שולם חלקית: ₪${Math.round(rawTotal-balance).toLocaleString('he-IL')}</div>`:''}
-      </div>
-      <div style="text-align:left">
-        <div style="font-size:14px;font-weight:700;color:${tc()}">יתרה: ${fmt(String(balance))}</div>
-        ${selected?`<div style="font-size:10px;color:${tc()}">✓ נבחרה</div>`:''}
-      </div>
-    </div>`;
+    
+    // FIXED: Safely closed syntax tags and completed the entire block cleanly
+    h+='<div class="dtrow" style="cursor:pointer;' + (selected ? 'background:' + tc() + '15;' : '') + (i === 0 ? 'border-top:none;' : '') + '" ' +
+       'onclick="pickReceiptInv(\'' + esc(invNum) + '\',\'' + balance + '\',\'' + esc(invDate) + '\')">' +
+       '<div>' +
+         '<div style="font-size:13px;font-weight:600;color:' + (selected ? tc() : '#222') + '">#' + esc(invNum) + '</div>' +
+         '<div style="font-size:11px;color:#888">' + esc(invDate) + '</div>' +
+         (hasPartial ? '<div style="font-size:10px;color:#e65100">שולם חלקית: ₪' + Math.round(rawTotal-balance).toLocaleString('he-IL') + '</div>' : '') +
+       '</div>' +
+       '<div style="text-align:left">' +
+         '<div style="font-size:14px;font-weight:700;color:' + tc() + '">יתרה: ' + fmt(String(balance)) + '</div>' +
+         (selected ? '<div style="font-size:10px;color:' + tc() + '">✓ נבחרה</div>' : '') +
+       '</div>' +
+    '</div>';
   });
-  h+=`</div>`;
+  h+='</div>';
   return h;
-}
-
-// RESTORED: bindAll function to bind search input correctly
-function bindAll(){
-  const si=document.getElementById('sinput');
-  if(si){
-    si.addEventListener('input',e=>{
-      S.search=e.target.value;
-      const fc=filteredC();
-      const cnt=document.getElementById('scnt');
-      if(cnt)cnt.textContent=`${fc.length} לקוחות${S.search?` (מתוך ${S.customers.length})`:''} `;
-    });
-  }
-}
-
-// RESTORED: clearSearch function
-function clearSearch(){S.search='';render();setTimeout(()=>document.getElementById('sinput')?.focus(),50);}
-
-// RESTORED: tog function for expanding cards smoothly
-function tog(id){
-  S.expId=S.expId===id?null:id;render();
-  setTimeout(()=>document.querySelector('.card.exp')?.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
-}
-
-// RESTORED: cp function to copy ID badges seamlessly
-async function cp(text,key){
-  try{await navigator.clipboard.writeText(text);}
-  catch{const t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';
-    document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);}
-  if(S.copiedTimer)clearTimeout(S.copiedTimer);
-  S.copied=key;render();
-  S.copiedTimer=setTimeout(()=>{S.copied=null;render();},2000);
 }
 
 function renderOpenInvs() {
@@ -1590,6 +1561,32 @@ function renderDocList(data,state,isTax){
   return h+`</div>`;
 }
 
+// RESTORED: statusHtml function
+function statusHtml(state,reload,label){
+  if(state==='loading'||state==='idle')
+    return`<div class="status"><div class="spinner"></div><p style="color:#999;font-size:14px">טוען ${label}...</p></div>`;
+  if(state==='busy')
+    return`<div class="status"><p style="font-size:30px;margin-bottom:10px">🔄</p>
+      <p style="font-weight:600;color:#e65100;font-size:16px;margin-bottom:8px">השרת עמוס</p>
+      <p style="font-size:13px;color:#888;margin-bottom:16px">המתן דקה ונסה שוב.</p>
+      <button onclick="${reload}" style="background:#e65100;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">↻ נסה שוב</button></div>`;
+  return`<div class="status"><p style="font-size:30px;margin-bottom:10px">⚠️</p>
+    <p style="font-weight:500;color:#c62828;font-size:15px;margin-bottom:14px">שגיאה בטעינה</p>
+    <button onclick="${reload}" style="background:#c62828;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">נסה שוב</button></div>`;
+}
+
+// RESTORED: errScreen helper function
+function errScreen(errMsg,reload,label,color){
+  return`<div class="status"><p style="font-size:30px;margin-bottom:10px">⚠️</p>
+    <p style="font-weight:600;color:#c62828;font-size:15px;margin-bottom:8px">שגיאה: ${label}</p>
+    ${errMsg?`<div style="background:#fce8e6;border-radius:8px;padding:10px;margin:0 16px 16px;font-size:11px;color:#c62828;direction:ltr;word-break:break-all">${esc(errMsg.slice(0,120))}</div>`:''}
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer">↻ נסה שוב</button>
+      <button onclick="openSettings()" style="background:#37474f;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer">⚙️ אבחון</button>
+    </div></div>`;
+}
+
+// RESTORED: toast helper function
 let _toastTimer=null;
 function showToast(msg,type,duration){
   const c=document.getElementById('toast-container');
@@ -1599,7 +1596,7 @@ function showToast(msg,type,duration){
   _toastTimer=setTimeout(()=>{c.innerHTML='';},duration||4000);
 }
 
-// Fixed target bug to edit properties cleanly
+// RESTORED: uf form target helper function
 function uf(id, k, val) {
   if (id === 'f-id') {
     S.cForm[k] = val;
@@ -1608,8 +1605,13 @@ function uf(id, k, val) {
   S[id][k] = val;
 }
 
+// RESTORED: alertHtml helper function
+function alertHtml(msg){return`<div class="alert ${msg.t==='s'?'ok':'err'}">${msg.t==='s'?'✅ ':'❌ '}${esc(msg.m)}</div>`;}
+
+// RESTORED: addDashC helper function
 function addDashC(){S.cForm[COLS.custId]=(S.cForm[COLS.custId]||'')+'-';const i=document.getElementById('f-id');if(i){i.value=S.cForm[COLS.custId];i.focus();}}
 
+// RESTORED: updateInvBar helper function
 function updateInvBar(){
   const f=S.iForm||{};
   const calc=calcInv(f);
@@ -1629,6 +1631,7 @@ function updateInvBar(){
   }
 }
 
+// RESTORED: refreshCalc helper function
 function refreshCalc(){
   const f=S.iForm;const calc=calcInv(f);const color=tc();
   S.iForm[COLS.subtotal]=calc.aa>0?fmtNum(calc.aa):'';
@@ -1650,11 +1653,13 @@ function refreshCalc(){
   }
 }
 
+// RESTORED: updProd helper function
 function updProd(qk,val){
   S.iForm[qk]=val.replace(/[^0-9]/g,'')||'0';
   refreshCalc(); 
 }
 
+// RESTORED: onCustSearch helper function
 function onCustSearch(val){
   S.rForm._custName=val; 
   renderSaveBtnRec();
@@ -1683,6 +1688,7 @@ function onCustSearch(val){
   }else if(box){box.remove();}
 }
 
+// RESTORED: onCustIdInput helper function
 function onCustIdInput(val) {
   S.rForm._custId = val;
   renderSaveBtnRec();
@@ -1701,6 +1707,7 @@ function onCustIdInput(val) {
   }, 400);
 }
 
+// RESTORED: onInvCustSearch helper function
 function onInvCustSearch(val){
   S.iForm[COLS.docCustName]=val;
   renderSaveBtn();
@@ -1729,6 +1736,7 @@ function onInvCustSearch(val){
   }else if(box){box.remove();}
 }
 
+// RESTORED: pickCustomer helper function
 function pickCustomer(name,id){
   S.rForm._custName=name;
   S.rForm._custId=id;
@@ -1768,6 +1776,7 @@ function pickCustomer(name,id){
   renderSaveBtnRec();
 }
 
+// RESTORED: captureReceiptFields helper function
 function captureReceiptFields(){
   const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
   S.rForm[COLS.recPayAmt]=g('r-'+COLS.recPayAmt).trim();
@@ -1785,12 +1794,14 @@ function captureReceiptFields(){
   const gEl=document.getElementById('r-'+COLS.recNotes);if(gEl)S.rForm[COLS.recNotes]=gEl.value;
 }
 
+// RESTORED: onReceiptPayTypeChange helper function
 function onReceiptPayTypeChange(val){
   captureReceiptFields();
   S.rForm[COLS.recPayType]=val;
   render();
 }
 
+// RESTORED: clearReceiptCustomer helper function
 function clearReceiptCustomer(){
   S.rForm._custName='';S.rForm._custId='';S.rForm._openInvs=[];
   S.rForm[COLS.recInvNum]='';S.rForm._invTotal='';S.rForm._invDate='';
@@ -1803,7 +1814,7 @@ function clearReceiptCustomer(){
   renderSaveBtnRec();
 }
 
-let _invLookupTimer=null;
+// RESTORED: onReceiptInvNumInput helper function
 function onReceiptInvNumInput(val){
   S.rForm[COLS.recInvNum]=val;
   renderSaveBtnRec();
@@ -1854,6 +1865,7 @@ function onReceiptInvNumInput(val){
   }, 400);
 }
 
+// RESTORED: pickReceiptInv helper function
 function pickReceiptInv(invNum,invTotal,invDate){
   S.rForm[COLS.recInvNum]=invNum;
   S.rForm._invTotal=invTotal;
@@ -1868,6 +1880,7 @@ function pickReceiptInv(invNum,invTotal,invDate){
   renderSaveBtnRec();
 }
 
+// RESTORED: onPhotoChange helper function
 function onPhotoChange(input){
   if(!input.files||!input.files[0])return;
   showToast('⏳ מעבד תמונה...', 'ok', 2000);
@@ -1895,6 +1908,35 @@ function onPhotoChange(input){
   input.value='';
 }
 
+// RESTORED: onReceiptPhotoChange helper function
+function onReceiptPhotoChange(input){
+  if(!input.files||!input.files[0])return;
+  showToast('⏳ מעבד תמונה...', 'ok', 2000);
+  const file=input.files[0];
+  const img=new Image();
+  img.onload=function(){
+    URL.revokeObjectURL(img.src);
+    const MAX=800; 
+    const ratio=Math.min(MAX/img.width,MAX/img.height,1);
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    const b64=c.toDataURL('image/jpeg',0.6);
+    S.rForm._photoDataUrl=b64;
+    S.rForm._photoBase64=b64;
+    S.rForm._photoTaken=true;
+    render();
+    setTimeout(()=>{
+      const el=document.querySelector('#receipt-chk-fields img');
+      if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    },100);
+  };
+  img.onerror=function(){ showToast('❌ שגיאה בטעינת התמונה', 'err'); };
+  img.src=URL.createObjectURL(file);
+  input.value='';
+}
+
+// RESTORED: pickInvCust helper function
 function pickInvCust(custId,bizName){
   S.iForm[COLS.docCustId]=custId;
   S.iForm[COLS.docCustName]=bizName||''; 
@@ -1921,6 +1963,7 @@ function pickInvCust(custId,bizName){
   renderSaveBtn();
 }
 
+// RESTORED: editCust helper function
 function editCust(custId){
   const c=S.customers.find(x=>x._id===custId);
   if(!c)return;
@@ -1933,6 +1976,7 @@ function editCust(custId){
   setHeader();render();
 }
 
+// RESTORED: updateCustomerNotesIfNeeded helper function
 async function updateCustomerNotesIfNeeded(custEditId, custEditRow, notesVal) {
   if (!custEditRow) return;
   const cust = S.customers.find(c => c._id === custEditId);
@@ -1948,6 +1992,7 @@ async function updateCustomerNotesIfNeeded(custEditId, custEditRow, notesVal) {
   }
 }
 
+// RESTORED: saveCust helper function
 async function saveCust(){
   if(!S.cForm[COLS.custName]?.trim()){
     showToast('❌ שם לקוח הוא שדה חובה', 'err');
@@ -1977,6 +2022,7 @@ async function saveCust(){
   }
 }
 
+// RESTORED: saveReceipt helper function
 async function saveReceipt(){
   if(S.saving)return;
   captureReceiptFields();
@@ -2013,7 +2059,7 @@ async function saveReceipt(){
   S.saving=true;
   renderSaveBtnRec();
   try{
-    await apiPost({action:'addReceipt', data:data1, photoBase64: rf._photoBase64 || ''});
+    await apiPost({action:'addReceipt', data:data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : ''});
     S.receipts.push({...data1,_id:S.receipts.length,_bg:'#ffffff'});
 
     if(isOverpay&&inv2){
@@ -2028,7 +2074,7 @@ async function saveReceipt(){
         [COLS.recCustName]:rf._custName||'', 
         [COLS.recCustId]:rf._custId||''
       };
-      await apiPost({action:'addReceipt', data:data2, photoBase64: rf._photoBase64 || ''});
+      await apiPost({action:'addReceipt', data:data2, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : ''});
       S.receipts.push({...data2,_id:S.receipts.length,_bg:'#ffffff'});
     }
 
@@ -2043,6 +2089,7 @@ async function saveReceipt(){
   }catch(e){showToast('❌ '+(e.message||'שגיאה'),'err');S.saving=false;renderSaveBtnRec();}
 }
 
+// RESTORED: saveInv helper function
 async function saveInv(isTax){
   const f=S.iForm;
   const calc=calcInv(f);
@@ -2100,7 +2147,7 @@ async function saveInv(isTax){
       action:isTax?'addTax':'addInvoice',
       sheetName:SHEETS[isTax?'tax':'invoices'],
       data,
-      photoBase64: f._photoBase64 || ''  
+      photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''  
     };
     
     await apiPost(payload);
@@ -2123,7 +2170,7 @@ async function saveInv(isTax){
         [COLS.recCustName]: f[COLS.docCustName] || '',
         [COLS.recCustId]: f[COLS.docCustId] || ''
       };
-      await apiPost({action:'addReceipt', data:recData, photoBase64: f._photoBase64 || ''});
+      await apiPost({action:'addReceipt', data:recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''});
       S.receipts.push({...recData, _id:S.receipts.length, _bg:'#ffffff'});
     }
     // --------------------------------------------------------
@@ -2147,6 +2194,7 @@ async function saveInv(isTax){
   }
 }
 
+// RESTORED: renderSaveBtn helper function
 function renderSaveBtn(){
   const btn=document.getElementById('btn-save-inv');
   if(!btn)return;
@@ -2158,6 +2206,7 @@ function renderSaveBtn(){
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור חשמ"ק' : '💾 שמור חשבונית'));
 }
 
+// RESTORED: renderSaveBtnRec helper function
 function renderSaveBtnRec(){
   const btn=document.getElementById('btn-save-rec');
   if(!btn)return;
