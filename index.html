@@ -401,7 +401,7 @@ function taxFormErrors(){
   return null;
 }
 
-// FIXED: Cleaned up invoiceFormErrors validation according to manually inputted book-keeping number requirements (Invoice number is not required in validation anymore)
+// Cleaned up invoiceFormErrors validation according to manually inputted book-keeping number requirements (Invoice number is not required in validation anymore)
 function invoiceFormErrors() {
   const f=S.iForm;
   const calc=calcInv(f);
@@ -411,6 +411,7 @@ function invoiceFormErrors() {
   return null;
 }
 
+// FIXED: Corrected reference scope of search checks to rf[COLS.recInvNum] instead of the crashed undefined "val" token
 function receiptFormErrors(){
   const rf=S.rForm;
   if(!rf[COLS.recPayType])return 'בחר סוג תשלום';
@@ -421,9 +422,13 @@ function receiptFormErrors(){
     return 'מזומן לא יכול לעלות על יתרה: ₪' + Math.round(balance).toLocaleString('he-IL');
   if(rf[COLS.recPayType]==='שיק'&&balance>0&&paid>balance+0.5&&!rf._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
-  if(rf[COLS.recInvNum]?.trim()){
-    // FIXED: Corrected reference error by using rf[COLS.recInvNum].trim() instead of undefined val.trim()
-    const found=S.invoices.find(r=>nz(r[COLS.invNum])===rf[COLS.recInvNum].trim() || nz(r[COLS.taxNum])===rf[COLS.recInvNum].trim());
+  
+  const recInvNumStr = String(rf[COLS.recInvNum] || '').trim();
+  if(recInvNumStr){
+    const found = S.invoices.find(r => 
+      (nz(r[COLS.invNum]) && String(r[COLS.invNum]).trim() === recInvNumStr) || 
+      (nz(r[COLS.taxNum]) && String(r[COLS.taxNum]).trim() === recInvNumStr)
+    );
     if(!found)return 'מספר חשבונית לא קיים במערכת';
   }
   if(rf[COLS.recPayType]==='שיק'){
@@ -820,7 +825,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.47 (Receipt Save Fix)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.48 (Receipt Save Fix)</div></div>`;
   return h;
 }
 
@@ -1197,8 +1202,8 @@ function renderInvForm(isTax){
         oninput="uf('iForm','${COLS.taxNotes}',this.value)">${esc(f[COLS.taxNotes])}</textarea>
     </div>`;
   } else {
-    // FIXED: Hiding the Invoice Number field and removing mandatory flag as they are added manually in the sheet later.
-    // FIXED: תנאי תשלום is now Read-Only (only editable inside the Customers profile tab)
+    // Hiding the Invoice Number field and removing mandatory flag as they are added manually in the sheet later.
+    // תנאי תשלום is now Read-Only (only editable inside the Customers profile tab)
     h+=`<div class="fdivider"><hr><span>📄 פרטי חשבונית</span><hr></div>
     <div class="field" style="display:none;"><label>מספר חשבונית <small>(עמודה ${COLS.invNum}) *</small></label>
       <input type="text" inputmode="numeric" id="f-invNum" class="finput num" value="${esc(f[COLS.invNum]||'')}"
@@ -1923,7 +1928,7 @@ function onPhotoChange(input){
   input.value='';
 }
 
-// RESTORED: onReceiptPhotoChange helper function
+// Unified image photo capture handler
 function onReceiptPhotoChange(input){
   if(!input.files||!input.files[0])return;
   showToast('⏳ מעבד תמונה...', 'ok', 2000);
@@ -1951,7 +1956,6 @@ function onReceiptPhotoChange(input){
   input.value='';
 }
 
-// RESTORED: pickInvCust helper function
 function pickInvCust(custId,bizName){
   S.iForm[COLS.docCustId]=custId;
   S.iForm[COLS.docCustName]=bizName||''; 
@@ -2225,7 +2229,7 @@ function renderSaveBtn(){
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור חשמ"ק' : '💾 שמור חשבונית'));
 }
 
-// RESTORED: renderSaveBtnRec helper function
+// FIXED: renderSaveBtnRec helper function no longer references undefined isTax variable, avoiding ReferenceErrors which freeze saving receipts
 function renderSaveBtnRec(){
   const btn=document.getElementById('btn-save-rec');
   if(!btn)return;
@@ -2233,7 +2237,7 @@ function renderSaveBtnRec(){
   const dis = S.saving || !!validErr;
   btn.disabled = dis;
   btn.style.background = dis ? '#ccc' : tc();
-  btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור קבלה' : '💾 שמור קבלה'));
+  btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
 }
 
 // RESTORED: bindAll function to bind search input correctly
