@@ -401,10 +401,13 @@ function taxFormErrors(){
   return null;
 }
 
+// FIXED: Cleaned up invoiceFormErrors validation according to manually inputted book-keeping number requirements
 function invoiceFormErrors() {
   const f=S.iForm;
-  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ هو שדה חובה';
-  if(!f[COLS.invNum]?.trim())return 'מספר חשבונית הוא שדה חובה';
+  const calc=calcInv(f);
+  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
+  if(calc.totalQty<=0)return 'חובה לבחור לפחות מוצר אחד';
+  if(!f[COLS.price]?.trim() || parseFloat(f[COLS.price])<=0)return 'חובה להזין מחיר ליחידה תקין';
   return null;
 }
 
@@ -816,7 +819,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.43 (Full Recompilation)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.44 (Dynamic Fields)</div></div>`;
   return h;
 }
 
@@ -1188,9 +1191,9 @@ function renderInvForm(isTax){
         oninput="uf('iForm','${COLS.taxNotes}',this.value)">${esc(f[COLS.taxNotes])}</textarea>
     </div>`;
   } else {
-    // FIXED: Added fields for regular Invoice Specific details (invNum, invTerms, invNotes)
+    // FIXED: Hiding the Invoice Number field and removing mandatory flag as they are added manually in the sheet later
     h+=`<div class="fdivider"><hr><span>📄 פרטי חשבונית</span><hr></div>
-    <div class="field"><label>מספר חשבונית <small>(עמודה ${COLS.invNum}) *</small></label>
+    <div class="field" style="display:none;"><label>מספר חשבונית <small>(עמודה ${COLS.invNum}) *</small></label>
       <input type="text" inputmode="numeric" id="f-invNum" class="finput num" value="${esc(f[COLS.invNum]||'')}"
         placeholder="הזן מספר חשבונית..."
         oninput="uf('iForm','${COLS.invNum}',this.value);renderSaveBtn()">
