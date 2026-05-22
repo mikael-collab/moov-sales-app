@@ -76,7 +76,7 @@ body{height:100%;font-family:'Heebo','Arial Hebrew',Arial,sans-serif;background:
 .glabel{font-size:10px;color:#aaa;margin-bottom:2px;}
 .gval{font-size:13px;font-weight:500;color:#222;word-break:break-all;}
 .dtable{background:#fff;border-radius:10px;border:.5px solid #ebebeb;overflow:hidden;margin-bottom:10px;}
-.dtable .dthead{padding:8px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;justify-content:space-between;}
+.dthead{padding:8px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;justify-content:space-between;}
 .dtrow{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-top:.5px solid #f0f0f0;}
 .dtlabel{font-size:12px;color:#666;flex-shrink:0;padding-left:8px;}
 .dtval{font-size:13px;font-weight:500;color:#222;text-align:left;direction:ltr;max-width:55%;overflow:hidden;text-overflow:ellipsis;}
@@ -216,34 +216,6 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
 const VAT=0.18;
-
-function setElValue(id, val) { const el = document.getElementById(id); if (el && el.value !== val) el.value = val; }
-function setElText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-function setElDisplay(id, display) { const el = document.getElementById(id); if (el) el.style.display = display; }
-
-function getSavedUrl() { try { return localStorage.getItem(STORAGE_KEY) || ''; } catch(e) { return ''; } }
-function saveUrlToLocal(url) { try { localStorage.setItem(STORAGE_KEY, url); } catch(e) { console.warn('Storage blocked'); } }
-function clearUrlFromLocal() { try { localStorage.removeItem(STORAGE_KEY); } catch(e) {} }
-
-function resetAll(){
-  S.csState='idle';S.isState='idle';S.rsState='idle';S.tsState='idle';
-  S.customers=[];S.invoices=[];S.receipts=[];S.tax=[];
-  S.availableSheets=[];S.diagData={};S.errors={};
-}
-
-function saveUrl(inputId,errId){
-  const inp=document.getElementById(inputId);
-  const errEl=document.getElementById(errId);
-  const val=(inp?.value||'').trim();
-  if(!val||!val.startsWith('https://script.google.com')){
-    if(inp)inp.classList.add('err');
-    if(errEl){errEl.textContent='URL לא תקין';errEl.style.display='block';}return;
-  }
-  S.scriptUrl=val;saveUrlToLocal(val);
-  resetAll();S.screen='list';S.tab='customers';
-  document.getElementById('bnav').style.display='flex';
-  setHeader();syncNav();pingSheets().then(()=>loadCustomers());
-}
 
 // ─────────────────────────────────────────────────────────
 // ⚙️ CENTRAL MAPPING (CONFIG) ⚙️
@@ -433,7 +405,6 @@ function taxFormErrors() {
   return null;
 }
 
-// Cleaned up invoiceFormErrors validation according to manually inputted book-keeping number requirements (Invoice number is not required in validation anymore)
 function invoiceFormErrors() {
   const f = S.iForm;
   const calc = calcInv(f);
@@ -453,15 +424,14 @@ function receiptFormErrors() {
     return 'מזומן לא יכול לעלות על יתרה: ₪' + Math.round(balance).toLocaleString('he-IL');
   if (rf[COLS.recPayType] === 'שיק' && balance > 0 && paid > balance + 0.5 && !rf._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
-  
+
   const recInvNumStr = String(rf[COLS.recInvNum] || '').trim();
-  if (recInvNumStr) {
-    // Corrected reference error by using rf[COLS.recInvNum].trim() instead of undefined val.trim()
-    const found = S.invoices.find(r => 
-      (nz(r[COLS.invNum]) && String(r[COLS.invNum]).trim() === recInvNumStr) || 
-      (nz(r[COLS.taxNum]) && String(r[COLS.taxNum]).trim() === recInvNumStr)
-    );
-    if (!found) return 'מספר חשבונית לא קיים במערכת';
+  if (recInvNumStr && (S.isState === 'ok' || S.tsState === 'ok')) {
+    const inInv = S.isState === 'ok' && S.invoices.find(r =>
+      nz(r[COLS.invNum]) && String(r[COLS.invNum]).trim() === recInvNumStr);
+    const inTax = S.tsState === 'ok' && S.tax.find(r =>
+      nz(r[COLS.taxNum]) && String(r[COLS.taxNum]).trim() === recInvNumStr);
+    if (!inInv && !inTax) return 'מספר חשבונית לא קיים במערכת';
   }
   if (rf[COLS.recPayType] === 'שיק') {
     if (!rf[COLS.recChkNum]?.trim()) return 'הזן מספר שיק';
@@ -481,7 +451,6 @@ function efI(isTax) {
   o[COLS.price] = '13.00'; o[COLS.subtotal] = ''; o[COLS.discount] = ''; o[COLS.afterDisc] = '';
   
   if (!isTax) {
-    // Cleaned regular Invoice Specific form variable space entirely of payment values
     o[COLS.invTerms] = ''; o[COLS.invTotalVat] = ''; o[COLS.invNum] = ''; o[COLS.invNotes] = '';
   } else {
     o[COLS.taxTotalVat] = ''; o[COLS.taxPayType] = ''; o[COLS.taxPayAmt] = '';
@@ -659,14 +628,16 @@ function openNewReceipt() {
   S.screen = 'new-receipt'; S.rForm = efR(); S.msg = null; S.showSuggest = false;
   if (S.isState === 'idle') loadInvoices();
   if (S.rsState === 'idle') loadReceipts();
+  if (S.tsState === 'idle') loadTax();
   setHeader(); render(); scrollToTop();
 }
 function parseMoney(v) { return parseFloat((v || '').toString().replace(/[^0-9.]/g, '')) || 0; }
 function getInvBalance(invNum) {
   if (!invNum) return 0;
-  const inv = S.invoices.find(r => nz(r[COLS.invNum]) === invNum);
+  const inv = S.invoices.find(r => nz(r[COLS.invNum]) === invNum)
+    || S.tax.find(r => nz(r[COLS.taxNum]) === invNum);
   if (!inv) return 0;
-  const total = parseMoney(inv[COLS.invTotalVat]);
+  const total = parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0;
   const paid = S.receipts
     .filter(r => nz(r[COLS.recInvNum]) === invNum)
     .reduce((s, r) => s + parseMoney(r[COLS.recPayAmt]), 0);
@@ -674,7 +645,10 @@ function getInvBalance(invNum) {
 }
 function openInvsFor(custId) {
   if (!custId) return [];
-  return S.invoices.filter(r => r[COLS.docCustId] === custId && isInvOpen(r));
+  return [
+    ...S.invoices.filter(r => r[COLS.docCustId] === custId && isInvOpen(r)),
+    ...S.tax.filter(r => r[COLS.docCustId] === custId && isInvOpen(r))
+  ];
 }
 function openNewReceiptFromInv(invId) {
   const r = S.invoices.find(x => x._id === invId);
@@ -854,20 +828,8 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  // FIXED: Bumped Version label to v6.57
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.57 (Stable compilation)</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.52 (Stable Compilation)</div></div>`;
   return h;
-}
-
-function getSavedUrl() { try { return localStorage.getItem(STORAGE_KEY) || ''; } catch(e) { return ''; } }
-function saveUrlToLocal(url) { try { localStorage.setItem(STORAGE_KEY, url); } catch(e) { console.warn('Storage blocked'); } }
-function clearUrlFromLocal() { try { localStorage.removeItem(STORAGE_KEY); } catch(e) {} }
-
-// FIXED: Defined resetAll near the very top of execution space to guarantee zero Temporal Dead Zone (TDZ) ReferenceErrors
-function resetAll(){
-  S.csState='idle';S.isState='idle';S.rsState='idle';S.tsState='idle';
-  S.customers=[];S.invoices=[];S.receipts=[];S.tax=[];
-  S.availableSheets=[];S.diagData={};S.errors={};
 }
 
 function getCustNotesById(custId) {
@@ -1047,12 +1009,12 @@ function buildTaxOpenInvsHtml() {
     h += `<div class="dtrow" style="cursor:pointer;${selected ? `background:${tc()}15;` : ''}${i === 0 ? 'border-top:none' : ''}"
       onclick="setTaxOverInv('${esc(invNum)}')">
       <div>
-        <div style="font-size:13px; font-weight:600; color:${selected ? tc() : '#222'}">#${esc(invNum)}</div>
-        <div style="font-size:11px; color:#888">${esc(invDate)}</div>
+        <div style="font-size:13px;font-weight:600;color:${selected ? tc() : '#222'}">#${esc(invNum)}</div>
+        <div style="font-size:11px;color:#888">${esc(invDate)}</div>
       </div>
       <div style="text-align:left">
-        <div style="font-size:14px; font-weight:700; color:${tc()}">יתרה: ${fmt(String(balance))}</div>
-        ${selected ? `<div style="font-size:10px; color:${tc()}">✓ נבחרה</div>` : ''}
+        <div style="font-size:14px;font-weight:700;color:${tc()}">יתרה: ${fmt(String(balance))}</div>
+        ${selected ? `<div style="font-size:10px;color:${tc()}">✓ נבחרה</div>` : ''}
       </div>
     </div>`;
   });
@@ -1206,7 +1168,7 @@ function renderInvForm(isTax) {
       ${f._photoDataUrl ? `<img src="${f._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">` : ''}
     </div>
     ${isOver ? `
-    <div style="background:#fff8e1;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
+    <div style="background:#fff8e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
       ⚠️ השיק גבוה ב-₪${Math.round(paid - total).toLocaleString('he-IL')} — בחר חשבונית פתוחה עבור ההפרש
     </div>
     <div id="tax-open-invs-container">${buildTaxOpenInvsHtml()}</div>
@@ -1269,39 +1231,39 @@ function suggestHtmlInv() {
 
 function buildOpenInvsHtml() {
   const rf = S.rForm;
-  if(!rf._openInvs || !rf._openInvs.length) return '';
+  if (!rf._openInvs || !rf._openInvs.length) return '';
   let h = '<div class="fdivider"><hr><span>📄 חשבוניות פתוחות</span><hr></div>' +
           '<div class="dtable" style="margin-bottom:12px">' +
           '<div class="dthead" style="background:' + tc() + '"><span>בחר חשבונית לתשלום</span><span>' + rf._openInvs.length + ' פתוחות</span></div>';
-  rf._openInvs.forEach((inv,i)=>{
-    const invNum=nz(inv[COLS.invNum])||'—';
-    const invDate=nz(inv[COLS.docDate])||'';
-    const balance=getInvBalance(invNum);
-    const rawTotal=parseFloat(nz(inv[COLS.invTotalVat]))||0;
-    const hasPartial=balance<rawTotal-0.1;
-    const selected=rf[COLS.recInvNum]===invNum;
+  rf._openInvs.forEach((inv, i) => {
+    const invNum = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
+    const invDate = nz(inv[COLS.docDate]) || '';
+    const balance = getInvBalance(invNum);
+    const rawTotal = parseFloat(nz(inv[COLS.invTotalVat])) || 0;
+    const hasPartial = balance < rawTotal - 0.1;
+    const selected = rf[COLS.recInvNum] === invNum;
     
     // Safely closed syntax tags and completed the entire block cleanly
-    h+='<div class="dtrow" style="cursor:pointer;' + (selected ? 'background:' + tc() + '15;' : '') + (i === 0 ? 'border-top:none;' : '') + '" ' +
-       'onclick="pickReceiptInv(\'' + esc(invNum) + '\',\'' + balance + '\',\'' + esc(invDate) + '\')">' +
-       '<div>' +
-         '<div style="font-size:13px; font-weight:600; color:' + (selected ? tc() : '#222') + '">#' + esc(invNum) + '</div>' +
-         '<div style="font-size:11px; color:#888">' + esc(invDate) + '</div>' +
-         (hasPartial ? '<div style="font-size:10px; color:#e65100">שולם חלקית: ₪' + Math.round(rawTotal - balance).toLocaleString('he-IL') + '</div>' : '') +
-       '</div>' +
-       '<div style="text-align:left">' +
-         '<div style="font-size:14px; font-weight:700; color:' + tc() + '">יתרה: ' + fmt(String(balance)) + '</div>' +
-         (selected ? '<div style="font-size:10px; color:' + tc() + '">✓ נבחרה</div>' : '') +
-       '</div>' +
-    '</div>';
+    h += '<div class="dtrow" style="cursor:pointer;' + (selected ? 'background:' + tc() + '15;' : '') + (i === 0 ? 'border-top:none;' : '') + '" ' +
+         'onclick="pickReceiptInv(\'' + esc(invNum) + '\',\'' + balance + '\',\'' + esc(invDate) + '\')">' +
+         '<div>' +
+           '<div style="font-size:13px;font-weight:600;color:' + (selected ? tc() : '#222') + '">#' + esc(invNum) + '</div>' +
+           '<div style="font-size:11px;color:#888">' + esc(invDate) + '</div>' +
+           (hasPartial ? '<div style="font-size:10px;color:#e65100">שולם חלקית: ₪' + Math.round(rawTotal - balance).toLocaleString('he-IL') + '</div>' : '') +
+         '</div>' +
+         '<div style="text-align:left">' +
+           '<div style="font-size:14px;font-weight:700;color:' + tc() + '">יתרה: ' + fmt(String(balance)) + '</div>' +
+           (selected ? '<div style="font-size:10px;color:' + tc() + '">✓ נבחרה</div>' : '') +
+         '</div>' +
+      '</div>';
   });
-  h+='</div>';
+  h += '</div>';
   return h;
 }
 
 function renderOpenInvs() {
   const container = document.getElementById('open-invs-container');
-  if(container) container.innerHTML = buildOpenInvsHtml();
+  if (container) container.innerHTML = buildOpenInvsHtml();
 }
 
 function renderReceiptForm() {
@@ -1536,7 +1498,7 @@ function renderDocList(data,state,isTax){
           ${date?`<span style="font-size:12px;color:#888;margin-right:auto">📅 ${esc(date)}</span>`:''}
         </div>
         <!-- Unified customer notes dynamically queried for documents lists -->
-        ${cNotes?`<div style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;text-align:right;">📝 <strong>הערות לקוח:</strong> ${esc(cNotes)}</div>` : ''}
+        ${cNotes?`<div style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;text-align:right;">📝 <strong>הערות לקוח:</strong> ${esc(cNotes)}</div>`:''}
         `;
       if(prods.length){
         h+=`<div class="dtable" style="margin-bottom:10px">
@@ -1601,8 +1563,414 @@ function renderDocList(data,state,isTax){
   return h+`</div>`;
 }
 
-// saveReceipt helper function
-async function saveReceipt(){
+// ── Live Input Event Handlers ──
+function uf(id, k, val) {
+  if (id === 'f-id') {
+    S.cForm[k] = val;
+    return;
+  }
+  S[id][k] = val;
+}
+
+function addDashC() {
+  S.cForm[COLS.custId] = (S.cForm[COLS.custId] || '') + '-';
+  const i = document.getElementById('f-id');
+  if (i) { i.value = S.cForm[COLS.custId]; i.focus(); }
+}
+
+function updateInvBar() {
+  const f = S.iForm || {};
+  const calc = calcInv(f);
+  const price = parseFloat(f[COLS.price]) || 0;
+  const cansEl = document.getElementById('st-cans');
+  const totEl = document.getElementById('st-total');
+  if (!cansEl) return;
+  if (price > 0 && calc.totalQty > 0) {
+    cansEl.textContent = `${calc.totalQty} יח'`;
+    totEl.textContent = `₪${Math.round(calc.withVat).toLocaleString('he-IL')} כולל מע"מ`;
+  } else if (price > 0) {
+    cansEl.textContent = `מחיר ₪${fmtNum(price)}`;
+    totEl.textContent = 'הזן כמויות';
+  } else {
+    cansEl.textContent = 'הזן מחיר';
+    totEl.textContent = 'וכמויות';
+  }
+}
+
+function refreshCalc() {
+  const f = S.iForm; const calc = calcInv(f); const color = tc();
+  S.iForm[COLS.subtotal] = calc.aa > 0 ? fmtNum(calc.aa) : '';
+  S.iForm[COLS.afterDisc] = calc.ac > 0 ? fmtNum(calc.ac) : '';
+  if (S.screen === 'new-invoice') S.iForm[COLS.invTotalVat] = calc.withVat > 0 ? String(Math.round(calc.withVat)) : '';
+  else S.iForm[COLS.taxTotalVat] = calc.withVat > 0 ? String(Math.round(calc.withVat)) : '';
+  updateInvBar();
+  renderSaveBtn();
+  
+  const preview = document.getElementById('calc-preview');
+  if (!preview) return;
+  if (calc.totalQty > 0 && parseFloat(f[COLS.price]) > 0) {
+    let inner = `<div class="calc-row"><span class="calc-label">סה"כ יחידות</span><span class="calc-val">${calc.totalQty}</span></div>
+    <div class="calc-row"><span class="calc-label">סה"כ לפני מע"מ</span><span class="calc-val">₪${fmtNum(calc.aa)}</span></div>`;
+    if (calc.disc > 0) inner += `<div class="calc-row"><span class="calc-label">אחרי הנחה ${calc.disc}%</span><span class="calc-val">₪${fmtNum(calc.ac)}</span></div>`;
+    inner += `<div class="calc-row"><span class="calc-label">סה"כ כולל מע"מ 18%</span><span class="calc-val hi" style="--tc:${color}">₪${Math.round(calc.withVat).toLocaleString('he-IL')}</span></div>`;
+    preview.style.cssText = 'background:#f8f8f8;border-radius:10px;padding:4px;margin-bottom:12px';
+    preview.innerHTML = inner;
+  } else {
+    preview.style.cssText = ''; preview.innerHTML = '';
+  }
+}
+
+function updProd(qk, val) {
+  S.iForm[qk] = val.replace(/[^0-9]/g, '') || '0';
+  refreshCalc(); 
+}
+
+function onCustSearch(val) {
+  S.rForm._custName = val; 
+  renderSaveBtnRec();
+  const inp = document.getElementById('r-H');
+  const wrap = inp?.parentElement;
+  let box = document.getElementById('suggest-box');
+  if (val.length < 2) {
+    S.suggest = []; S.showSuggest = false;
+    if (box) box.remove();
+    return;
+  }
+  const q = val.toLowerCase();
+  const keys = [COLS.custName, COLS.custId, COLS.custBiz];
+  S.suggest = S.customers.filter(c => keys.some(k => (c[k] || '').toLowerCase().includes(q)));
+  S.showSuggest = S.suggest.length > 0;
+  if (S.showSuggest && wrap) {
+    const inner = S.suggest.slice(0, 6).map(c => `<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c[COLS.custName] || '')}','${esc(c[COLS.custId] || '')}')">
+      <div>${esc(c[COLS.custBiz] || c[COLS.custName] || '—')}</div><div class="sug-sub">${c[COLS.custBiz] && c[COLS.custName] ? esc(c[COLS.custName]) + ' · ' : ''}${c[COLS.custId] ? esc(c[COLS.custId]) : ''}</div>
+    </div>`).join('');
+    if (box) { box.innerHTML = inner; }
+    else {
+      const el = document.createElement('div');
+      el.className = 'suggest-box'; el.id = 'suggest-box';
+      el.innerHTML = inner; wrap.appendChild(el);
+    }
+  } else if (box) { box.remove(); }
+}
+
+function onCustIdInput(val) {
+  S.rForm._custId = val;
+  renderSaveBtnRec();
+  clearTimeout(_invLookupTimer);
+  _invLookupTimer = setTimeout(() => {
+    S.rForm._openInvs = openInvsFor(val.trim());
+    const cust = S.customers.find(c => c[COLS.custId] === val.trim());
+    S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+    S.rForm._custEditRow = cust ? cust._row : null;
+    S.rForm._custEditId = cust ? cust._id : null;
+    setElValue('r-custNotes', S.rForm[COLS.custNotes]);
+    renderOpenInvs();
+  }, 400);
+}
+
+function onInvCustSearch(val) {
+  S.iForm[COLS.docCustName] = val;
+  renderSaveBtn();
+  const inp = document.getElementById('inv-custName');
+  const wrap = inp?.parentElement;
+  let box = document.getElementById('suggest-box');
+  if (val.length < 2) {
+    S.suggest = []; S.showSuggest = false;
+    if (box) box.remove();
+    return;
+  }
+  const q = val.toLowerCase();
+  const keys = [COLS.custName, COLS.custId, COLS.custBiz];
+  S.suggest = S.customers.filter(c => keys.some(k => (c[k] || '').toLowerCase().includes(q)));
+  S.showSuggest = S.suggest.length > 0;
+  if (S.showSuggest && wrap) {
+    const inner = S.suggest.slice(0, 6).map(c => `<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c[COLS.custId] || '')}','${esc(c[COLS.custBiz] || c[COLS.custName] || '')}')">
+      <div>${esc(c[COLS.custBiz] || c[COLS.custName] || '—')}</div><div class="sug-sub">${c[COLS.custBiz] && c[COLS.custName] ? esc(c[COLS.custName]) + ' · ' : ''}${c[COLS.custId] ? esc(c[COLS.custId]) : ''}</div>
+    </div>`).join('');
+    if (box) { box.innerHTML = inner; }
+    else {
+      const el = document.createElement('div');
+      el.className = 'suggest-box'; el.id = 'suggest-box';
+      el.innerHTML = inner; wrap.appendChild(el);
+    }
+  } else if (box) { box.remove(); }
+}
+
+function pickCustomer(name, id) {
+  S.rForm._custName = name;
+  S.rForm._custId = id;
+  S.rForm._openInvs = openInvsFor(id);
+  S.rForm._showOpenInvs = true;
+
+  const cust = S.customers.find(c => c[COLS.custId] === id);
+  S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  S.rForm._custEditRow = cust ? cust._row : null;
+  S.rForm._custEditId = cust ? cust._id : null;
+
+  setElValue('r-H', name);
+  setElValue('r-I', id);
+  setElValue('r-custNotes', S.rForm[COLS.custNotes]);
+
+  if (S.rForm._openInvs.length === 1) {
+    const inv = S.rForm._openInvs[0];
+    S.rForm[COLS.recInvNum] = nz(inv[COLS.invNum]) || '';
+    S.rForm._invTotal = String(getInvBalance(S.rForm[COLS.recInvNum]));
+    S.rForm._invDate = nz(inv[COLS.docDate]) || '';
+    setElValue('r-' + COLS.recInvNum, S.rForm[COLS.recInvNum]);
+    setElDisplay('receipt-inv-total', 'flex');
+    setElText('rcb-total-val', fmt(S.rForm._invTotal));
+  } else {
+    S.rForm[COLS.recInvNum] = '';
+    S.rForm._invTotal = '';
+    setElValue('r-' + COLS.recInvNum, '');
+    setElDisplay('receipt-inv-total', 'none');
+  }
+  
+  S.showSuggest = false; S.suggest = [];
+  const box = document.getElementById('suggest-box');
+  if (box) box.remove();
+  
+  renderOpenInvs();
+  renderSaveBtnRec();
+}
+
+function captureReceiptFields() {
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  S.rForm[COLS.recPayAmt] = g('r-' + COLS.recPayAmt).trim();
+  S.rForm[COLS.recInvNum] = g('r-' + COLS.recInvNum).trim() || S.rForm[COLS.recInvNum];  
+  S.rForm[COLS.recChkNum] = g('r-' + COLS.recChkNum).trim();
+  S.rForm[COLS.recPayDate] = g('r-' + COLS.recPayDate).trim() || S.rForm[COLS.recPayDate];
+  
+  const rh = g('r-H'); if (rh) S.rForm._custName = rh;
+  const ri = g('r-I'); if (ri) S.rForm._custId = ri;
+  
+  const rcn = g('r-custNotes'); if (rcn !== undefined) S.rForm[COLS.custNotes] = rcn;
+  
+  const ov = g('r-overinv').trim(); S.rForm._overInvNum = ov || S.rForm._overInvNum;
+  const gEl = document.getElementById('r-' + COLS.recNotes); if (gEl) S.rForm[COLS.recNotes] = gEl.value;
+}
+
+function onReceiptPayTypeChange(val) {
+  captureReceiptFields();
+  S.rForm[COLS.recPayType] = val;
+  render();
+}
+
+function clearReceiptCustomer() {
+  S.rForm._custName = ''; S.rForm._custId = ''; S.rForm._openInvs = [];
+  S.rForm[COLS.recInvNum] = ''; S.rForm._invTotal = ''; S.rForm._invDate = '';
+  setElValue('r-H', '');
+  setElValue('r-I', '');
+  setElValue('r-custNotes', '');
+  setElValue('r-' + COLS.recInvNum, '');
+  setElDisplay('receipt-inv-total', 'none');
+  renderOpenInvs();
+  renderSaveBtnRec();
+}
+
+function onReceiptInvNumInput(val) {
+  S.rForm[COLS.recInvNum] = val;
+  renderSaveBtnRec();
+  clearTimeout(_invLookupTimer);
+  
+  if (!val.trim()) {
+    S.rForm._invTotal = '';
+    S.rForm._invDate = '';
+    setElDisplay('receipt-inv-total', 'none');
+    return;
+  }
+  
+  _invLookupTimer = setTimeout(() => {
+    const found = S.invoices.find(r => nz(r[COLS.invNum]) && String(r[COLS.invNum]).trim() === val.trim())
+      || S.tax.find(r => nz(r[COLS.taxNum]) && String(r[COLS.taxNum]).trim() === val.trim());
+    
+    if (found) {
+      S.rForm._custId = nz(found[COLS.docCustId]) || '';
+      let cName = nz(found[COLS.docCustName]);
+      if (!cName && S.rForm._custId) {
+        const cust = S.customers.find(c => c[COLS.custId] === S.rForm._custId);
+        if (cust) cName = cust[COLS.custBiz] || cust[COLS.custName];
+      }
+      S.rForm._custName = cName || '';
+      S.rForm._invTotal = String(getInvBalance(val.trim()));
+      S.rForm._invDate = nz(found[COLS.docDate]) || '';
+      
+      const cust = S.customers.find(c => c[COLS.custId] === S.rForm._custId);
+      S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+      S.rForm._custEditRow = cust ? cust._row : null;
+      S.rForm._custEditId = cust ? cust._id : null;
+      setElValue('r-custNotes', S.rForm[COLS.custNotes]);
+      
+      setElValue('r-H', S.rForm._custName);
+      setElValue('r-I', S.rForm._custId);
+      setElValue('r-custNotes', S.rForm[COLS.custNotes]);
+
+      if (S.rForm._invTotal) {
+        setElDisplay('receipt-inv-total', 'flex');
+        setElText('rcb-total-val', fmt(S.rForm._invTotal));
+      }
+    } else {
+      S.rForm._invTotal = '';
+      S.rForm._invDate = '';
+      setElDisplay('receipt-inv-total', 'none');
+    }
+    renderOpenInvs();
+    renderSaveBtnRec();
+  }, 400);
+}
+
+function pickReceiptInv(invNum, invTotal, invDate) {
+  S.rForm[COLS.recInvNum] = invNum;
+  S.rForm._invTotal = invTotal;
+  S.rForm._invDate = invDate;
+  S.rForm._openInvs = [];  
+  
+  setElValue('r-' + COLS.recInvNum, invNum);
+  setElDisplay('receipt-inv-total', 'flex');
+  setElText('rcb-total-val', fmt(invTotal));
+  
+  renderOpenInvs();
+  renderSaveBtnRec();
+}
+
+function onPhotoChange(input) {
+  if (!input.files || !input.files[0]) return;
+  showToast('⏳ מעבד תמונה...', 'ok', 2000);
+  const file = input.files[0];
+  const img = new Image();
+  img.onload = function() {
+    URL.revokeObjectURL(img.src);
+    const MAX = 800; 
+    const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * ratio); c.height = Math.round(img.height * ratio);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const b64 = c.toDataURL('image/jpeg', 0.6);
+    S.iForm._photoDataUrl = b64;
+    S.iForm._photoBase64 = b64;
+    S.iForm._photoTaken = true; 
+    render();
+    setTimeout(() => {
+      const el = document.querySelector('img[src^="data:image"]');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+  };
+  img.onerror = function() { showToast('❌ שגיאה בטעינת התמונה', 'err'); };
+  img.src = URL.createObjectURL(file);
+  input.value = '';
+}
+
+function onReceiptPhotoChange(input) {
+  if (!input.files || !input.files[0]) return;
+  showToast('⏳ מעבד תמונה...', 'ok', 2000);
+  const file = input.files[0];
+  const img = new Image();
+  img.onload = function() {
+    URL.revokeObjectURL(img.src);
+    const MAX = 800; 
+    const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * ratio); c.height = Math.round(img.height * ratio);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const b64 = c.toDataURL('image/jpeg', 0.6);
+    S.rForm._photoDataUrl = b64;
+    S.rForm._photoBase64 = b64;
+    S.rForm._photoTaken = true;
+    render();
+    setTimeout(() => {
+      const el = document.querySelector('#receipt-chk-fields img');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+  };
+  img.onerror = function() { showToast('❌ שגיאה בטעינת התמונה', 'err'); };
+  img.src = URL.createObjectURL(file);
+  input.value = '';
+}
+
+function pickInvCust(custId, bizName) {
+  S.iForm[COLS.docCustId] = custId;
+  S.iForm[COLS.docCustName] = bizName || ''; 
+  S.iForm._openInvs = openInvsFor(custId);
+  
+  const cust = S.customers.find(c => c[COLS.custId] === custId);
+  S.iForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : '';
+  S.iForm._custEditRow = cust ? cust._row : null;
+  S.iForm._custEditId = cust ? cust._id : null;
+  
+  S.showSuggest = false; S.suggest = [];
+  const inp = document.getElementById('inv-custName');
+  if (inp) inp.value = bizName || '';
+  const idField = document.getElementById('inv-custId');
+  if (idField) idField.value = custId || '';
+  
+  const notesField = document.getElementById('inv-custNotes');
+  if (notesField) notesField.value = S.iForm[COLS.custNotes];
+  
+  const termsField = document.getElementById('inv-custTerms');
+  if (termsField) termsField.value = S.iForm[COLS.invTerms];
+  
+  document.getElementById('suggest-box')?.remove();
+  renderTaxOpenInvs();
+  renderSaveBtn();
+}
+
+function editCust(custId) {
+  const c = S.customers.find(x => x._id === custId);
+  if (!c) return;
+  const form = {};
+  CF.forEach(f => { form[f.k] = c[f.k] || ''; });
+  S.cForm = form;
+  S.cForm._editId = custId;   
+  S.cForm._editRow = c._row;  
+  S.screen = 'new-customer'; S.msg = null;
+  setHeader(); render();
+}
+
+async function updateCustomerNotesIfNeeded(custEditId, custEditRow, notesVal) {
+  if (!custEditRow) return;
+  const cust = S.customers.find(c => c._id === custEditId);
+  if (!cust) return;
+  if ((cust[COLS.custNotes] || '') !== (notesVal || '')) {
+    const updatedData = {};
+    CF.forEach(f => {
+      updatedData[f.k] = cust[f.k] || ''; 
+    });
+    updatedData[COLS.custNotes] = notesVal || '';
+    await apiPost({ action: 'updateCustomer', data: updatedData, editRow: custEditRow });
+    cust[COLS.custNotes] = notesVal || '';
+  }
+}
+
+async function saveCust() {
+  if (!S.cForm[COLS.custName]?.trim()) {
+    showToast('❌ שם לקוח הוא שדה חובה', 'err');
+    return;
+  }
+  if (S.cForm[COLS.custPhone]) S.cForm[COLS.custPhone] = fmtPhone(S.cForm[COLS.custPhone]);
+  
+  const isEdit = (S.cForm._editId !== undefined && S.cForm._editId !== null);
+  
+  S.saving = true; S.msg = null; render();
+  try {
+    if (isEdit) {
+      await apiPost({ action: 'updateCustomer', data: { ...S.cForm }, editRow: S.cForm._editRow });
+      const idx = S.customers.findIndex(c => c._id === S.cForm._editId);
+      if (idx >= 0) S.customers[idx] = { ...S.customers[idx], ...S.cForm };
+    } else {
+      await apiPost({ action: 'addCustomer', data: { ...S.cForm } });
+      S.customers.push({ ...S.cForm, _id: S.customers.length, _bg: '#ffffff' });
+    }
+    S.msg = { t: 's', m: isEdit ? 'פרטי הלקוח עודכנו!' : 'הלקוח נשמר בהצלחה!' }; S.saving = false; render();
+    setTimeout(() => { S.screen = 'list'; S.cForm = efC(); S.msg = null; setHeader(); render(); }, 1500);
+  } catch (e) {
+    showToast('❌ ' + (e.message || 'שגיאה'), 'err');
+    S.saving = false;
+    render();
+  }
+}
+
+async function saveReceipt() {
   if (S.saving) return;
   captureReceiptFields();
   const err = receiptFormErrors();
@@ -1622,7 +1990,6 @@ async function saveReceipt(){
   }
 }
 
-// FIXED: Removed recCustName and recCustId fields from the transmitted payload data, ensuring calculated columns H and I on the Google Sheet remain untouched and pristine
 async function executeSaveReceipt() {
   const rf = S.rForm;
   const paid = parseFloat(rf[COLS.recPayAmt]) || 0;
@@ -1641,20 +2008,13 @@ async function executeSaveReceipt() {
     [COLS.recPayAmt]: isOverpay ? String(Math.round(balance * 100) / 100) : rf[COLS.recPayAmt],
     [COLS.recPayDate]: rf[COLS.recPayDate] || tod(),
     [COLS.recChkNum]: rf[COLS.recChkNum] || '',
-    [COLS.recNotes]: g1Notes,
-    [COLS.recCustName]: rf._custName || '', 
-    [COLS.recCustId]: rf._custId || ''
+    [COLS.recNotes]: g1Notes
   };
-
-  // Strip H (recCustName) and I (recCustId) columns prior to sending
-  const payloadData1 = { ...data1 };
-  delete payloadData1[COLS.recCustName];
-  delete payloadData1[COLS.recCustId];
 
   S.saving = true;
   renderSaveBtnRec();
   try {
-    await apiPost({ action: 'addReceipt', data: payloadData1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
+    await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
     if (isOverpay && inv2) {
@@ -1665,16 +2025,9 @@ async function executeSaveReceipt() {
         [COLS.recPayAmt]: String(Math.round(excess * 100) / 100),
         [COLS.recPayDate]: rf[COLS.recPayDate] || tod(),
         [COLS.recChkNum]: rf[COLS.recChkNum] || '',
-        [COLS.recNotes]: g2Notes,
-        [COLS.recCustName]: rf._custName || '', 
-        [COLS.recCustId]: rf._custId || ''
+        [COLS.recNotes]: g2Notes
       };
-
-      const payloadData2 = { ...data2 };
-      delete payloadData2[COLS.recCustName];
-      delete payloadData2[COLS.recCustId];
-
-      await apiPost({ action: 'addReceipt', data: payloadData2, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
+      await apiPost({ action: 'addReceipt', data: data2, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
       S.receipts.push({ ...data2, _id: S.receipts.length, _bg: '#ffffff' });
     }
 
@@ -1688,7 +2041,6 @@ async function executeSaveReceipt() {
   } catch (e) { showToast('❌ ' + (e.message || 'שגיאה'), 'err'); S.saving = false; renderSaveBtnRec(); }
 }
 
-// saveInv helper function
 async function saveInv(isTax) {
   const f = S.iForm;
   const calc = calcInv(f);
@@ -1720,7 +2072,6 @@ async function saveInv(isTax) {
   }
 }
 
-// FIXED: Removed recCustName and recCustId fields from the transmitted payload data, ensuring calculated columns H and I on the Google Sheet remain untouched and pristine
 async function executeSaveInv(isTax, calc) {
   const f = S.iForm;
   const paid = parseFloat(f[COLS.taxPayAmt] || 0);
@@ -1781,12 +2132,7 @@ async function executeSaveInv(isTax, calc) {
         [COLS.recCustName]: f[COLS.docCustName] || '',
         [COLS.recCustId]: f[COLS.docCustId] || ''
       };
-      
-      const payloadRecData = { ...recData };
-      delete payloadRecData[COLS.recCustName];
-      delete payloadRecData[COLS.recCustId];
-
-      await apiPost({ action: 'addReceipt', data: payloadRecData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
+      await apiPost({ action: 'addReceipt', data: recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
       S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
     }
     // --------------------------------------------------------
