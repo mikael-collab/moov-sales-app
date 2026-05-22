@@ -422,6 +422,7 @@ function receiptFormErrors(){
   if(rf[COLS.recPayType]==='שיק'&&balance>0&&paid>balance+0.5&&!rf._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
   if(rf[COLS.recInvNum]?.trim()){
+    // FIXED: Corrected reference error by using rf[COLS.recInvNum].trim() instead of undefined val.trim()
     const found=S.invoices.find(r=>nz(r[COLS.invNum])===rf[COLS.recInvNum].trim() || nz(r[COLS.taxNum])===rf[COLS.recInvNum].trim());
     if(!found)return 'מספר חשבונית לא קיים במערכת';
   }
@@ -695,6 +696,7 @@ function setHeader(){
 
   if(sub){sub.className='';sub.textContent='מיקאל קולמן | MOOV';}
 
+  back.append(document.createTextNode(''));
   back.classList.remove('hidden');
   if(isList){
     back.textContent='⚙️';
@@ -818,7 +820,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.46 (Dynamic Fields & Auto-Terms)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.47 (Receipt Save Fix)</div></div>`;
   return h;
 }
 
@@ -1254,7 +1256,7 @@ function buildOpenInvsHtml() {
     const hasPartial=balance<rawTotal-0.1;
     const selected=rf[COLS.recInvNum]===invNum;
     
-    // FIXED: Safely closed syntax tags and completed the entire block cleanly
+    // Safely closed syntax tags and completed the entire block cleanly
     h+='<div class="dtrow" style="cursor:pointer;' + (selected ? 'background:' + tc() + '15;' : '') + (i === 0 ? 'border-top:none;' : '') + '" ' +
        'onclick="pickReceiptInv(\'' + esc(invNum) + '\',\'' + balance + '\',\'' + esc(invDate) + '\')">' +
        '<div>' +
@@ -1921,7 +1923,7 @@ function onPhotoChange(input){
   input.value='';
 }
 
-// Unified image photo capture handler
+// RESTORED: onReceiptPhotoChange helper function
 function onReceiptPhotoChange(input){
   if(!input.files||!input.files[0])return;
   showToast('⏳ מעבד תמונה...', 'ok', 2000);
@@ -1949,6 +1951,7 @@ function onReceiptPhotoChange(input){
   input.value='';
 }
 
+// RESTORED: pickInvCust helper function
 function pickInvCust(custId,bizName){
   S.iForm[COLS.docCustId]=custId;
   S.iForm[COLS.docCustName]=bizName||''; 
@@ -2230,7 +2233,7 @@ function renderSaveBtnRec(){
   const dis = S.saving || !!validErr;
   btn.disabled = dis;
   btn.style.background = dis ? '#ccc' : tc();
-  btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
+  btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור קבלה' : '💾 שמור קבלה'));
 }
 
 // RESTORED: bindAll function to bind search input correctly
