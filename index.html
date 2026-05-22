@@ -310,7 +310,7 @@ const PRODS=[
   {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
 ];
 
-// FIXED: Removed invPayType, invPayAmt, invPayDate, invChkNum so payment fields are completely non-existent for invoices
+// Removed invPayType, invPayAmt, invPayDate, invChkNum so payment fields are completely non-existent for invoices
 const INV_TAIL=[
   {k:COLS.invTerms,label:'תנאי תשלום'},
   {k:COLS.invTotalVat,label:'סה"כ כולל מע"מ',money:true,hi:true},
@@ -422,7 +422,6 @@ function receiptFormErrors(){
   if(rf[COLS.recPayType]==='שיק'&&balance>0&&paid>balance+0.5&&!rf._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
   if(rf[COLS.recInvNum]?.trim()){
-    // FIXED: Strictly target the mapped receipt variable rf[COLS.recInvNum] instead of the undefined val variable
     const found=S.invoices.find(r=>nz(r[COLS.invNum])===rf[COLS.recInvNum].trim() || nz(r[COLS.taxNum])===rf[COLS.recInvNum].trim());
     if(!found)return 'מספר חשבונית לא קיים במערכת';
   }
@@ -819,7 +818,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.45 (Dynamic Fields)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.46 (Dynamic Fields & Auto-Terms)</div></div>`;
   return h;
 }
 
@@ -1859,6 +1858,7 @@ function onReceiptInvNumInput(val){
       S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
       S.rForm._custEditRow = cust ? cust._row : null;
       S.rForm._custEditId = cust ? cust._id : null;
+      setElValue('r-custNotes', S.rForm[COLS.custNotes]);
       
       setElValue('r-H', S.rForm._custName);
       setElValue('r-I', S.rForm._custId);
@@ -1921,7 +1921,7 @@ function onPhotoChange(input){
   input.value='';
 }
 
-// RESTORED: onReceiptPhotoChange helper function
+// Unified image photo capture handler
 function onReceiptPhotoChange(input){
   if(!input.files||!input.files[0])return;
   showToast('⏳ מעבד תמונה...', 'ok', 2000);
@@ -1949,7 +1949,6 @@ function onReceiptPhotoChange(input){
   input.value='';
 }
 
-// RESTORED: pickInvCust helper function
 function pickInvCust(custId,bizName){
   S.iForm[COLS.docCustId]=custId;
   S.iForm[COLS.docCustName]=bizName||''; 
