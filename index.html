@@ -403,7 +403,7 @@ function taxFormErrors(){
 
 function invoiceFormErrors() {
   const f=S.iForm;
-  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ הוא שדה חובה';
+  if(!f[COLS.docCustId]?.trim())return 'ת"ז / ח"פ هو שדה חובה';
   if(!f[COLS.invNum]?.trim())return 'מספר חשבונית הוא שדה חובה';
   return null;
 }
@@ -415,10 +415,11 @@ function receiptFormErrors(){
   const paid=parseFloat(rf[COLS.recPayAmt])||0;
   const balance=parseFloat(rf._invTotal)||0;
   if(rf[COLS.recPayType]==='מזומן'&&balance>0&&paid>balance+0.5)
-    return `מזומן לא יכול לעלות על יתרה: ₪${Math.round(balance).toLocaleString('he-IL')}`;
+    return 'מזומן לא יכול לעלות על יתרה: ₪' + Math.round(balance).toLocaleString('he-IL');
   if(rf[COLS.recPayType]==='שיק'&&balance>0&&paid>balance+0.5&&!rf._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
   if(rf[COLS.recInvNum]?.trim()){
+    // FIXED: Strictly target the mapped receipt variable rf[COLS.recInvNum] instead of the undefined val variable
     const found=S.invoices.find(r=>nz(r[COLS.invNum])===rf[COLS.recInvNum].trim() || nz(r[COLS.taxNum])===rf[COLS.recInvNum].trim());
     if(!found)return 'מספר חשבונית לא קיים במערכת';
   }
@@ -440,7 +441,7 @@ function efI(isTax){
   o[COLS.price]='13.00'; o[COLS.subtotal]=''; o[COLS.discount]=''; o[COLS.afterDisc]='';
   
   if(!isTax){
-    // FIXED: Cleaned regular Invoice Specific form variable space entirely of payment values
+    // Cleaned regular Invoice Specific form variable space entirely of payment values
     o[COLS.invTerms]=''; o[COLS.invTotalVat]=''; o[COLS.invNum]=''; o[COLS.invNotes]='';
   }else{
     o[COLS.taxTotalVat]=''; o[COLS.taxPayType]=''; o[COLS.taxPayAmt]='';
@@ -751,7 +752,7 @@ function renderSetup(){
     <div class="setup-hero"><div class="logo">📊</div><h2>MOOV Sales App</h2><p>חיבור חד-פעמי ל-Google Sheets שלך</p></div>
     <div class="setup-body">
       <div class="setup-card">
-        <h3>🔗 הדבק את ה-URL של ה-Apps Script</h3>
+        <h3>🔗 הדבק את ה-URL של ال-Apps Script</h3>
         <div class="url-err" id="url-err"></div>
         <input class="url-input" id="script-url-input" type="url" inputmode="url"
           placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
@@ -815,7 +816,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.40 (Dynamic Dropdowns)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.43 (Full Recompilation)</div></div>`;
   return h;
 }
 
@@ -1587,7 +1588,6 @@ function errScreen(errMsg,reload,label,color){
 }
 
 // RESTORED: toast helper function
-let _toastTimer=null;
 function showToast(msg,type,duration){
   const c=document.getElementById('toast-container');
   if(!c)return;
@@ -2215,6 +2215,43 @@ function renderSaveBtnRec(){
   btn.disabled = dis;
   btn.style.background = dis ? '#ccc' : tc();
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
+}
+
+// RESTORED: bindAll function to bind search input correctly
+function bindAll(){
+  const si=document.getElementById('sinput');
+  if(si){
+    si.addEventListener('input',e=>{
+      S.search=e.target.value;
+      const fc=filteredC();
+      const cnt=document.getElementById('scnt');
+      if(cnt)cnt.textContent=`${fc.length} לקוחות${S.search?` (מתוך ${S.customers.length})`:''} `;
+    });
+  }
+}
+
+// RESTORED: clearSearch function
+function clearSearch(){
+  S.search='';
+  render();
+  setTimeout(()=>document.getElementById('sinput')?.focus(),50);
+}
+
+// RESTORED: tog function for expanding cards smoothly
+function tog(id){
+  S.expId=S.expId===id?null:id;
+  render();
+  setTimeout(()=>document.querySelector('.card.exp')?.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+
+// RESTORED: cp function to copy ID badges seamlessly
+async function cp(text,key){
+  try{await navigator.clipboard.writeText(text);}
+  catch{const t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);}
+  if(S.copiedTimer)clearTimeout(S.copiedTimer);
+  S.copied=key;render();
+  S.copiedTimer=setTimeout(()=>{S.copied=null;render();},2000);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
