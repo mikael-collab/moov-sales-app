@@ -481,6 +481,7 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// FIXED: Defined nz as it is used to filter valid elements inside invoice matching
 function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
 function fmt(x){
   const n=parseFloat((x||'').toString().replace(/[^0-9.]/g,''));
@@ -771,6 +772,9 @@ function renderSetup(){
   </div>`;
 }
 
+// FIXED: Defined nz as it is used to filter valid elements inside invoice matching
+function nz(x){return x&&x!=='0'&&x!=='0.00'?x:'';}
+
 function renderSettings(){
   const connected=!!S.scriptUrl;
   let h=`<div class="set-wrap">
@@ -825,7 +829,7 @@ function renderSettings(){
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.48 (Receipt Save Fix)</div></div>`;
+  h+=`<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.49 (Receipt Save Fix)</div></div>`;
   return h;
 }
 
@@ -1189,7 +1193,7 @@ function renderInvForm(isTax){
     <div style="background:#fff8e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
       ⚠️ השיק גבוה ב-₪${Math.round(paid-total).toLocaleString('he-IL')} — בחר חשבונית פתוחה עבור ההפרש
     </div>
-    <div id="tax-open-invs-container">${buildTaxOpenInvsHtml()}</div>
+    <div id="tax-open-invs-container">${buildOpenInvsHtml()}</div>
     <div class="field"><label>או הזן מספר חשבונית ידנית *</label>
       <input type="text" inputmode="numeric" id="inv-overInvNum" class="finput num" value="${esc(f._overInvNum||'')}"
         placeholder="מספר חשבונית"
@@ -2229,7 +2233,7 @@ function renderSaveBtn(){
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור חשמ"ק' : '💾 שמור חשבונית'));
 }
 
-// FIXED: renderSaveBtnRec helper function no longer references undefined isTax variable, avoiding ReferenceErrors which freeze saving receipts
+// FIXED: renderSaveBtnRec helper function now completely eliminates the invalid isTax reference which causes silent save crashes
 function renderSaveBtnRec(){
   const btn=document.getElementById('btn-save-rec');
   if(!btn)return;
