@@ -595,15 +595,18 @@ async function apiPost(body) {
   const sendBody = Object.assign({}, body);
   delete sendBody.photoBase64; // excluded — large base64 handled separately
   const base = S.scriptUrl.trim();
-  const sep  = base.includes('?') ? '&' : '?';
-  const url  = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(sendBody));
+  const bodyStr = JSON.stringify(sendBody);
   const t = new Date().toLocaleTimeString('he-IL');
-  S._lastSave = { t, urlLen: url.length, phase: '?', resp: '', payloadPreview: JSON.stringify(sendBody).slice(0, 200) };
-  console.log('apiPost URL len:', url.length);
+  S._lastSave = { t, bodyLen: bodyStr.length, phase: '?', resp: '', payloadPreview: bodyStr.slice(0, 200) };
+  console.log('apiPost POST body len:', bodyStr.length);
 
-  // Phase 1: readable CORS fetch
+  // Phase 1: readable CORS POST (text/plain = simple request, no preflight needed)
   try {
-    const r = await fetch(url);
+    const r = await fetch(base, {
+      method: 'POST',
+      body: bodyStr,
+      headers: { 'Content-Type': 'text/plain' }
+    });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     if (d && d.error) throw new Error(d.error);
@@ -616,10 +619,15 @@ async function apiPost(body) {
       S._lastSave.phase = '1-err';
       throw corsErr;
     }
-    // Phase 2: no-cors — browser still sends GET with all URL params → GAS saves the row
-    console.warn('apiPost: phase-1 Failed to fetch → no-cors fallback');
+    // Phase 2: no-cors POST fallback
+    console.warn('apiPost: phase-1 Failed to fetch → no-cors POST fallback');
     try {
-      await fetch(url, { mode: 'no-cors' });
+      await fetch(base, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: bodyStr,
+        headers: { 'Content-Type': 'text/plain' }
+      });
       S._lastSave.phase = '2-nocors-ok';
       S._lastSave.resp  = 'opaque (cannot read GAS response)';
       return { status: 'ok' };
@@ -659,32 +667,32 @@ async function runDiagnose() {
     } catch (e) { S.diagData[tab] = { sheetName: SHEETS[tab], error: e.message }; }
   }
 
-  // ── Write test 1: empty payload (ASCII only, confirms basic fetch works) ──
+  // ── Write test 1: POST ASCII payload ──
   const base = S.scriptUrl.trim();
-  const sep  = base.includes('?') ? '&' : '?';
-  const writeUrl = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify({ action: '_diagtest', data: {} }));
-  S.diagData._writeUrl = writeUrl.slice(0, 90) + (writeUrl.length > 90 ? '…' : '') + ' [' + writeUrl.length + ' chars]';
+  const body1 = JSON.stringify({ action: '_diagtest', data: {} });
+  S.diagData._writeUrl = 'POST [body:' + body1.length + ' chars]';
 
-  async function testFetch(url) {
+  async function testPost(bodyStr) {
     try {
-      const r = await fetch(url);
+      const r = await fetch(base, { method: 'POST', body: bodyStr, headers: { 'Content-Type': 'text/plain' } });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const d = await r.json();
       return '✅ ' + JSON.stringify(d).slice(0, 70);
     } catch(e) {
       if (e.message !== 'Failed to fetch') return '⚠️ ' + e.message;
-      try { await fetch(url, { mode: 'no-cors' }); return '⚠️ CORS חסום (no-cors עובד)'; }
-      catch(e2) { return '❌ גם no-cors נכשל: ' + e2.message; }
+      try {
+        await fetch(base, { method: 'POST', mode: 'no-cors', body: bodyStr, headers: { 'Content-Type': 'text/plain' } });
+        return '⚠️ CORS חסום (no-cors POST עובד)';
+      } catch(e2) { return '❌ גם no-cors נכשל: ' + e2.message; }
     }
   }
 
-  S.diagData._writeResult  = await testFetch(writeUrl);
+  S.diagData._writeResult  = await testPost(body1);
 
-  // ── Write test 2: receipt-like payload with Hebrew values ──
-  const hebrewPayload = { action: '_diagtest', data: { A: '1', B: 'מזומן', C: '100', D: '01/05/2026', E: '', G: 'בדיקה' } };
-  const hebrewUrl = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(hebrewPayload));
-  S.diagData._writeUrl2    = '[len:' + hebrewUrl.length + ']';
-  S.diagData._writeResult2 = await testFetch(hebrewUrl);
+  // ── Write test 2: POST with Hebrew values ──
+  const body2 = JSON.stringify({ action: '_diagtest', data: { A: '1', B: 'מזומן', C: '100', D: '01/05/2026', E: '', G: 'בדיקה' } });
+  S.diagData._writeUrl2    = 'POST [body:' + body2.length + ' chars]';
+  S.diagData._writeResult2 = await testPost(body2);
 
   // ── Last save attempt (if any) ──
   S.diagData._lastSave = S._lastSave || null;
@@ -965,7 +973,7 @@ function renderSettings() {
           <div style="font-size:11px;color:${phaseColor}">Phase: ${esc(ls.phase || '?')}</div>
           ${ls.p1err ? `<div style="font-size:10px;color:#c62828;direction:ltr">p1 err: ${esc(ls.p1err)}</div>` : ''}
           ${ls.resp ? `<div style="font-size:10px;direction:ltr;word-break:break-all">resp: ${esc(ls.resp)}</div>` : ''}
-          <div style="font-size:10px;color:#888">URL len: ${ls.urlLen || '?'}</div>
+          <div style="font-size:10px;color:#888">body len: ${ls.bodyLen || ls.urlLen || '?'}</div>
           ${ls.payloadPreview ? `<div style="font-size:10px;direction:ltr;word-break:break-all;color:#444;margin-top:2px">payload: ${esc(ls.payloadPreview)}</div>` : ''}
         </div>`;
       }
@@ -991,7 +999,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.70</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.73</div></div>`;
   return h;
 }
 
@@ -2425,4 +2433,4 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 </body>
-</html>
+</html
