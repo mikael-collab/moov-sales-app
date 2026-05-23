@@ -597,25 +597,35 @@ async function apiPost(body) {
   const base = S.scriptUrl.trim();
   const sep  = base.includes('?') ? '&' : '?';
   const url  = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(sendBody));
+  const t = new Date().toLocaleTimeString('he-IL');
+  S._lastSave = { t, urlLen: url.length, phase: '?', resp: '' };
   console.log('apiPost URL len:', url.length);
 
-  // Phase 1: readable CORS fetch — gives us error details
+  // Phase 1: readable CORS fetch
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     if (d && d.error) throw new Error(d.error);
+    S._lastSave.phase = '1-ok';
+    S._lastSave.resp  = JSON.stringify(d).slice(0, 120);
     return d;
   } catch(corsErr) {
-    if (corsErr.message !== 'Failed to fetch') throw corsErr; // real error, propagate
-    // Phase 2: CORS blocks the response but GET params ARE sent to GAS server.
-    // no-cors mode: browser sends the full GET URL → GAS executes doGet → row is saved.
-    // We can't read the response but the write succeeds server-side.
-    console.warn('apiPost: CORS read blocked, falling back to no-cors GET');
+    S._lastSave.p1err = corsErr.message;
+    if (corsErr.message !== 'Failed to fetch') {
+      S._lastSave.phase = '1-err';
+      throw corsErr;
+    }
+    // Phase 2: no-cors — browser still sends GET with all URL params → GAS saves the row
+    console.warn('apiPost: phase-1 Failed to fetch → no-cors fallback');
     try {
       await fetch(url, { mode: 'no-cors' });
+      S._lastSave.phase = '2-nocors-ok';
+      S._lastSave.resp  = 'opaque (cannot read GAS response)';
       return { status: 'ok' };
     } catch(e2) {
+      S._lastSave.phase = '2-err';
+      S._lastSave.resp  = e2.message;
       throw new Error('שגיאת רשת — אין חיבור לשרת');
     }
   }
@@ -649,32 +659,35 @@ async function runDiagnose() {
     } catch (e) { S.diagData[tab] = { sheetName: SHEETS[tab], error: e.message }; }
   }
 
-  // ── Write test (uses a dummy action that GAS rejects safely — no data is written) ──
+  // ── Write test 1: empty payload (ASCII only, confirms basic fetch works) ──
   const base = S.scriptUrl.trim();
   const sep  = base.includes('?') ? '&' : '?';
   const writeUrl = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify({ action: '_diagtest', data: {} }));
   S.diagData._writeUrl = writeUrl.slice(0, 90) + (writeUrl.length > 90 ? '…' : '') + ' [' + writeUrl.length + ' chars]';
 
-  // Phase 1: readable fetch
-  try {
-    const r = await fetch(writeUrl);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-    // GAS returns { error: "Unknown action: _diagtest" } — that's expected and means fetch works!
-    S.diagData._writeResult = '✅ fetch עובד (GAS: ' + esc(JSON.stringify(d).slice(0, 60)) + ')';
-  } catch(e1) {
-    if (e1.message === 'Failed to fetch') {
-      // Phase 2: no-cors
-      try {
-        await fetch(writeUrl, { mode: 'no-cors' });
-        S.diagData._writeResult = '⚠️ fetch CORS חסום — no-cors עובד (שמירה צריכה לעבוד)';
-      } catch(e2) {
-        S.diagData._writeResult = '❌ גם no-cors נכשל: ' + e2.message + ' — URL לא תקין?';
-      }
-    } else {
-      S.diagData._writeResult = '⚠️ שגיאה: ' + esc(e1.message);
+  async function testFetch(url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      return '✅ ' + JSON.stringify(d).slice(0, 70);
+    } catch(e) {
+      if (e.message !== 'Failed to fetch') return '⚠️ ' + e.message;
+      try { await fetch(url, { mode: 'no-cors' }); return '⚠️ CORS חסום (no-cors עובד)'; }
+      catch(e2) { return '❌ גם no-cors נכשל: ' + e2.message; }
     }
   }
+
+  S.diagData._writeResult  = await testFetch(writeUrl);
+
+  // ── Write test 2: receipt-like payload with Hebrew values ──
+  const hebrewPayload = { action: '_diagtest', data: { A: '1', B: 'מזומן', C: '100', D: '01/05/2026', E: '', G: 'בדיקה' } };
+  const hebrewUrl = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(hebrewPayload));
+  S.diagData._writeUrl2    = '[len:' + hebrewUrl.length + ']';
+  S.diagData._writeResult2 = await testFetch(hebrewUrl);
+
+  // ── Last save attempt (if any) ──
+  S.diagData._lastSave = S._lastSave || null;
 
   S.diagRunning = false; render();
 }
@@ -928,16 +941,35 @@ function renderSettings() {
     if (Object.keys(S.diagData).length) {
       h += `<div class="diag-box">`;
 
-      // Write test results — shown first
+      // ── Write test results ──
       if (S.diagData._writeResult) {
         h += `<div class="diag-sheet">
-          <div class="diag-name" style="color:#1a73e8">🔧 בדיקת כתיבה</div>
-          <div style="font-size:11px;padding:3px 0;word-break:break-all">${esc(S.diagData._writeResult)}</div>
-          <div style="font-size:10px;color:#888;margin-top:4px;word-break:break-all;direction:ltr">${esc(S.diagData._writeUrl || '')}</div>
+          <div class="diag-name" style="color:#1a73e8">🔧 בדיקת כתיבה (ASCII)</div>
+          <div style="font-size:11px;word-break:break-all">${esc(S.diagData._writeResult)}</div>
+          <div style="font-size:10px;color:#888;direction:ltr;word-break:break-all">${esc(S.diagData._writeUrl || '')}</div>
+        </div>`;
+      }
+      if (S.diagData._writeResult2) {
+        h += `<div class="diag-sheet">
+          <div class="diag-name" style="color:#1a73e8">🔧 בדיקת כתיבה (עברית) ${esc(S.diagData._writeUrl2 || '')}</div>
+          <div style="font-size:11px;word-break:break-all">${esc(S.diagData._writeResult2)}</div>
         </div>`;
       }
 
-      // Read test results
+      // ── Last save attempt ──
+      const ls = S.diagData._lastSave;
+      if (ls) {
+        const phaseColor = ls.phase && ls.phase.includes('ok') ? '#1e8e3e' : ls.phase && ls.phase.includes('err') ? '#c62828' : '#f59e0b';
+        h += `<div class="diag-sheet">
+          <div class="diag-name" style="color:#f59e0b">📋 שמירה אחרונה [${esc(ls.t || '')}]</div>
+          <div style="font-size:11px;color:${phaseColor}">Phase: ${esc(ls.phase || '?')}</div>
+          ${ls.p1err ? `<div style="font-size:10px;color:#c62828;direction:ltr">p1 err: ${esc(ls.p1err)}</div>` : ''}
+          ${ls.resp ? `<div style="font-size:10px;direction:ltr;word-break:break-all">resp: ${esc(ls.resp)}</div>` : ''}
+          <div style="font-size:10px;color:#888">URL len: ${ls.urlLen || '?'}</div>
+        </div>`;
+      }
+
+      // ── Read test results ──
       ['customers', 'invoices', 'receipts', 'tax'].forEach(tab => {
         const d = S.diagData[tab]; if (!d) return;
         h += `<div class="diag-sheet"><div class="diag-name">${esc(d.sheetName)}</div>`;
@@ -958,7 +990,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.63</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.68</div></div>`;
   return h;
 }
 
@@ -2144,7 +2176,8 @@ async function executeSaveReceipt() {
   S.saving = true;
   renderSaveBtnRec();
   try {
-    await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
+    const res1 = await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
+    const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : res1 && res1.status === 'ok' ? ' (no-cors)' : '';
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
     if (isOverpay && inv2) {
@@ -2166,7 +2199,7 @@ async function executeSaveReceipt() {
     }
 
     S.saving = false;
-    showToast(isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : '✅ הקבלה נשמרה!', 'ok', 2500);
+    showToast(isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : `✅ הקבלה נשמרה!${rowInfo}`, 'ok', 2500);
     setTimeout(() => { S.screen = 'list'; S.rForm = efR(); S.msg = null; setHeader(); render(); }, 1600);
   } catch (e) { showToast('❌ ' + (e.message || 'שגיאה'), 'err'); S.saving = false; renderSaveBtnRec(); }
 }
