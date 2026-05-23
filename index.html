@@ -699,7 +699,7 @@ async function runDiagnose() {
   S.diagData._writeResult2 = await testPost(body2);
 
   // ── Write test 3: iframe addReceipt + read-back verification ──
-  const body3 = JSON.stringify({ action: 'addReceipt', data: { A: 'DIAG', B: 'מזומן', C: 1, D: '01/01/2026', E: '', G: 'בדיקה-אבחון' } });
+  const body3 = JSON.stringify({ action: 'addReceipt', data: { A: '', B: 'מזומן', C: 1, D: '01/01/2026', E: '', G: 'בדיקה-אבחון' } });
   const diagSep = base.includes('?') ? '&' : '?';
   const diagGetUrl = base + diagSep + 'write=1&payload=' + encodeURIComponent(body3);
   S.diagData._writeUrl3 = 'iframe GET [url:' + diagGetUrl.length + ']';
@@ -723,7 +723,7 @@ async function runDiagnose() {
   } catch(e) { S.diagData._writeVerify = 'verify error: ' + e.message; }
 
   // ── Direct-navigate test URL (tap to open GAS in new tab and see raw response) ──
-  const directPayload = { action: 'addReceipt', data: { A: 'DIAG2', B: 'מזומן', C: 1, D: '01/01/2026', E: '', G: 'direct-nav-test' } };
+  const directPayload = { action: 'addReceipt', data: { A: '', B: 'מזומן', C: 1, D: '01/01/2026', E: '', G: 'direct-nav-test' } };
   const directSep = base.includes('?') ? '&' : '?';
   S.diagData._directUrl = base + directSep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(directPayload));
 
@@ -1053,7 +1053,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.83</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.85</div></div>`;
   return h;
 }
 
