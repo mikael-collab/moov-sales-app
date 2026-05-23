@@ -1053,7 +1053,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.85</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.88</div></div>`;
   return h;
 }
 
@@ -2227,8 +2227,12 @@ async function executeSaveReceipt() {
     ? `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה חשבונית זו ₪${Math.round(balance).toLocaleString('he-IL')}. ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2 || '—'}${rf[COLS.recNotes]?.trim() ? ' | ' + rf[COLS.recNotes].trim() : ''}`
     : rf[COLS.recNotes] || '';
     
+  // Invoice number: send as integer if purely numeric so COUNTIF validation in sheet matches
+  const invNumRaw = (rf[COLS.recInvNum] || '').trim();
+  const invNumVal = invNumRaw && /^\d+$/.test(invNumRaw) ? parseInt(invNumRaw, 10) : invNumRaw;
+
   const data1 = {
-    [COLS.recInvNum]: rf[COLS.recInvNum] || '',
+    [COLS.recInvNum]: invNumVal,
     [COLS.recPayType]: rf[COLS.recPayType] || '',
     [COLS.recPayAmt]: isOverpay ? Math.round(balance * 100) / 100 : parseFloat(rf[COLS.recPayAmt]) || 0,
     [COLS.recPayDate]: rf[COLS.recPayDate] || tod(),
@@ -2245,8 +2249,9 @@ async function executeSaveReceipt() {
 
     if (isOverpay && inv2) {
       const g2Notes = `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${Math.round(balance).toLocaleString('he-IL')} שולמו מאותו שיק עבור חשבונית מספר ${rf[COLS.recInvNum] || '—'}`;
+      const inv2Val = inv2 && /^\d+$/.test(inv2) ? parseInt(inv2, 10) : inv2;
       const data2 = {
-        [COLS.recInvNum]: inv2,
+        [COLS.recInvNum]: inv2Val,
         [COLS.recPayType]: rf[COLS.recPayType],
         [COLS.recPayAmt]: Math.round(excess * 100) / 100,
         [COLS.recPayDate]: rf[COLS.recPayDate] || tod(),
@@ -2348,8 +2353,10 @@ async function executeSaveInv(isTax, calc) {
 
     if (isTax && isOverpay && f._overInvNum?.trim()) {
       const excess = Math.round((paidAmt - invTotal) * 100) / 100;
+      const overInvRaw = f._overInvNum.trim();
+      const overInvVal = overInvRaw && /^\d+$/.test(overInvRaw) ? parseInt(overInvRaw, 10) : overInvRaw;
       const recData = {
-        [COLS.recInvNum]: f._overInvNum.trim(),
+        [COLS.recInvNum]: overInvVal,
         [COLS.recPayType]: f[COLS.taxPayType],
         [COLS.recPayAmt]: excess,
         [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
