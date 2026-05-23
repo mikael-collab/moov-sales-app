@@ -694,6 +694,20 @@ async function runDiagnose() {
   S.diagData._writeUrl2    = 'POST [body:' + body2.length + ' chars]';
   S.diagData._writeResult2 = await testPost(body2);
 
+  // ── Write test 3: real addReceipt + read-back verification ──
+  const body3 = JSON.stringify({ action: 'addReceipt', data: { A: 'DIAG', B: 'מזומן', C: '1', D: '01/01/2026', E: '', G: 'בדיקה-אבחון' } });
+  S.diagData._writeUrl3    = 'POST addReceipt [DIAG] body:' + body3.length;
+  S.diagData._writeResult3 = await testPost(body3);
+  S.diagData._writeVerify  = '⏳ reading back...'; render();
+  await new Promise(r => setTimeout(r, 2000));
+  try {
+    const recheck = await apiFetch({ sheet: SHEETS['receipts'], limit: 1 });
+    const nr = (recheck.data || [])[0];
+    S.diagData._writeVerify = nr
+      ? `last row: ${nr._rowIndex} | C:${nr.C||'?'} G:${esc(nr.G||'')}`
+      : 'no rows found';
+  } catch(e) { S.diagData._writeVerify = 'verify error: ' + e.message; }
+
   // ── Last save attempt (if any) ──
   S.diagData._lastSave = S._lastSave || null;
 
@@ -963,6 +977,15 @@ function renderSettings() {
           <div style="font-size:11px;word-break:break-all">${esc(S.diagData._writeResult2)}</div>
         </div>`;
       }
+      if (S.diagData._writeUrl3) {
+        const vcolor = (S.diagData._writeVerify||'').includes('DIAG') ? '#1e8e3e' : (S.diagData._writeVerify||'').startsWith('⏳') ? '#f59e0b' : '#c62828';
+        h += `<div class="diag-sheet">
+          <div class="diag-name" style="color:#e67c00">🧪 בדיקת addReceipt + אימות</div>
+          <div style="font-size:10px;color:#888;direction:ltr">${esc(S.diagData._writeUrl3)}</div>
+          <div style="font-size:11px;word-break:break-all">${esc(S.diagData._writeResult3||'')}</div>
+          <div style="font-size:11px;color:${vcolor};direction:ltr;word-break:break-all">verify: ${esc(S.diagData._writeVerify||'...')}</div>
+        </div>`;
+      }
 
       // ── Last save attempt ──
       const ls = S.diagData._lastSave;
@@ -999,7 +1022,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.73</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.75</div></div>`;
   return h;
 }
 
@@ -2433,4 +2456,4 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 </body>
-</html
+</html>
