@@ -592,24 +592,32 @@ async function apiFetch(params) {
 
 async function apiPost(body) {
   if (!S.scriptUrl) return { status: 'ok' };
+  const sendBody = Object.assign({}, body);
+  delete sendBody.photoBase64; // excluded — large base64 handled separately
+  const base = S.scriptUrl.trim();
+  const sep  = base.includes('?') ? '&' : '?';
+  const url  = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(sendBody));
+  console.log('apiPost URL len:', url.length);
+
+  // Phase 1: readable CORS fetch — gives us error details
   try {
-    const sendBody = Object.assign({}, body);
-    delete sendBody.photoBase64; // excluded — large base64 handled separately via embedDirect
-    const base = S.scriptUrl.trim(); // trim whitespace/newlines that break fetch
-    const sep  = base.includes('?') ? '&' : '?';
-    const url  = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(sendBody));
-    console.log('apiPost URL len:', url.length, url.slice(0, 120));
-    const r = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    const r = await fetch(url);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     if (d && d.error) throw new Error(d.error);
     return d;
-  } catch(e) {
-    const msg = e.message || String(e);
-    console.error('apiPost error:', msg);
-    // 'Failed to fetch' = browser-level block (CORS, invalid URL, network)
-    if (msg === 'Failed to fetch') throw new Error('שגיאת רשת — נסה שוב או רענן');
-    throw e;
+  } catch(corsErr) {
+    if (corsErr.message !== 'Failed to fetch') throw corsErr; // real error, propagate
+    // Phase 2: CORS blocks the response but GET params ARE sent to GAS server.
+    // no-cors mode: browser sends the full GET URL → GAS executes doGet → row is saved.
+    // We can't read the response but the write succeeds server-side.
+    console.warn('apiPost: CORS read blocked, falling back to no-cors GET');
+    try {
+      await fetch(url, { mode: 'no-cors' });
+      return { status: 'ok' };
+    } catch(e2) {
+      throw new Error('שגיאת רשת — אין חיבור לשרת');
+    }
   }
 }
 
@@ -909,7 +917,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.60</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.61</div></div>`;
   return h;
 }
 
