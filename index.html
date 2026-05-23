@@ -596,11 +596,12 @@ async function apiPost(body) {
   delete sendBody.photoBase64; // excluded — large base64 handled separately
   const base = S.scriptUrl.trim();
   const bodyStr = JSON.stringify(sendBody);
+  const sep = base.includes('?') ? '&' : '?';
+  const getUrl = base + sep + 'write=1&payload=' + encodeURIComponent(bodyStr);
   const t = new Date().toLocaleTimeString('he-IL');
   S._lastSave = { t, bodyLen: bodyStr.length, phase: '?', resp: '', payloadPreview: bodyStr.slice(0, 200) };
-  console.log('apiPost POST body len:', bodyStr.length);
 
-  // Phase 1: readable CORS POST (text/plain = simple request, no preflight needed)
+  // Phase 1: try readable CORS POST — works if GAS returns CORS headers
   try {
     const r = await fetch(base, {
       method: 'POST',
@@ -619,24 +620,27 @@ async function apiPost(body) {
       S._lastSave.phase = '1-err';
       throw corsErr;
     }
-    // Phase 2: no-cors POST fallback
-    console.warn('apiPost: phase-1 Failed to fetch → no-cors POST fallback');
-    try {
-      await fetch(base, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: bodyStr,
-        headers: { 'Content-Type': 'text/plain' }
-      });
-      S._lastSave.phase = '2-nocors-ok';
-      S._lastSave.resp  = 'opaque (cannot read GAS response)';
-      return { status: 'ok' };
-    } catch(e2) {
-      S._lastSave.phase = '2-err';
-      S._lastSave.resp  = e2.message;
-      throw new Error('שגיאת רשת — אין חיבור לשרת');
-    }
   }
+
+  // Phase 2: iframe navigation — bypasses CORS entirely.
+  // iframe.src = URL is a browser navigation, not a fetch.
+  // No CORS check, redirects followed freely, GAS executes the write server-side.
+  console.warn('apiPost: CORS → iframe navigation fallback');
+  await new Promise(resolve => {
+    const ifr = document.createElement('iframe');
+    ifr.style.cssText = 'display:none;width:0;height:0;position:absolute;left:-9999px;';
+    document.body.appendChild(ifr);
+    ifr.src = getUrl;
+    // GAS write completes server-side before the response arrives.
+    // We wait 4 s then clean up; the actual write already happened.
+    setTimeout(() => {
+      try { document.body.removeChild(ifr); } catch(_) {}
+      resolve();
+    }, 4000);
+  });
+  S._lastSave.phase = '2-iframe-ok';
+  S._lastSave.resp  = 'nav (cannot read GAS response)';
+  return { status: 'ok' };
 }
 
 async function pingSheets() {
@@ -694,12 +698,22 @@ async function runDiagnose() {
   S.diagData._writeUrl2    = 'POST [body:' + body2.length + ' chars]';
   S.diagData._writeResult2 = await testPost(body2);
 
-  // ── Write test 3: real addReceipt + read-back verification ──
+  // ── Write test 3: iframe addReceipt + read-back verification ──
   const body3 = JSON.stringify({ action: 'addReceipt', data: { A: 'DIAG', B: 'מזומן', C: '1', D: '01/01/2026', E: '', G: 'בדיקה-אבחון' } });
-  S.diagData._writeUrl3    = 'POST addReceipt [DIAG] body:' + body3.length;
-  S.diagData._writeResult3 = await testPost(body3);
+  const diagSep = base.includes('?') ? '&' : '?';
+  const diagGetUrl = base + diagSep + 'write=1&payload=' + encodeURIComponent(body3);
+  S.diagData._writeUrl3 = 'iframe GET [url:' + diagGetUrl.length + ']';
+  S.diagData._writeResult3 = '⏳ שולח...'; render();
+  await new Promise(resolve => {
+    const ifr = document.createElement('iframe');
+    ifr.style.cssText = 'display:none;width:0;height:0;position:absolute;left:-9999px;';
+    document.body.appendChild(ifr);
+    ifr.src = diagGetUrl;
+    setTimeout(() => { try { document.body.removeChild(ifr); } catch(_){} resolve(); }, 4000);
+  });
+  S.diagData._writeResult3 = '📤 iframe sent (4s wait)';
   S.diagData._writeVerify  = '⏳ reading back...'; render();
-  await new Promise(r => setTimeout(r, 2000));
+  await new Promise(r => setTimeout(r, 1000));
   try {
     const recheck = await apiFetch({ sheet: SHEETS['receipts'], limit: 1 });
     const nr = (recheck.data || [])[0];
@@ -1022,7 +1036,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.75</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.77</div></div>`;
   return h;
 }
 
