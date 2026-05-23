@@ -699,7 +699,7 @@ async function runDiagnose() {
   S.diagData._writeResult2 = await testPost(body2);
 
   // ── Write test 3: iframe addReceipt + read-back verification ──
-  const body3 = JSON.stringify({ action: 'addReceipt', data: { A: 'DIAG', B: 'מזומן', C: '1', D: '01/01/2026', E: '', G: 'בדיקה-אבחון' } });
+  const body3 = JSON.stringify({ action: 'addReceipt', data: { A: 'DIAG', B: 'מזומן', C: 1, D: '01/01/2026', E: '', G: 'בדיקה-אבחון' } });
   const diagSep = base.includes('?') ? '&' : '?';
   const diagGetUrl = base + diagSep + 'write=1&payload=' + encodeURIComponent(body3);
   S.diagData._writeUrl3 = 'iframe GET [url:' + diagGetUrl.length + ']';
@@ -1036,7 +1036,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.77</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.81</div></div>`;
   return h;
 }
 
@@ -2213,7 +2213,7 @@ async function executeSaveReceipt() {
   const data1 = {
     [COLS.recInvNum]: rf[COLS.recInvNum] || '',
     [COLS.recPayType]: rf[COLS.recPayType] || '',
-    [COLS.recPayAmt]: isOverpay ? String(Math.round(balance * 100) / 100) : rf[COLS.recPayAmt],
+    [COLS.recPayAmt]: isOverpay ? Math.round(balance * 100) / 100 : parseFloat(rf[COLS.recPayAmt]) || 0,
     [COLS.recPayDate]: rf[COLS.recPayDate] || tod(),
     [COLS.recChkNum]: rf[COLS.recChkNum] || '',
     [COLS.recNotes]: g1Notes
@@ -2231,7 +2231,7 @@ async function executeSaveReceipt() {
       const data2 = {
         [COLS.recInvNum]: inv2,
         [COLS.recPayType]: rf[COLS.recPayType],
-        [COLS.recPayAmt]: String(Math.round(excess * 100) / 100),
+        [COLS.recPayAmt]: Math.round(excess * 100) / 100,
         [COLS.recPayDate]: rf[COLS.recPayDate] || tod(),
         [COLS.recChkNum]: rf[COLS.recChkNum] || '',
         [COLS.recNotes]: g2Notes
@@ -2334,7 +2334,7 @@ async function executeSaveInv(isTax, calc) {
       const recData = {
         [COLS.recInvNum]: f._overInvNum.trim(),
         [COLS.recPayType]: f[COLS.taxPayType],
-        [COLS.recPayAmt]: String(excess),
+        [COLS.recPayAmt]: excess,
         [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
         [COLS.recChkNum]: f[COLS.taxChkNum] || '',
         [COLS.recNotes]: 'יתרת שיק מחשמ"ק שנוצר עכשיו'
