@@ -640,12 +640,42 @@ async function pingSheets() {
 
 async function runDiagnose() {
   S.diagRunning = true; render(); S.diagData = {};
+
+  // ── Read tests ──
   for (const tab of ['customers', 'invoices', 'receipts', 'tax']) {
     try {
       const d = await apiFetch({ sheet: SHEETS[tab], limit: 1 });
       S.diagData[tab] = { sheetName: SHEETS[tab], firstRow: (d.data || [])[0] || null };
     } catch (e) { S.diagData[tab] = { sheetName: SHEETS[tab], error: e.message }; }
   }
+
+  // ── Write test (uses a dummy action that GAS rejects safely — no data is written) ──
+  const base = S.scriptUrl.trim();
+  const sep  = base.includes('?') ? '&' : '?';
+  const writeUrl = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify({ action: '_diagtest', data: {} }));
+  S.diagData._writeUrl = writeUrl.slice(0, 90) + (writeUrl.length > 90 ? '…' : '') + ' [' + writeUrl.length + ' chars]';
+
+  // Phase 1: readable fetch
+  try {
+    const r = await fetch(writeUrl);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    // GAS returns { error: "Unknown action: _diagtest" } — that's expected and means fetch works!
+    S.diagData._writeResult = '✅ fetch עובד (GAS: ' + esc(JSON.stringify(d).slice(0, 60)) + ')';
+  } catch(e1) {
+    if (e1.message === 'Failed to fetch') {
+      // Phase 2: no-cors
+      try {
+        await fetch(writeUrl, { mode: 'no-cors' });
+        S.diagData._writeResult = '⚠️ fetch CORS חסום — no-cors עובד (שמירה צריכה לעבוד)';
+      } catch(e2) {
+        S.diagData._writeResult = '❌ גם no-cors נכשל: ' + e2.message + ' — URL לא תקין?';
+      }
+    } else {
+      S.diagData._writeResult = '⚠️ שגיאה: ' + esc(e1.message);
+    }
+  }
+
   S.diagRunning = false; render();
 }
 
@@ -897,6 +927,17 @@ function renderSettings() {
         ${S.diagRunning ? '⏳ מאבחן...' : '🔬 הרץ אבחון'}</button>`;
     if (Object.keys(S.diagData).length) {
       h += `<div class="diag-box">`;
+
+      // Write test results — shown first
+      if (S.diagData._writeResult) {
+        h += `<div class="diag-sheet">
+          <div class="diag-name" style="color:#1a73e8">🔧 בדיקת כתיבה</div>
+          <div style="font-size:11px;padding:3px 0;word-break:break-all">${esc(S.diagData._writeResult)}</div>
+          <div style="font-size:10px;color:#888;margin-top:4px;word-break:break-all;direction:ltr">${esc(S.diagData._writeUrl || '')}</div>
+        </div>`;
+      }
+
+      // Read test results
       ['customers', 'invoices', 'receipts', 'tax'].forEach(tab => {
         const d = S.diagData[tab]; if (!d) return;
         h += `<div class="diag-sheet"><div class="diag-name">${esc(d.sheetName)}</div>`;
@@ -917,7 +958,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.61</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.63</div></div>`;
   return h;
 }
 
