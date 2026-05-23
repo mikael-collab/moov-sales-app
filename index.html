@@ -2413,4 +2413,16 @@ window.addEventListener('DOMContentLoaded', () => {
       goBack();
     } else {
       showConfirm('יציאה מהאפליקציה', 'האם אתה בטוח שברצונך לצאת מהאפליקציה?', function() {
-        history.b
+        history.back();
+      }, function() {
+        history.pushState(null, '', location.href);
+      });
+    }
+  });
+
+  if (S.scriptUrl) { render(); pingSheets().then(() => loadCustomers()); }
+  else render();
+});
+</script>
+</body>
+</html>
