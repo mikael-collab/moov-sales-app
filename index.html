@@ -598,7 +598,7 @@ async function apiPost(body) {
   const sep  = base.includes('?') ? '&' : '?';
   const url  = base + sep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(sendBody));
   const t = new Date().toLocaleTimeString('he-IL');
-  S._lastSave = { t, urlLen: url.length, phase: '?', resp: '' };
+  S._lastSave = { t, urlLen: url.length, phase: '?', resp: '', payloadPreview: JSON.stringify(sendBody).slice(0, 200) };
   console.log('apiPost URL len:', url.length);
 
   // Phase 1: readable CORS fetch
@@ -966,6 +966,7 @@ function renderSettings() {
           ${ls.p1err ? `<div style="font-size:10px;color:#c62828;direction:ltr">p1 err: ${esc(ls.p1err)}</div>` : ''}
           ${ls.resp ? `<div style="font-size:10px;direction:ltr;word-break:break-all">resp: ${esc(ls.resp)}</div>` : ''}
           <div style="font-size:10px;color:#888">URL len: ${ls.urlLen || '?'}</div>
+          ${ls.payloadPreview ? `<div style="font-size:10px;direction:ltr;word-break:break-all;color:#444;margin-top:2px">payload: ${esc(ls.payloadPreview)}</div>` : ''}
         </div>`;
       }
 
@@ -990,7 +991,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.68</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.70</div></div>`;
   return h;
 }
 
@@ -2412,16 +2413,4 @@ window.addEventListener('DOMContentLoaded', () => {
       goBack();
     } else {
       showConfirm('יציאה מהאפליקציה', 'האם אתה בטוח שברצונך לצאת מהאפליקציה?', function() {
-        history.back();
-      }, function() {
-        history.pushState(null, '', location.href);
-      });
-    }
-  });
-
-  if (S.scriptUrl) { render(); pingSheets().then(() => loadCustomers()); }
-  else render();
-});
-</script>
-</body>
-</html>
+        history.b
