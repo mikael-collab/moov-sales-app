@@ -592,55 +592,68 @@ async function apiFetch(params) {
 
 async function apiPost(body) {
   if (!S.scriptUrl) return { status: 'ok' };
-  const sendBody = Object.assign({}, body);
-  delete sendBody.photoBase64; // excluded — large base64 handled separately
+  // Phase 1 carries the full payload (including photo) via POST body.
+  // Phase 2 (iframe GET) drops the photo — base64 is too large for a URL.
+  const sendBodyFull = Object.assign({}, body);                     // includes photoBase64
+  const sendBodyNoPhoto = Object.assign({}, body);
+  delete sendBodyNoPhoto.photoBase64;
+  const hasPhoto = !!(body.photoBase64);
   const base = S.scriptUrl.trim();
-  const bodyStr = JSON.stringify(sendBody);
-  const sep = base.includes('?') ? '&' : '?';
-  const getUrl = base + sep + 'write=1&payload=' + encodeURIComponent(bodyStr);
+  const bodyStrFull    = JSON.stringify(sendBodyFull);
+  const bodyStrNoPhoto = JSON.stringify(sendBodyNoPhoto);
+  const sep    = base.includes('?') ? '&' : '?';
+  const getUrl = base + sep + 'write=1&payload=' + encodeURIComponent(bodyStrNoPhoto);
   const t = new Date().toLocaleTimeString('he-IL');
-  S._lastSave = { t, bodyLen: bodyStr.length, phase: '?', resp: '', payloadPreview: bodyStr.slice(0, 200) };
+  S._lastSave = { t, bodyLen: bodyStrFull.length, phase: '?', resp: '', payloadPreview: bodyStrNoPhoto.slice(0, 200) };
 
-  // Phase 1: try readable CORS POST — works if GAS returns CORS headers
+  // Phase 1: POST with redirect:'manual' — GAS fully executes (write + photo embed) before
+  // redirecting its response to googleusercontent.com.  With redirect:'manual' the browser
+  // stops at the redirect and returns an opaque-redirect response instead of throwing
+  // "Failed to fetch", so we know the request was delivered and processed.
   try {
     const r = await fetch(base, {
       method: 'POST',
-      body: bodyStr,
-      headers: { 'Content-Type': 'text/plain' }
+      body: bodyStrFull,
+      headers: { 'Content-Type': 'text/plain' },
+      redirect: 'manual'
     });
+    if (r.type === 'opaqueredirect' || r.status === 0) {
+      // GAS processed write + photo then issued its normal redirect — cannot read body.
+      S._lastSave.phase = '1-sent';
+      S._lastSave.resp  = 'opaque-redirect (write+photo likely ok)';
+      return { status: 'ok', unconfirmed: true };
+    }
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     if (d && d.error) throw new Error(d.error);
     S._lastSave.phase = '1-ok';
     S._lastSave.resp  = JSON.stringify(d).slice(0, 120);
     return d;
-  } catch(corsErr) {
-    S._lastSave.p1err = corsErr.message;
-    if (corsErr.message !== 'Failed to fetch') {
+  } catch(fetchErr) {
+    S._lastSave.p1err = fetchErr.message;
+    if (fetchErr.message !== 'Failed to fetch') {
       S._lastSave.phase = '1-err';
-      throw corsErr;
+      throw fetchErr;
     }
+    // Real network error — fall through to Phase 2 iframe
   }
 
-  // Phase 2: iframe navigation — bypasses CORS entirely.
-  // iframe.src = URL is a browser navigation, not a fetch.
-  // No CORS check, redirects followed freely, GAS executes the write server-side.
-  console.warn('apiPost: CORS → iframe navigation fallback');
+  // Phase 2: iframe navigation fallback (photo dropped — base64 too large for URL).
+  // Only reached on actual network failure in Phase 1.
+  console.warn('apiPost: network error → iframe fallback' + (hasPhoto ? ' (photo dropped)' : ''));
   await new Promise(resolve => {
     const ifr = document.createElement('iframe');
     ifr.style.cssText = 'display:none;width:0;height:0;position:absolute;left:-9999px;';
     document.body.appendChild(ifr);
     ifr.src = getUrl;
-    // GAS write completes server-side before the response arrives.
-    // We wait 4 s then clean up; the actual write already happened.
     setTimeout(() => {
       try { document.body.removeChild(ifr); } catch(_) {}
       resolve();
     }, 4000);
   });
   S._lastSave.phase = '2-iframe-ok';
-  S._lastSave.resp  = 'nav (cannot read GAS response)';
-  return { status: 'ok' };
+  S._lastSave.resp  = hasPhoto ? 'nav — photo skipped (network err)' : 'nav (cannot read GAS response)';
+  return { status: 'ok', photoSkipped: hasPhoto };
 }
 
 async function pingSheets() {
@@ -1053,7 +1066,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.88</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.93</div></div>`;
   return h;
 }
 
@@ -2244,7 +2257,8 @@ async function executeSaveReceipt() {
   renderSaveBtnRec();
   try {
     const res1 = await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
-    const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : res1 && res1.status === 'ok' ? ' (no-cors)' : '';
+    const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : '';
+    const photoNote = res1 && res1.photoSkipped ? ' — 📷 תמונה לא נשמרה' : '';
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
     if (isOverpay && inv2) {
@@ -2267,7 +2281,7 @@ async function executeSaveReceipt() {
     }
 
     S.saving = false;
-    showToast(isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : `✅ הקבלה נשמרה!${rowInfo}`, 'ok', 2500);
+    showToast(isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : `✅ הקבלה נשמרה!${rowInfo}${photoNote}`, 'ok', 2500);
     setTimeout(() => { S.screen = 'list'; S.rForm = efR(); S.msg = null; setHeader(); render(); }, 1600);
   } catch (e) { showToast('❌ ' + (e.message || 'שגיאה'), 'err'); S.saving = false; renderSaveBtnRec(); }
 }
