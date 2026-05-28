@@ -444,7 +444,7 @@ function efR() {
   const o = {
     _custName: '', _custId: '', _invTotal: '', _invDate: '',
     _photoDataUrl: '', _photoBase64: '',
-    _openInvs: [], _showOpenInvs: false, _overInvNum: '',
+    _openInvs: [], _custOpenInvs: [], _showOpenInvs: false, _overInvNum: '',
     _custEditRow: null, _custEditId: null
   };
   o[COLS.recInvNum] = ''; o[COLS.recPayType] = ''; o[COLS.recPayAmt] = ''; o[COLS.recPayDate] = tod();
@@ -850,6 +850,7 @@ function openNewReceiptFromInv(invId) {
     .reduce((s, rec) => s + parseMoney(rec[COLS.recPayAmt]), 0);
   rf._invTotal = String(Math.max(0, invTotal - paidSoFar));
   rf._openInvs = openInvsFor(rf._custId);
+  rf._custOpenInvs = rf._openInvs;
   rf._showOpenInvs = false;
   
   const cust = S.customers.find(c => c[COLS.custId] === rf._custId);
@@ -1066,7 +1067,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.93</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.103</div></div>`;
   return h;
 }
 
@@ -1593,17 +1594,7 @@ function renderReceiptForm() {
       </button>
       ${rf._photoDataUrl ? `<img src="${rf._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">` : ''}
     </div>
-    ${(() => {
-      const paid = parseFloat(rf[COLS.recPayAmt]) || 0; const total = parseFloat(rf._invTotal) || 0;
-      return isChk && total > 0 && paid > total + 0.5 ? `
-      <div style="background:#fff8e1;border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:#e65100">
-        ⚠️ שיק גבוה ב-₪${Math.round(paid - total).toLocaleString('he-IL')} — הזן מספר חשבונית להפרש
-      </div>
-      <div class="field"><label>מספר חשבונית עבור ההפרש *</label>
-        <input type="text" inputmode="numeric" id="r-overinv" class="finput num" value="${esc(rf._overInvNum || '')}"
-          oninput="uf('rForm','_overInvNum',this.value);renderSaveBtnRec()">
-      </div>` : '';
-    })()}
+    <div id="overinv-container">${buildOverInvPickerHtml()}</div>
   </div>
 
   <div class="field"><label>הערות <small>(עמודה ${COLS.recNotes})</small></label>
@@ -1938,6 +1929,7 @@ function pickCustomer(name, id) {
   S.rForm._custName = name;
   S.rForm._custId = id;
   S.rForm._openInvs = openInvsFor(id);
+  S.rForm._custOpenInvs = S.rForm._openInvs;
   S.rForm._showOpenInvs = true;
 
   const cust = S.customers.find(c => c[COLS.custId] === id);
@@ -1995,8 +1987,8 @@ function onReceiptPayTypeChange(val) {
 }
 
 function clearReceiptCustomer() {
-  S.rForm._custName = ''; S.rForm._custId = ''; S.rForm._openInvs = [];
-  S.rForm[COLS.recInvNum] = ''; S.rForm._invTotal = ''; S.rForm._invDate = '';
+  S.rForm._custName = ''; S.rForm._custId = ''; S.rForm._openInvs = []; S.rForm._custOpenInvs = [];
+  S.rForm[COLS.recInvNum] = ''; S.rForm._invTotal = ''; S.rForm._invDate = ''; S.rForm._overInvNum = '';
   setElValue('r-H', '');
   setElValue('r-I', '');
   setElValue('r-custNotes', '');
@@ -2032,7 +2024,8 @@ function onReceiptInvNumInput(val) {
       S.rForm._custName = cName || '';
       S.rForm._invTotal = String(getInvBalance(val.trim()));
       S.rForm._invDate = nz(found[COLS.docDate]) || '';
-      
+      if (!S.rForm._custOpenInvs?.length) S.rForm._custOpenInvs = openInvsFor(S.rForm._custId);
+
       const cust = S.customers.find(c => c[COLS.custId] === S.rForm._custId);
       S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
       S.rForm._custEditRow = cust ? cust._row : null;
@@ -2061,14 +2054,82 @@ function pickReceiptInv(invNum, invTotal, invDate) {
   S.rForm[COLS.recInvNum] = invNum;
   S.rForm._invTotal = invTotal;
   S.rForm._invDate = invDate;
-  S.rForm._openInvs = [];  
-  
+  S.rForm._openInvs = [];
+  S.rForm._overInvNum = '';   // reset second invoice when first changes
+
   setElValue('r-' + COLS.recInvNum, invNum);
   setElDisplay('receipt-inv-total', 'flex');
   setElText('rcb-total-val', fmt(invTotal));
-  
+
   renderOpenInvs();
+  renderSaveBtnRec(); // also calls renderOverInvPicker internally
+}
+
+// Select the second invoice that will receive the check overpayment balance
+function pickOverReceiptInv(invNum, invBalance) {
+  captureReceiptFields();
+  S.rForm._overInvNum = invNum;
+  setElValue('r-overinv', invNum);
+  renderOverInvPicker();
   renderSaveBtnRec();
+}
+
+function renderOverInvPicker() {
+  const container = document.getElementById('overinv-container');
+  if (container) container.innerHTML = buildOverInvPickerHtml();
+}
+
+// Builds the clickable list of a customer's OTHER open invoices for the check overpayment split
+function buildOverInvPickerHtml() {
+  const rf = S.rForm;
+  const paid  = parseFloat(rf[COLS.recPayAmt]) || 0;
+  const total = parseFloat(rf._invTotal) || 0;
+  if (rf[COLS.recPayType] !== 'שיק' || total <= 0 || paid <= total + 0.5) return '';
+
+  const excess = Math.round((paid - total) * 100) / 100;
+  const inv1   = rf[COLS.recInvNum];
+  const others = (rf._custOpenInvs || []).filter(inv => {
+    const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
+    return n && n !== inv1;
+  });
+
+  let h = `<div style="background:#fff8e1;border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:#e65100">` +
+    `⚠️ שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${Math.round(total).toLocaleString('he-IL')} לחשבונית זו | יתרה ₪${Math.round(excess).toLocaleString('he-IL')}` +
+  `</div>`;
+
+  if (others.length) {
+    h += '<div class="dtable" style="margin-bottom:8px">' +
+         '<div class="dthead" style="background:' + tc() + '"><span>בחר חשבונית ליתרת השיק</span>' +
+         '<span style="font-weight:700">₪' + Math.round(excess).toLocaleString('he-IL') + '</span></div>';
+    others.forEach((inv, i) => {
+      const invNum    = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
+      const invDate   = nz(inv[COLS.docDate]) || '';
+      const invBal    = getInvBalance(invNum);
+      const rawTotal  = parseMoney(nz(inv[COLS.invTotalVat]) || nz(inv[COLS.taxTotalVat])) || 0;
+      const hasPartial = rawTotal > 0 && invBal < rawTotal - 0.1;
+      const selected  = rf._overInvNum === invNum;
+      h += '<div class="dtrow" style="cursor:pointer;' + (selected ? 'background:' + tc() + '15;' : '') +
+           (i === 0 ? 'border-top:none;' : '') + '" onclick="pickOverReceiptInv(\'' + esc(invNum) + '\',\'' + invBal + '\')">' +
+           '<div>' +
+             '<div style="font-size:13px;font-weight:600;color:' + (selected ? tc() : '#222') + '">#' + esc(invNum) + '</div>' +
+             '<div style="font-size:11px;color:#888">' + esc(invDate) + '</div>' +
+             (hasPartial ? '<div style="font-size:10px;color:#e65100">שולם חלקית: ₪' + Math.round(rawTotal - invBal).toLocaleString('he-IL') + '</div>' : '') +
+           '</div>' +
+           '<div style="text-align:left">' +
+             '<div style="font-size:14px;font-weight:700;color:' + tc() + '">יתרה: ' + fmt(String(invBal)) + '</div>' +
+             (selected ? '<div style="font-size:10px;color:' + tc() + '">✓ נבחרה</div>' : '') +
+           '</div></div>';
+    });
+    h += '</div>';
+  }
+
+  const inputLabel = others.length ? 'או הזן מספר חשבונית ידנית' : 'מספר חשבונית עבור יתרת השיק';
+  h += `<div class="field"><label>${inputLabel} <small>*</small></label>
+    <input type="text" inputmode="numeric" id="r-overinv" class="finput num" value="${esc(rf._overInvNum || '')}"
+      oninput="uf('rForm','_overInvNum',this.value);renderSaveBtnRec()">
+  </div>`;
+
+  return h;
 }
 
 function onPhotoChange(input) {
@@ -2237,7 +2298,7 @@ async function executeSaveReceipt() {
   const inv2 = rf._overInvNum?.trim() || '';
 
   const g1Notes = isOverpay
-    ? `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה חשבונית זו ₪${Math.round(balance).toLocaleString('he-IL')}. ₪${Math.round(excess).toLocaleString('he-IL')} הועברו לחשבונית מספר ${inv2 || '—'}${rf[COLS.recNotes]?.trim() ? ' | ' + rf[COLS.recNotes].trim() : ''}`
+    ? `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — שולם ₪${Math.round(balance).toLocaleString('he-IL')} לחשבונית זו | יתרה ₪${Math.round(excess).toLocaleString('he-IL')} לחשבונית מס׳ ${inv2 || '—'}${rf[COLS.recNotes]?.trim() ? ' | ' + rf[COLS.recNotes].trim() : ''}`
     : rf[COLS.recNotes] || '';
     
   // Invoice number: send as integer if purely numeric so COUNTIF validation in sheet matches
@@ -2262,7 +2323,7 @@ async function executeSaveReceipt() {
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
     if (isOverpay && inv2) {
-      const g2Notes = `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${Math.round(balance).toLocaleString('he-IL')} שולמו מאותו שיק עבור חשבונית מספר ${rf[COLS.recInvNum] || '—'}`;
+      const g2Notes = `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה ₪${Math.round(excess).toLocaleString('he-IL')} לחשבונית זו | ₪${Math.round(balance).toLocaleString('he-IL')} שולמו לחשבונית מס׳ ${rf[COLS.recInvNum] || '—'}`;
       const inv2Val = inv2 && /^\d+$/.test(inv2) ? parseInt(inv2, 10) : inv2;
       const data2 = {
         [COLS.recInvNum]: inv2Val,
@@ -2420,6 +2481,7 @@ function renderSaveBtnRec() {
   btn.disabled = dis;
   btn.style.background = dis ? '#ccc' : tc();
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
+  renderOverInvPicker(); // keep the overpayment invoice picker in sync with amount changes
 }
 
 function showConfirm(title, text, onYes, onNo) {
