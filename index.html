@@ -1067,7 +1067,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.103</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.105</div></div>`;
   return h;
 }
 
@@ -2363,13 +2363,26 @@ async function saveInv(isTax) {
       return;
     }
 
-    const paid = parseFloat(f[COLS.taxPayAmt] || 0);
+    const paid  = parseFloat(f[COLS.taxPayAmt] || 0);
     const total = calc.withVat;
+    const isCashPayment = f[COLS.taxPayType] === 'מזומן';
+
     if (total > 0 && paid < total - 0.5) {
-      const diff = Math.round(total - paid).toLocaleString('he-IL');
-      showConfirm('⚠️ תשלום חלקי', 'שולם: ₪' + Math.round(paid).toLocaleString('he-IL') + '\nלתשלום: ₪' + Math.round(total).toLocaleString('he-IL') + '\nיתרה: ₪' + diff + '\n\nהאם ברצונך להמשיך בשמירה?', function() {
-        executeSaveInv(isTax, calc);
-      });
+      if (isCashPayment) {
+        // Partial cash: explain that 2 separate documents will be created
+        const totalFmt = '₪' + Math.round(total).toLocaleString('he-IL');
+        const paidFmt  = '₪' + Math.round(paid).toLocaleString('he-IL');
+        showConfirm(
+          '📄 יוצרו 2 מסמכים',
+          `לחיצה על אישור תיצור:\n\n• חשבונית על סה"כ ${totalFmt} (כולל מע"מ אחר הנחה)\n• קבלה על ${paidFmt} מזומן\n\nהאם להמשיך?`,
+          function() { executeSaveInv(isTax, calc); }
+        );
+      } else {
+        const diff = Math.round(total - paid).toLocaleString('he-IL');
+        showConfirm('⚠️ תשלום חלקי', 'שולם: ₪' + Math.round(paid).toLocaleString('he-IL') + '\nלתשלום: ₪' + Math.round(total).toLocaleString('he-IL') + '\nיתרה: ₪' + diff + '\n\nהאם ברצונך להמשיך בשמירה?', function() {
+          executeSaveInv(isTax, calc);
+        });
+      }
     } else {
       executeSaveInv(isTax, calc);
     }
@@ -2380,23 +2393,30 @@ async function saveInv(isTax) {
 
 async function executeSaveInv(isTax, calc) {
   const f = S.iForm;
-  const paid = parseFloat(f[COLS.taxPayAmt] || 0);
+  const paid  = parseFloat(f[COLS.taxPayAmt] || 0);
   const total = calc.withVat;
-  
-  if (isTax && f[COLS.taxPayType] === 'שיק' && total > 0 && paid > total + 0.5 && f._overInvNum?.trim()) {
+
+  // Partial cash on a tax-invoice form → split into a regular חשבונית + קבלה
+  const isCashPartial = isTax && f[COLS.taxPayType] === 'מזומן' && total > 0.5 && paid < total - 0.5;
+
+  // Append overpay note to tax notes (check overpayment only, not cash-partial)
+  if (isTax && !isCashPartial && f[COLS.taxPayType] === 'שיק' && total > 0 && paid > total + 0.5 && f._overInvNum?.trim()) {
     const diff = Math.round(paid - total).toLocaleString('he-IL');
     const note = `ההפרש ₪${diff} שולם עבור חשבונית מספר ${f._overInvNum.trim()}`;
     f[COLS.taxNotes] = f[COLS.taxNotes]?.trim() ? (f[COLS.taxNotes].trim() + ' | ' + note) : note;
   }
-  
-  const qkCols = PRODS.map(p => p.qk); 
+
+  const qkCols = PRODS.map(p => p.qk);
   const allowed = new Set([COLS.docCustId, COLS.docCustName, COLS.docDate, COLS.price, COLS.discount, COLS.subtotal, COLS.afterDisc, ...qkCols]);
-  
-  if (isTax) {
+
+  if (isTax && !isCashPartial) {
+    // Normal tax invoice (חשבונית מס קבלה) — write to חשבוניות/קבלות
     [COLS.taxTotalVat, COLS.taxPayType, COLS.taxPayAmt, COLS.taxPayDate, COLS.taxChkNum, COLS.taxNotes, COLS.taxNum].forEach(k => allowed.add(k));
-  } else {
+  } else if (!isCashPartial) {
+    // Regular invoice — write to חשבוניות
     [COLS.invTerms, COLS.invTotalVat, COLS.invNum, COLS.invNotes].forEach(k => allowed.add(k));
   }
+  // isCashPartial: only shared cols copied from f; invoice-specific cols set manually below
 
   const data = {};
   allowed.forEach(k => {
@@ -2405,54 +2425,90 @@ async function executeSaveInv(isTax, calc) {
     data[k] = (isQty && (val === '' || val === '0')) ? '' : val;
   });
 
+  if (isCashPartial) {
+    // AH = invTerms  → get from customer (f['AH'] holds taxTotalVat, wrong for חשבוניות)
+    const cust = S.customers.find(c => c[COLS.custId] === (f[COLS.docCustId] || '').trim());
+    data[COLS.invTerms]   = cust ? (cust[COLS.custTerms] || '') : '';         // AH
+    // AI = invTotalVat → from calculation (f['AI'] holds taxPayType, wrong for חשבוניות)
+    data[COLS.invTotalVat] = total > 0 ? String(Math.round(total)) : '';      // AI
+    // AO = invNotes   → copy user notes from tax form (f['AN'] = taxNotes)
+    data[COLS.invNotes]   = (f[COLS.taxNotes] || '').toString().trim();       // AO
+    // AJ = invNum stays empty; will be assigned manually in the sheet
+  }
+
   const qtySummary = PRODS.filter(p => parseInt(data[p.qk]) > 0)
     .map(p => p.short + ': ' + data[p.qk]).join(', ');
 
   S.saving = true;
   renderSaveBtn();
   try {
+    // Save main document
+    const saveToTax = isTax && !isCashPartial;
     const payload = {
-      action: isTax ? 'addTax' : 'addInvoice',
-      sheetName: SHEETS[isTax ? 'tax' : 'invoices'],
+      action:    saveToTax ? 'addTax' : 'addInvoice',
+      sheetName: SHEETS[saveToTax ? 'tax' : 'invoices'],
       data,
-      photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''  
+      photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''
     };
-    
     await apiPost(payload);
-    
-    // --- AUTOMATICALLY CREATE THE RECEIPT FOR OVERPAYMENT ---
-    const isChq = f[COLS.taxPayType] === 'שיק';
-    const paidAmt = parseFloat(f[COLS.taxPayAmt] || 0);
-    const invTotal = calc.withVat;
-    const isOverpay = isChq && invTotal > 0 && paidAmt > invTotal + 0.5;
 
-    if (isTax && isOverpay && f._overInvNum?.trim()) {
-      const excess = Math.round((paidAmt - invTotal) * 100) / 100;
-      const overInvRaw = f._overInvNum.trim();
-      const overInvVal = overInvRaw && /^\d+$/.test(overInvRaw) ? parseInt(overInvRaw, 10) : overInvRaw;
+    // --- CHECK OVERPAYMENT: auto-receipt for the excess on a different invoice ---
+    if (isTax && !isCashPartial) {
+      const isChq    = f[COLS.taxPayType] === 'שיק';
+      const paidAmt  = parseFloat(f[COLS.taxPayAmt] || 0);
+      const isOverpay = isChq && total > 0 && paidAmt > total + 0.5;
+      if (isOverpay && f._overInvNum?.trim()) {
+        const excess = Math.round((paidAmt - total) * 100) / 100;
+        const overInvRaw = f._overInvNum.trim();
+        const overInvVal = overInvRaw && /^\d+$/.test(overInvRaw) ? parseInt(overInvRaw, 10) : overInvRaw;
+        const recData = {
+          [COLS.recInvNum]:  overInvVal,
+          [COLS.recPayType]: f[COLS.taxPayType],
+          [COLS.recPayAmt]:  excess,
+          [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
+          [COLS.recChkNum]:  f[COLS.taxChkNum] || '',
+          [COLS.recNotes]:   'יתרת שיק מחשמ"ק שנוצר עכשיו'
+        };
+        await apiPost({ action: 'addReceipt', data: recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
+        S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
+      }
+    }
+
+    // --- PARTIAL CASH: auto-receipt for the cash portion paid now ---
+    if (isCashPartial) {
+      const custId  = (f[COLS.docCustId] || '').trim();
+      const invDate = (f[COLS.docDate] || tod()).trim();
+      const recNotes = `ת"ז/ח"פ: ${custId || '—'} | תאריך: ${invDate} | סה"כ חשבונית: ₪${Math.round(total).toLocaleString('he-IL')} | שולם מזומן: ₪${Math.round(paid).toLocaleString('he-IL')}`;
       const recData = {
-        [COLS.recInvNum]: overInvVal,
-        [COLS.recPayType]: f[COLS.taxPayType],
-        [COLS.recPayAmt]: excess,
-        [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
-        [COLS.recChkNum]: f[COLS.taxChkNum] || '',
-        [COLS.recNotes]: 'יתרת שיק מחשמ"ק שנוצר עכשיו'
+        [COLS.recInvNum]:  '',       // invoice number assigned manually later
+        [COLS.recPayType]: 'מזומן',
+        [COLS.recPayAmt]:  Math.round(paid * 100) / 100,
+        [COLS.recPayDate]: invDate,
+        [COLS.recChkNum]:  '',
+        [COLS.recNotes]:   recNotes
       };
-      await apiPost({ action: 'addReceipt', data: recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
+      await apiPost({ action: 'addReceipt', data: recData });
       S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
     }
-    // --------------------------------------------------------
-    
+
     if (f._custEditRow && f[COLS.custNotes] !== undefined) {
       await updateCustomerNotesIfNeeded(f._custEditId, f._custEditRow, f[COLS.custNotes]);
     }
-    
-    S.msg = { t: 's', m: (isTax ? 'חשמ"ק' : 'חשבונית') + ' נשמרה! ' + (qtySummary || 'ללא כמויות') };
+
+    S.msg = {
+      t: 's',
+      m: isCashPartial
+        ? `✅ חשבונית וקבלה נשמרו! ${qtySummary || 'ללא כמויות'}`
+        : `${isTax ? 'חשמ"ק' : 'חשבונית'} נשמרה! ${qtySummary || 'ללא כמויות'}`
+    };
     S.saving = false; render();
     setTimeout(() => {
       S.screen = 'list'; S.iForm = {}; S.msg = null;
-      if (isTax) { S.tsState = 'idle'; S.tax = []; } else { S.isState = 'idle'; S.invoices = []; }
-      setHeader(); if (isTax) loadTax(); else loadInvoices();
+      if (saveToTax) { S.tsState = 'idle'; S.tax = []; }
+      else           { S.isState = 'idle'; S.invoices = []; }
+      if (isCashPartial) { S.rsState = 'idle'; S.receipts = []; }
+      setHeader();
+      if (saveToTax) loadTax(); else loadInvoices();
     }, 2500);
   } catch (e) {
     showToast('❌ שגיאה: ' + e.name + ' — ' + e.message, 'err');
