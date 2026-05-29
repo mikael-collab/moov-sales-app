@@ -435,7 +435,8 @@ const S = {
   diagData: {}, diagRunning: false,
   errors: {},
   suggest: [], showSuggest: false,
-  invFilter: { cust: '', num: '' }
+  invFilter: { cust: '', num: '' },
+  recFilter: { cust: '', num: '' }
 };
 
 const tc = () => TABS[S.tab].color;
@@ -817,13 +818,19 @@ function syncNav() {
 }
 
 function switchTab(tab) {
-  S.tab = tab; S.screen = 'list'; S.search = ''; S.expId = null; S.msg = null; S.showSuggest = false; S.invFilter = { cust: '', num: '' };
+  S.tab = tab; S.screen = 'list'; S.search = ''; S.expId = null; S.msg = null; S.showSuggest = false;
+  S.invFilter = { cust: '', num: '' }; S.recFilter = { cust: '', num: '' };
   syncNav(); setHeader();
   if (tab === 'invoices' && S.isState === 'idle') loadInvoices();
   else if (tab === 'receipts' && S.rsState === 'idle') loadReceipts();
   else if (tab === 'tax' && S.tsState === 'idle') loadTax();
   if (tab === 'invoices' && S.rsState === 'idle') loadReceipts();
   else render();
+  // Background-load invoice + receipt data so customer balance chips are visible
+  if (tab === 'customers') {
+    if (S.isState === 'idle') loadInvoices();
+    if (S.rsState === 'idle') loadReceipts();
+  }
 }
 
 function goBack() {
@@ -1104,7 +1111,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.126</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.132</div></div>`;
   return h;
 }
 
@@ -1148,6 +1155,37 @@ function clearInvFilter() {
   S.invFilter = { cust: '', num: '' };
   render();
 }
+function filteredRec(data) {
+  const fc = S.recFilter.cust.trim().toLowerCase();
+  const fn = S.recFilter.num.trim().toLowerCase();
+  if (!fc && !fn) return data;
+  return data.filter(r => {
+    const name = (nz(r[COLS.recCustName]) + ' ' + nz(r[COLS.recCustId])).toLowerCase();
+    const num  = nz(r[COLS.recInvNum]).toLowerCase();
+    return (!fc || name.includes(fc)) && (!fn || num.includes(fn));
+  });
+}
+function setRecFilter(key, val) {
+  S.recFilter[key] = val;
+  const fd  = filteredRec(S.receipts);
+  const wrap = document.getElementById('rec-cards-wrap');
+  if (wrap) wrap.innerHTML = buildRecCardsHtml(fd);
+  const cnt = document.getElementById('rec-filter-cnt');
+  const hasF = S.recFilter.cust || S.recFilter.num;
+  if (cnt) cnt.textContent = hasF ? `${fd.length} מתוך ${S.receipts.length}` : `${S.receipts.length}`;
+  const clr = document.getElementById('rec-filter-clr');
+  if (clr) clr.style.display = hasF ? '' : 'none';
+}
+function clearRecFilter() {
+  S.recFilter = { cust: '', num: '' };
+  render();
+}
+function buildCustCardsHtml(fc) {
+  if (!fc.length) return `<div style="padding:32px 20px;text-align:center"><p style="color:#999">אין תוצאות עבור "${esc(S.search)}"</p></div>`;
+  let h = '';
+  fc.forEach((c, i) => { h += cCard(c, i); });
+  return h;
+}
 function renderCustList() {
   const st = S.csState; const fc = filteredC(); const color = tc();
   let h = `<div class="sbar">
@@ -1162,14 +1200,10 @@ function renderCustList() {
     </div>
   </div>`;
   if (st !== 'ok') return h + statusHtml(st, 'loadCustomers()', 'לקוחות');
-  if (!fc.length) {
-    if (!S.customers.length) return h + `<div class="status"><p style="color:#999;margin-bottom:16px">אין לקוחות</p>
-      <button onclick="openNewCustomer()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">+ הוסף לקוח</button></div>`;
-    return h + `<div class="status"><p style="color:#999">אין תוצאות עבור "${esc(S.search)}"</p></div>`;
-  }
-  h += `<div style="padding:8px 0 24px">`;
-  fc.forEach((c, i) => { h += cCard(c, i); });
-  return h + `</div>`;
+  if (!S.customers.length) return h + `<div class="status"><p style="color:#999;margin-bottom:16px">אין לקוחות</p>
+    <button onclick="openNewCustomer()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">+ הוסף לקוח</button></div>`;
+  h += `<div id="cust-cards-wrap" style="padding:8px 0 24px">${buildCustCardsHtml(fc)}</div>`;
+  return h;
 }
 function cCard(c, i) {
   const isE = S.expId === c._id; const bg = rowBg(c, isE); const cpd = S.copied === `${c._id}-id`;
@@ -1691,20 +1725,31 @@ function renderReceiptForm() {
   return h;
 }
 
-function renderRecList() {
-  const { receipts: data, rsState: state } = S; const color = tc();
-  if (state === 'error') return errScreen(S.errors.receipts, 'loadReceipts()', 'קבלות', color);
-  if (state !== 'ok') return statusHtml(state, 'loadReceipts()', 'קבלות');
-  if (!data.length) return `<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
-    <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
-  let h = `<div style="padding-bottom:24px">`;
+// Shared filter bar used by invoice, tax, and receipt lists
+function filterBarHtml(filter, fdLen, totalLen, prefix, label, clearFn) {
+  const hasF = !!(filter.cust || filter.num);
+  const inp = 'flex:1;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;direction:rtl';
+  return `<div style="padding:10px 12px 0;display:flex;gap:8px;flex-direction:column">
+    <div style="display:flex;gap:8px">
+      <input type="text" id="${prefix}-filter-cust" data-key="cust" placeholder="🔍 שם לקוח..."
+        value="${esc(filter.cust)}" style="${inp}">
+      <input type="text" id="${prefix}-filter-num" data-key="num" inputmode="numeric" placeholder="#מס׳..."
+        value="${esc(filter.num)}" style="width:90px;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;direction:rtl">
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#999;padding-bottom:4px">
+      <span id="${prefix}-filter-cnt">${hasF ? fdLen + ' מתוך ' + totalLen : totalLen} ${label}</span>
+      <button id="${prefix}-filter-clr" onclick="${clearFn}" style="display:${hasF ? '' : 'none'};border:none;background:none;color:#c62828;font-size:12px;cursor:pointer;padding:0 2px">✕ נקה סינון</button>
+    </div>
+  </div>`;
+}
+function buildRecCardsHtml(data) {
+  const color = tc();
+  if (!data.length) return `<div style="padding:32px 20px;text-align:center"><p style="color:#999;font-size:14px">אין תוצאות לפי הסינון</p></div>`;
+  let h = '';
   [...data].reverse().forEach((r, i) => {
     const id = `rec-${r._id}`; const isE = S.expId === id; const bg = rowBg(r, isE);
-    const num = nz(r[COLS.recNum]) || nz(r[COLS.recInvNum]) || `#${i + 1}`;
-    
-    const custId = nz(r[COLS.recCustId]);
-    const cNotes = getCustNotesById(custId);
-    
+    const num = nz(r[COLS.recNum]) || nz(r[COLS.recInvNum]) || `#${r._id}`;
+    const cNotes = getCustNotesById(nz(r[COLS.recCustId]));
     h += `<div class="card${isE ? ' exp' : ''}" style="background:${bg};${isE ? `--tc:${color}` : ''}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1" style="justify-content:space-between">
@@ -1720,10 +1765,12 @@ function renderRecList() {
           ${nz(r[COLS.recInvNum]) ? `<span style="color:#bbb">חשב׳ ${esc(r[COLS.recInvNum])}</span>` : ''}
           ${nz(r[COLS.recChkNum]) ? `<span class="tag blue">🏦 שיק ${esc(r[COLS.recChkNum])}</span>` : ''}
           ${(() => {
-            if (!nz(r[COLS.recInvNum])) return ''; const bal = getInvBalance(r[COLS.recInvNum]);
-            return bal > 0.5 ? `<span style="font-size:11px;color:#e65100">יתרה: ₪${Math.round(bal).toLocaleString('he-IL')}</span>`
+            if (!nz(r[COLS.recInvNum])) return '';
+            const bal = getInvBalance(r[COLS.recInvNum]);
+            return bal > 0.5
+              ? `<span style="font-size:11px;color:#c62828">יתרה: ₪${Math.round(bal).toLocaleString('he-IL')}</span>`
               : `<span style="font-size:11px;color:#1e8e3e">✓ שולם</span>`;
-          })()} 
+          })()}
         </div>
         <div class="r3" style="justify-content:flex-end">
           <span class="toggle-hint" style="color:${isE ? color : '#bbb'}">${isE ? '▲ סגור' : '▼ פרטים'}</span>
@@ -1731,7 +1778,6 @@ function renderRecList() {
       </div>`;
     if (isE) {
       h += `<div class="card-body">
-        <!-- Unified customer notes dynamically queried for receipts list -->
         ${cNotes ? `<div style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;text-align:right;">📝 <strong>הערות לקוח:</strong> ${esc(cNotes)}</div>` : ''}
         <div class="g2" style="margin-bottom:8px">`;
       RF.filter(f => !f.wide && nz(r[f.k])).forEach(f => {
@@ -1747,6 +1793,18 @@ function renderRecList() {
     }
     h += `</div>`;
   });
+  return h;
+}
+function renderRecList() {
+  const { receipts: data, rsState: state } = S; const color = tc();
+  if (state === 'error') return errScreen(S.errors.receipts, 'loadReceipts()', 'קבלות', color);
+  if (state !== 'ok') return statusHtml(state, 'loadReceipts()', 'קבלות');
+  if (!data.length) return `<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
+    <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
+  const fd = filteredRec(data);
+  let h = `<div style="padding-bottom:24px">`;
+  h += filterBarHtml(S.recFilter, fd.length, data.length, 'rec', 'קבלות', 'clearRecFilter()');
+  h += `<div id="rec-cards-wrap">${buildRecCardsHtml(fd)}</div>`;
   return h + `</div>`;
 }
 
@@ -1876,20 +1934,7 @@ function renderDocList(data, state, isTax) {
   const fd      = filteredInv(data, isTax);
   const hasFilter = !!(S.invFilter.cust || S.invFilter.num);
   let h = `<div style="padding-bottom:24px">`;
-  h += `<div style="padding:10px 12px 0;display:flex;gap:8px;flex-direction:column">
-    <div style="display:flex;gap:8px">
-      <input type="text" placeholder="🔍 שם לקוח..." value="${esc(S.invFilter.cust)}"
-        oninput="setInvFilter('cust',this.value)"
-        style="flex:1;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;direction:rtl">
-      <input type="text" inputmode="numeric" placeholder="#מס׳..." value="${esc(S.invFilter.num)}"
-        oninput="setInvFilter('num',this.value)"
-        style="width:90px;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;direction:rtl">
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#999;padding-bottom:4px">
-      <span id="inv-filter-cnt">${hasFilter ? fd.length + ' מתוך ' + data.length : data.length} ${isTax ? 'חשמ"ק' : 'חשבוניות'}</span>
-      <button id="inv-filter-clr" onclick="clearInvFilter()" style="display:${hasFilter ? '' : 'none'};border:none;background:none;color:#c62828;font-size:12px;cursor:pointer;padding:0 2px">✕ נקה סינון</button>
-    </div>
-  </div>`;
+  h += filterBarHtml(S.invFilter, fd.length, data.length, 'inv', isTax ? 'חשמ"ק' : 'חשבוניות', 'clearInvFilter()');
   h += `<div id="inv-cards-wrap">${buildInvCardsHtml(fd, isTax)}</div>`;
   return h + `</div>`;
 }
@@ -2674,8 +2719,20 @@ function bindAll() {
       const fc = filteredC();
       const cnt = document.getElementById('scnt');
       if (cnt) cnt.textContent = `${fc.length} לקוחות${S.search ? ` (מתוך ${S.customers.length})` : ''} `;
+      const wrap = document.getElementById('cust-cards-wrap');
+      if (wrap) wrap.innerHTML = buildCustCardsHtml(fc);
     });
   }
+  // Live filter for invoice / tax lists
+  ['inv-filter-cust', 'inv-filter-num'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', e => setInvFilter(el.dataset.key, e.target.value));
+  });
+  // Live filter for receipts list
+  ['rec-filter-cust', 'rec-filter-num'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', e => setRecFilter(el.dataset.key, e.target.value));
+  });
 }
 
 function clearSearch() {
