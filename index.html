@@ -464,8 +464,16 @@ function taxFormErrors() {
   if (!f[COLS.taxPayAmt]?.trim()) return 'הזן סכום תשלום';
   if (f[COLS.taxPayType] !== 'שיק' && total > 0 && paid > total + 0.5)
     return `רק שיק מאפשר תשלום גבוה מהחשבונית (₪${Math.round(total).toLocaleString('he-IL')})`;
-  if (isOver && !f._overInvNum?.trim())
-    return 'הזן מספר חשבונית עבור ההפרש';
+  if (isOver && !f._overInvNum?.trim()) {
+    const excess = Math.round((paid - total) * 100) / 100;
+    const hasMatch = (f._openInvs || []).some(inv => {
+      const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
+      return n && Math.abs(getInvBalance(n) - excess) <= 0.5;
+    });
+    return hasMatch
+      ? 'בחר חשבונית עבור ההפרש מהרשימה'
+      : `אין חשבונית פתוחה עם יתרה ₪${Math.round(excess).toLocaleString('he-IL')}`;
+  }
   if (f[COLS.taxPayType] === 'שיק') {
     if (!f[COLS.taxChkNum]?.trim()) return 'הזן מספר שיק';
     if (!f[COLS.taxPayDate]?.trim()) return 'הזן תאריך פרעון שיק';
@@ -491,8 +499,17 @@ function receiptFormErrors() {
   const balance = parseFloat(rf._invTotal) || 0;
   if (rf[COLS.recPayType] !== 'שיק' && balance > 0 && paid > balance + 0.5)
     return 'רק שיק מאפשר תשלום גבוה מהיתרה (₪' + Math.round(balance).toLocaleString('he-IL') + ')';
-  if (rf[COLS.recPayType] === 'שיק' && balance > 0 && paid > balance + 0.5 && !rf._overInvNum?.trim())
-    return 'הזן מספר חשבונית עבור ההפרש';
+  if (rf[COLS.recPayType] === 'שיק' && balance > 0 && paid > balance + 0.5 && !rf._overInvNum?.trim()) {
+    const excess = Math.round((paid - balance) * 100) / 100;
+    const inv1   = rf[COLS.recInvNum];
+    const hasMatch = (rf._custOpenInvs || []).some(inv => {
+      const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
+      return n && n !== inv1 && Math.abs(getInvBalance(n) - excess) <= 0.5;
+    });
+    return hasMatch
+      ? 'בחר חשבונית עבור ההפרש מהרשימה'
+      : `אין חשבונית פתוחה עם יתרה ₪${Math.round(excess).toLocaleString('he-IL')}`;
+  }
 
   const recInvNumStr = String(rf[COLS.recInvNum] || '').trim();
   if (recInvNumStr && (S.isState === 'ok' || S.tsState === 'ok')) {
@@ -1087,7 +1104,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.117</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.126</div></div>`;
   return h;
 }
 
@@ -1281,9 +1298,11 @@ function onInvCustIdInput(val) {
 
 function setTaxOverInv(num) {
   S.iForm._overInvNum = num;
-  const el = document.getElementById('inv-overInvNum');
-  if (el) el.value = num;
   renderTaxOpenInvs();
+  const conf = document.getElementById('tax-overinv-confirm');
+  if (conf) conf.innerHTML = num
+    ? `<div style="background:${tc()}15;border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:${tc()};font-weight:600">✓ נבחרה חשבונית #${esc(num)}</div>`
+    : '';
   renderSaveBtn();
 }
 
@@ -1303,7 +1322,7 @@ function buildTaxOpenInvsHtml() {
   });
   if (!matching.length) {
     return `<div style="background:#fff3e0;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#e65100">
-      ⚠️ אין חשבוניות פתוחות עם יתרה של ₪${Math.round(excess).toLocaleString('he-IL')} — הזן מספר חשבונית ידנית למטה
+      ⚠️ אין חשבוניות פתוחות עם יתרה של ₪${Math.round(excess).toLocaleString('he-IL')} — שנה את סכום השיק
     </div>`;
   }
   let h = `<div class="dtable" style="margin-bottom:12px">
@@ -1475,15 +1494,9 @@ function renderInvForm(isTax) {
       ${f._photoDataUrl ? `<img src="${f._photoDataUrl}" style="margin-top:8px;width:100%;border-radius:8px;max-height:160px;object-fit:cover">` : ''}
     </div>
     ${isOver ? `
-    <div style="background:#fff8e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#e65100;">
-      ⚠️ השיק גבוה ב-₪${Math.round(paid - total).toLocaleString('he-IL')} — בחר חשבונית פתוחה עבור ההפרש
-    </div>
     <div id="tax-open-invs-container">${buildTaxOpenInvsHtml()}</div>
-    <div class="field"><label>או הזן מספר חשבונית ידנית *</label>
-      <input type="text" inputmode="numeric" id="inv-overInvNum" class="finput num" value="${esc(f._overInvNum || '')}"
-        placeholder="מספר חשבונית"
-        oninput="uf('iForm','_overInvNum',this.value); renderTaxOpenInvs(); renderSaveBtn();">
-    </div>` : ''}
+    <div id="tax-overinv-confirm">${f._overInvNum ? `<div style="background:${color}15;border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:${color};font-weight:600">✓ נבחרה חשבונית #${esc(f._overInvNum)}</div>` : ''}</div>
+    ` : ''}
     `:''}
 
     <div class="field"><label>הערות <small>(עמודה ${COLS.taxNotes})</small></label>
@@ -2065,7 +2078,7 @@ function captureReceiptFields() {
   
   const rcn = g('r-custNotes'); if (rcn !== undefined) S.rForm[COLS.custNotes] = rcn;
   
-  const ov = g('r-overinv').trim(); S.rForm._overInvNum = ov || S.rForm._overInvNum;
+  // _overInvNum is set directly via pickOverReceiptInv (list-only, no manual input)
   const gEl = document.getElementById('r-' + COLS.recNotes); if (gEl) S.rForm[COLS.recNotes] = gEl.value;
 }
 
@@ -2158,7 +2171,6 @@ function pickReceiptInv(invNum, invTotal, invDate) {
 function pickOverReceiptInv(invNum, invBalance) {
   captureReceiptFields();
   S.rForm._overInvNum = invNum;
-  setElValue('r-overinv', invNum);
   renderOverInvPicker();
   renderSaveBtnRec();
 }
@@ -2213,16 +2225,14 @@ function buildOverInvPickerHtml() {
     });
     h += '</div>';
   } else {
-    h += `<div style="background:#fff3e0;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#e65100">` +
-         `אין חשבוניות פתוחות עם יתרה של ₪${Math.round(excess).toLocaleString('he-IL')} — הזן מספר חשבונית ידנית` +
+    h += `<div style="background:#fce4e4;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px;color:#c62828;font-weight:600">` +
+         `⛔ אין חשבוניות פתוחות עם יתרה של ₪${Math.round(excess).toLocaleString('he-IL')} — שנה את סכום השיק` +
          `</div>`;
   }
 
-  const inputLabel = others.length ? 'או הזן מספר חשבונית ידנית' : 'מספר חשבונית עבור יתרת השיק';
-  h += `<div class="field"><label>${inputLabel} <small>*</small></label>
-    <input type="text" inputmode="numeric" id="r-overinv" class="finput num" value="${esc(rf._overInvNum || '')}"
-      oninput="uf('rForm','_overInvNum',this.value);renderSaveBtnRec()">
-  </div>`;
+  if (rf._overInvNum) {
+    h += `<div style="background:${tc()}15;border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:${tc()};font-weight:600">✓ נבחרה חשבונית #${esc(rf._overInvNum)}</div>`;
+  }
 
   return h;
 }
