@@ -462,8 +462,8 @@ function taxFormErrors() {
   if (!f[COLS.docCustId]?.trim()) return 'ת"ז / ח"פ הוא שדה חובה';
   if (!f[COLS.taxPayType]) return 'בחר סוג תשלום';
   if (!f[COLS.taxPayAmt]?.trim()) return 'הזן סכום תשלום';
-  if (f[COLS.taxPayType] === 'מזומן' && total > 0 && paid > total + 0.5)
-    return `מזומן לא יכול לעלות על ₪${Math.round(total).toLocaleString('he-IL')}`;
+  if (f[COLS.taxPayType] !== 'שיק' && total > 0 && paid > total + 0.5)
+    return `רק שיק מאפשר תשלום גבוה מהחשבונית (₪${Math.round(total).toLocaleString('he-IL')})`;
   if (isOver && !f._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
   if (f[COLS.taxPayType] === 'שיק') {
@@ -489,8 +489,8 @@ function receiptFormErrors() {
   if (!rf[COLS.recPayAmt]?.trim()) return 'הזן סכום תשלום';
   const paid = parseFloat(rf[COLS.recPayAmt]) || 0;
   const balance = parseFloat(rf._invTotal) || 0;
-  if (rf[COLS.recPayType] === 'מזומן' && balance > 0 && paid > balance + 0.5)
-    return 'מזומן לא יכול לעלות על יתרה: ₪' + Math.round(balance).toLocaleString('he-IL');
+  if (rf[COLS.recPayType] !== 'שיק' && balance > 0 && paid > balance + 0.5)
+    return 'רק שיק מאפשר תשלום גבוה מהיתרה (₪' + Math.round(balance).toLocaleString('he-IL') + ')';
   if (rf[COLS.recPayType] === 'שיק' && balance > 0 && paid > balance + 0.5 && !rf._overInvNum?.trim())
     return 'הזן מספר חשבונית עבור ההפרש';
 
@@ -569,6 +569,18 @@ function rowBg(r, isExp) {
   if (isExp) return '#ffffff';
   const bg = (r._bg || '#ffffff').toLowerCase().replace(/\s/g, '');
   return (bg === '#ffffff' || bg === '#fff' || bg === 'white' || bg === '') ? '#ffffff' : r._bg;
+}
+// Returns true when the row background is an orange/amber shade (dark or light)
+// so we can switch text from theme-orange to red for legibility
+function isOrangeBg(rawBg) {
+  if (!rawBg) return false;
+  const b = rawBg.toLowerCase().replace(/\s/g, '');
+  if (b === '#ffffff' || b === '#fff' || b === 'white' || b === '') return false;
+  const m = b.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/);
+  if (!m) return false;
+  const r = parseInt(m[1], 16), g = parseInt(m[2], 16), bl = parseInt(m[3], 16);
+  // Orange family: high red, mid green, low blue; red dominates green by enough margin
+  return r > 140 && g > 60 && bl < 100 && r > g + 20 && r > bl + 80;
 }
 function calcInv(f) {
   const price = parseFloat(f[COLS.price]) || 0;
@@ -1075,7 +1087,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.111</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.117</div></div>`;
   return h;
 }
 
@@ -1278,10 +1290,26 @@ function setTaxOverInv(num) {
 function buildTaxOpenInvsHtml() {
   const f = S.iForm;
   if (!f._openInvs || !f._openInvs.length) return '';
+  const paid  = parseFloat(f[COLS.taxPayAmt] || 0);
+  const total = calcInv(f).withVat;
+  const isOver = f[COLS.taxPayType] === 'שיק' && paid > total + 0.5;
+  if (!isOver) return '';
+  const excess = Math.round((paid - total) * 100) / 100;
+  // Only show invoices whose remaining balance matches the excess exactly
+  const matching = f._openInvs.filter(inv => {
+    const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
+    if (!n) return false;
+    return Math.abs(getInvBalance(n) - excess) <= 0.5;
+  });
+  if (!matching.length) {
+    return `<div style="background:#fff3e0;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#e65100">
+      ⚠️ אין חשבוניות פתוחות עם יתרה של ₪${Math.round(excess).toLocaleString('he-IL')} — הזן מספר חשבונית ידנית למטה
+    </div>`;
+  }
   let h = `<div class="dtable" style="margin-bottom:12px">
-    <div class="dthead" style="background:${tc()}"><span>בחר חשבונית לכיסוי ההפרש</span></div>`;
-  f._openInvs.forEach((inv, i) => {
-    const invNum = nz(inv[COLS.invNum]) || '—';
+    <div class="dthead" style="background:${tc()}"><span>חשבונית לכיסוי ההפרש</span><span style="font-weight:700">₪${Math.round(excess).toLocaleString('he-IL')}</span></div>`;
+  matching.forEach((inv, i) => {
+    const invNum  = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
     const invDate = nz(inv[COLS.docDate]) || '';
     const balance = getInvBalance(invNum);
     const selected = f._overInvNum === invNum;
@@ -1725,13 +1753,15 @@ function buildInvCardsHtml(data, isTax) {
     const balance = (!isTax && invNum) ? getInvBalance(invNum) : null;
     const hasPartialPay = balance !== null && balance < parseMoney(totVAT) - 0.5;
     const cNotes = getCustNotesById(custId);
+    // On orange-background rows the theme color is invisible — use red instead
+    const amtColor = isOrangeBg(r._bg) ? '#c62828' : color;
     h += `<div class="card${isE ? ' exp' : ''}" style="background:${bg};${isE ? `--tc:${color}` : ''}">
       <div class="card-hdr" onclick="tog('${id}')">
         <div class="r1">
-          ${invNum ? `<span class="nbadge" style="background:${color}">#${esc(invNum)}</span>` : ''}
+          ${invNum ? `<span class="nbadge" style="background:${amtColor}">#${esc(invNum)}</span>` : ''}
           <span style="font-weight:600;font-size:14px;color:#222;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(bizName || custId || '—')}</span>
           <div style="text-align:left;flex-shrink:0">
-            ${totVAT ? `<div style="font-size:15px;font-weight:700;color:${color}">${fmt(totVAT)}</div>` : ''}
+            ${totVAT ? `<div style="font-size:15px;font-weight:700;color:${amtColor}">${fmt(totVAT)}</div>` : ''}
             ${hasPartialPay ? `<div style="font-size:11px;font-weight:700;color:#c62828">יתרה: ₪${Math.round(balance).toLocaleString('he-IL')}</div>` : ''}
             ${balance === 0 && totVAT ? `<div style="font-size:11px;color:#1e8e3e;font-weight:600">✓ שולם</div>` : ''}
           </div>
@@ -2147,9 +2177,11 @@ function buildOverInvPickerHtml() {
 
   const excess = Math.round((paid - total) * 100) / 100;
   const inv1   = rf[COLS.recInvNum];
+  // Only show invoices whose remaining balance exactly matches the excess amount
   const others = (rf._custOpenInvs || []).filter(inv => {
     const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
-    return n && n !== inv1;
+    if (!n || n === inv1) return false;
+    return Math.abs(getInvBalance(n) - excess) <= 0.5;
   });
 
   let h = `<div style="background:#fff8e1;border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:#e65100">` +
@@ -2158,7 +2190,7 @@ function buildOverInvPickerHtml() {
 
   if (others.length) {
     h += '<div class="dtable" style="margin-bottom:8px">' +
-         '<div class="dthead" style="background:' + tc() + '"><span>בחר חשבונית ליתרת השיק</span>' +
+         '<div class="dthead" style="background:' + tc() + '"><span>חשבונית לכיסוי יתרת השיק</span>' +
          '<span style="font-weight:700">₪' + Math.round(excess).toLocaleString('he-IL') + '</span></div>';
     others.forEach((inv, i) => {
       const invNum    = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
@@ -2180,6 +2212,10 @@ function buildOverInvPickerHtml() {
            '</div></div>';
     });
     h += '</div>';
+  } else {
+    h += `<div style="background:#fff3e0;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#e65100">` +
+         `אין חשבוניות פתוחות עם יתרה של ₪${Math.round(excess).toLocaleString('he-IL')} — הזן מספר חשבונית ידנית` +
+         `</div>`;
   }
 
   const inputLabel = others.length ? 'או הזן מספר חשבונית ידנית' : 'מספר חשבונית עבור יתרת השיק';
