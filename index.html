@@ -379,11 +379,12 @@ function refreshAll() {
   S.isState = 'idle'; S.invoices = [];
   S.rsState = 'idle'; S.receipts = [];
   S.tsState = 'idle'; S.tax = [];
+  S.screen = 'list'; // leave settings, go back to active tab list
   pingSheets().then(() => {
     loadCustomers();
-    if (S.tab === 'invoices') loadInvoices();
-    else if (S.tab === 'receipts') { loadReceipts(); loadTax(); }
-    else if (S.tab === 'tax') loadTax();
+    loadInvoices();
+    loadReceipts();
+    loadTax();
   });
   render();
 }
@@ -408,7 +409,7 @@ function alertHtml(msg) {
 }
 
 function statusHtml(state, reloadFn, label) {
-  if (state === 'loading') return `<div class="status"><div class="spinner"></div><p style="color:#aaa">טוען ${esc(label)}...</p></div>`;
+  if (state === 'loading' || state === 'idle') return `<div class="status"><div class="spinner"></div><p style="color:#aaa">טוען ${esc(label)}...</p></div>`;
   if (state === 'busy') return `<div class="status"><p style="color:#f59e0b;font-size:14px">⏳ שרת עמוס</p><button onclick="${reloadFn}" style="margin-top:12px;background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;cursor:pointer">↻ נסה שוב</button></div>`;
   return `<div class="status"><p style="color:#c62828">שגיאה בטעינת ${esc(label)}</p><button onclick="${reloadFn}" style="margin-top:12px;background:#c62828;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;cursor:pointer">↻ נסה שוב</button></div>`;
 }
@@ -1111,7 +1112,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.132</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.135</div></div>`;
   return h;
 }
 
@@ -2783,8 +2784,11 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  if (S.scriptUrl) { render(); pingSheets().then(() => loadCustomers()); }
-  else render();
+  if (S.scriptUrl) {
+    loadCustomers(); // sets state to 'loading' before first render → no false "error" flash
+    render();
+    pingSheets();    // updates sheet names in background; each loadAny re-fetches when idle
+  } else render();
 });
 </script>
 </body>
