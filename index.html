@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MOOV Sales">
-<title>MOOV Sales v6.161</title>
+<title>MOOV Sales v6.162</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
@@ -1274,7 +1274,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.161</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.162</div></div>`;
   return h;
 }
 
@@ -2468,33 +2468,39 @@ Reply ONLY with JSON: {"chequeNum":"...","amount":"...","date":"..."}`;
 // Parse raw OCR text into {chequeNum, amount, date}
 function _parseCheckText(text) {
   const result = { chequeNum: '', amount: '', date: '' };
+  console.log('[OCR raw]', text); // debug: visible in browser DevTools console
 
-  // Date: D.M.YY / DD/MM/YYYY etc.
+  // ── 1. CHEQUE NUMBER ──────────────────────────────────────────────────────
+  // Israeli checks always print "CHEQUE No." or "מספר שיק" as a label
+  const chqLabel = text.match(/(?:CHEQUE\s*N[o0O]\.?\s*|מספר\s*שיק\s*[:\-]?\s*)(\d{4,10})/i);
+  if (chqLabel) {
+    result.chequeNum = chqLabel[1];
+  } else {
+    // Fallback: look for a 4-8 digit standalone number that appears near start of text
+    // (CHEQUE No. is usually near the top of the cheque)
+    const firstBlock = text.slice(0, Math.min(text.length, 400));
+    const early = firstBlock.match(/\b(\d{4,8})\b/g) || [];
+    if (early.length) result.chequeNum = early[0];
+  }
+
+  // ── 2. DATE ───────────────────────────────────────────────────────────────
+  // Match D.M.YY / DD/MM/YYYY / DD-MM-YY etc.
   const dm = text.match(/\b(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})\b/);
   if (dm) {
     const yr = dm[3].length === 2 ? '20' + dm[3] : dm[3];
     result.date = dm[1].padStart(2,'0') + '/' + dm[2].padStart(2,'0') + '/' + yr;
   }
 
-  // Amount: standalone 2-6 digit number in range 50–999999
-  const allNums = [...text.matchAll(/\b(\d{2,6}(?:\.\d{1,2})?)\b/g)];
-  for (const m of allNums) {
-    const n = parseFloat(m[1]);
-    if (n >= 50 && n < 1000000 && !result.date.replace(/\//g,'.').includes(m[1])) {
-      result.amount = m[1].replace(/\.00$/, ''); break;
-    }
-  }
+  // ── 3. AMOUNT ─────────────────────────────────────────────────────────────
+  // Strip all 6+ digit numbers first (account nos, phone nos, branch codes)
+  // so they cannot be mistaken for the payment amount
+  const stripped = text.replace(/\b\d{6,}\b/g, ' ');
+  const dateDigits = new Set((result.date || '').split('/').filter(Boolean));
+  const amtCandidates = [...stripped.matchAll(/\b(\d{2,5}(?:[.,]\d{1,2})?)\b/g)]
+    .map(m => ({ str: m[1].replace(',','.'), val: parseFloat(m[1].replace(',','.')) }))
+    .filter(m => m.val >= 10 && m.val < 100000 && !dateDigits.has(m.str.split('.')[0]));
+  if (amtCandidates.length) result.amount = amtCandidates[0].str.replace(/\.00$/, '');
 
-  // MICR check number: last line containing 2+ groups of 3+ digits
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).reverse();
-  for (const line of lines) {
-    const groups = (line.match(/\d+/g) || []).filter(g => g.length >= 3);
-    if (groups.length >= 2) {
-      // Israeli MICR (RTL): check number is the rightmost short-ish group
-      const candidates = groups.filter(g => g.length <= 9);
-      if (candidates.length) { result.chequeNum = candidates[candidates.length - 1]; break; }
-    }
-  }
   return result;
 }
 
