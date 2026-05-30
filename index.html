@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MOOV Sales">
-<title>MOOV Sales v6.156</title>
+<title>MOOV Sales v6.161</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
@@ -371,10 +371,27 @@ function saveUrl(inputId, errId) {
 const GEMINI_KEY_STORAGE    = 'moov_gemini_key_v1';
 const GEMINI_MODEL_STORAGE  = 'moov_gemini_model_v1';
 const GEMINI_MODEL_DEFAULT  = 'gemini-1.5-flash-latest';
-const ANTHROPIC_KEY_STORAGE = 'moov_anthropic_key_v1';
+const ANTHROPIC_KEY_STORAGE  = 'moov_anthropic_key_v1';
+const OCR_SPACE_KEY_STORAGE  = 'moov_ocrspace_key_v1';
 function getSavedGeminiKey()    { return localStorage.getItem(GEMINI_KEY_STORAGE)    || ''; }
 function getSavedGeminiModel()  { return localStorage.getItem(GEMINI_MODEL_STORAGE)  || GEMINI_MODEL_DEFAULT; }
 function getSavedAnthropicKey() { return localStorage.getItem(ANTHROPIC_KEY_STORAGE) || ''; }
+function getSavedOcrSpaceKey()  { return localStorage.getItem(OCR_SPACE_KEY_STORAGE) || ''; }
+function saveOcrSpaceKey(inputId, errId) {
+  const val = (document.getElementById(inputId)?.value || '').trim();
+  const errEl = document.getElementById(errId);
+  if (!val) { if (errEl) { errEl.textContent = 'הזן מפתח'; errEl.style.display = 'block'; } return; }
+  if (errEl) errEl.style.display = 'none';
+  S.ocrSpaceKey = val;
+  localStorage.setItem(OCR_SPACE_KEY_STORAGE, val);
+  showToast('✅ מפתח OCR.space נשמר', 'ok', 2500);
+  render();
+}
+function clearOcrSpaceKey() {
+  S.ocrSpaceKey = '';
+  localStorage.removeItem(OCR_SPACE_KEY_STORAGE);
+  render();
+}
 function saveAnthropicKey(inputId, errId) {
   const val = (document.getElementById(inputId)?.value || '').trim();
   const errEl = document.getElementById(errId);
@@ -512,6 +529,7 @@ const S = {
   geminiKey: getSavedGeminiKey(),
   geminiModel: getSavedGeminiModel(),
   anthropicKey: getSavedAnthropicKey(),
+  ocrSpaceKey:  getSavedOcrSpaceKey(),
   availableSheets: [],
   diagData: {}, diagRunning: false,
   errors: {},
@@ -1106,45 +1124,63 @@ function renderSettings() {
     <div class="scard" style="padding:14px">
       <div style="font-size:12px;color:#444;margin-bottom:12px;text-align:right;line-height:1.6">
         צלם שיק ← מספר שיק, סכום ותאריך ימולאו אוטומטית.<br>
-        <strong>הגדר אחד מהמפתחות:</strong>
+        הגדר <strong>אחד</strong> מהאפשרויות (OCR.space — חינם):
       </div>
 
-      <!-- Claude (Anthropic) — recommended -->
-      <div style="background:#f0f7ff;border-radius:8px;padding:12px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:600;color:#1a73e8;margin-bottom:6px">
-          🤖 Claude (Anthropic) — מומלץ
-          ${S.anthropicKey ? `<span style="color:#1e8e3e;font-size:11px;font-weight:400"> ✓ פעיל (...${esc(S.anthropicKey.slice(-6))})</span>` : ''}
+      <!-- OCR.space — FREE -->
+      <div style="background:#e8f5e9;border-radius:8px;padding:12px;margin-bottom:12px;border:1.5px solid #a5d6a7">
+        <div style="font-size:13px;font-weight:600;color:#2e7d32;margin-bottom:4px">
+          ✅ OCR.space — חינם לגמרי
+          ${S.ocrSpaceKey ? `<span style="font-size:11px;font-weight:400"> ✓ פעיל (...${esc(S.ocrSpaceKey.slice(-6))})</span>` : ''}
         </div>
-        <div style="font-size:11px;color:#666;margin-bottom:8px">
-          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#1a73e8">קבל מפתח ב-Anthropic Console ←</a>
-          &nbsp;(שימוש: ~0.03¢ לשיק)
+        <div style="font-size:11px;color:#555;margin-bottom:8px;line-height:1.5">
+          25,000 בקשות/חודש ללא תשלום.<br>
+          <a href="https://ocr.space/ocrapi" target="_blank" rel="noopener" style="color:#2e7d32">הרשם חינם ב-ocr.space/ocrapi ←</a>
+          (אימייל בלבד, ללא כרטיס אשראי)
         </div>
-        <div class="url-err" id="anthropic-key-err"></div>
-        <input class="url-input" id="anthropic-key-input" type="password"
-          placeholder="sk-ant-..." value="${esc(S.anthropicKey)}">
-        <button class="save-url-btn" style="background:#1a73e8"
-          onclick="saveAnthropicKey('anthropic-key-input','anthropic-key-err')">
-          ${S.anthropicKey ? '🔄 עדכן' : '✅ שמור'}
+        <div class="url-err" id="ocrspace-key-err"></div>
+        <input class="url-input" id="ocrspace-key-input" type="password"
+          placeholder="מפתח מ-ocr.space..." value="${esc(S.ocrSpaceKey)}">
+        <button class="save-url-btn" style="background:#2e7d32"
+          onclick="saveOcrSpaceKey('ocrspace-key-input','ocrspace-key-err')">
+          ${S.ocrSpaceKey ? '🔄 עדכן' : '✅ שמור'}
         </button>
-        ${S.anthropicKey ? `<button style="background:none;border:none;color:#c62828;font-size:11px;cursor:pointer;margin-top:6px;display:block;font-family:inherit" onclick="clearAnthropicKey()">🗑 הסר</button>` : ''}
+        ${S.ocrSpaceKey ? `<button style="background:none;border:none;color:#c62828;font-size:11px;cursor:pointer;margin-top:6px;display:block;font-family:inherit" onclick="clearOcrSpaceKey()">🗑 הסר</button>` : ''}
       </div>
 
-      <!-- Gemini — fallback -->
-      <details style="margin-top:4px">
+      <!-- Claude and Gemini as collapsible fallbacks -->
+      <details>
         <summary style="font-size:12px;color:#888;cursor:pointer;padding:4px 0">
-          Gemini (גיבוי — אם Claude לא מוגדר)
-          ${S.geminiKey ? `<span style="color:#1e8e3e"> ✓ מוגדר</span>` : ''}
+          אפשרויות נוספות (בתשלום / Gemini)
+          ${(S.anthropicKey || S.geminiKey) ? '<span style="color:#1e8e3e"> ✓</span>' : ''}
         </summary>
-        <div style="padding-top:10px">
-          <div class="url-err" id="gemini-key-err"></div>
-          <input class="url-input" id="gemini-key-input" type="password"
-            placeholder="AIzaSy..." value="${esc(S.geminiKey)}">
-          <button class="save-url-btn" onclick="saveGeminiKey('gemini-key-input','gemini-key-err')">
-            ${S.geminiKey ? '🔄 עדכן' : '✅ שמור'}
-          </button>
-          ${S.geminiKey ? `<button style="background:none;border:none;color:#c62828;font-size:11px;cursor:pointer;margin-top:6px;display:block;font-family:inherit" onclick="clearGeminiKey()">🗑 הסר</button>
-          <button class="save-url-btn" style="background:#1a73e8;margin-top:8px" onclick="listGeminiModels()">🔍 הצג מודלים זמינים</button>
-          <div id="gemini-models-list" style="margin-top:8px"></div>` : ''}
+        <div style="padding-top:10px;display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:6px">🤖 Claude (Anthropic) — ~0.03¢ לשיק</div>
+            <div style="font-size:11px;color:#666;margin-bottom:6px">
+              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#1a73e8">console.anthropic.com ←</a>
+            </div>
+            <div class="url-err" id="anthropic-key-err"></div>
+            <input class="url-input" id="anthropic-key-input" type="password"
+              placeholder="sk-ant-..." value="${esc(S.anthropicKey)}">
+            <button class="save-url-btn" style="background:#1a73e8"
+              onclick="saveAnthropicKey('anthropic-key-input','anthropic-key-err')">
+              ${S.anthropicKey ? '🔄 עדכן' : '✅ שמור'}
+            </button>
+            ${S.anthropicKey ? `<button style="background:none;border:none;color:#c62828;font-size:11px;cursor:pointer;margin-top:4px;display:block;font-family:inherit" onclick="clearAnthropicKey()">🗑 הסר</button>` : ''}
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:6px">🔮 Gemini (Google)</div>
+            <div class="url-err" id="gemini-key-err"></div>
+            <input class="url-input" id="gemini-key-input" type="password"
+              placeholder="AIzaSy..." value="${esc(S.geminiKey)}">
+            <button class="save-url-btn" onclick="saveGeminiKey('gemini-key-input','gemini-key-err')">
+              ${S.geminiKey ? '🔄 עדכן' : '✅ שמור'}
+            </button>
+            ${S.geminiKey ? `<button style="background:none;border:none;color:#c62828;font-size:11px;cursor:pointer;margin-top:4px;display:block;font-family:inherit" onclick="clearGeminiKey()">🗑 הסר</button>
+            <button class="save-url-btn" style="background:#1a73e8;margin-top:6px" onclick="listGeminiModels()">🔍 הצג מודלים זמינים</button>
+            <div id="gemini-models-list" style="margin-top:6px"></div>` : ''}
+          </div>
         </div>
       </details>
     </div>`;
@@ -1238,7 +1274,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.156</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.161</div></div>`;
   return h;
 }
 
@@ -2429,7 +2465,62 @@ const OCR_PROMPT = `This is an Israeli bank cheque (שיק). Extract three value
 3. date – due date (תאריך פירעון) in DD/MM/YYYY format, or "" if unclear.
 Reply ONLY with JSON: {"chequeNum":"...","amount":"...","date":"..."}`;
 
+// Parse raw OCR text into {chequeNum, amount, date}
+function _parseCheckText(text) {
+  const result = { chequeNum: '', amount: '', date: '' };
+
+  // Date: D.M.YY / DD/MM/YYYY etc.
+  const dm = text.match(/\b(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})\b/);
+  if (dm) {
+    const yr = dm[3].length === 2 ? '20' + dm[3] : dm[3];
+    result.date = dm[1].padStart(2,'0') + '/' + dm[2].padStart(2,'0') + '/' + yr;
+  }
+
+  // Amount: standalone 2-6 digit number in range 50–999999
+  const allNums = [...text.matchAll(/\b(\d{2,6}(?:\.\d{1,2})?)\b/g)];
+  for (const m of allNums) {
+    const n = parseFloat(m[1]);
+    if (n >= 50 && n < 1000000 && !result.date.replace(/\//g,'.').includes(m[1])) {
+      result.amount = m[1].replace(/\.00$/, ''); break;
+    }
+  }
+
+  // MICR check number: last line containing 2+ groups of 3+ digits
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).reverse();
+  for (const line of lines) {
+    const groups = (line.match(/\d+/g) || []).filter(g => g.length >= 3);
+    if (groups.length >= 2) {
+      // Israeli MICR (RTL): check number is the rightmost short-ish group
+      const candidates = groups.filter(g => g.length <= 9);
+      if (candidates.length) { result.chequeNum = candidates[candidates.length - 1]; break; }
+    }
+  }
+  return result;
+}
+
+async function _ocrOcrSpace(img) {
+  const b64 = 'data:image/jpeg;base64,' + _ocrCanvas(img);
+  const fd  = new FormData();
+  fd.append('base64Image', b64);
+  fd.append('language', 'eng');           // eng handles numbers + MICR better
+  fd.append('OCREngine', '2');            // Engine 2 — more accurate
+  fd.append('detectOrientation', 'true');
+  fd.append('scale', 'true');
+  const res = await fetch('https://api.ocr.space/parse/image', {
+    method: 'POST',
+    headers: { 'apikey': S.ocrSpaceKey },
+    body: fd
+  });
+  if (!res.ok) throw new Error(`OCR.space HTTP ${res.status}`);
+  const d = await res.json();
+  if (d.IsErroredOnProcessing) throw new Error((d.ErrorMessage || ['OCR.space error'])[0]);
+  const text = (d.ParsedResults || [])[0]?.ParsedText || '';
+  if (!text.trim()) throw new Error('OCR returned empty text');
+  return _parseCheckText(text);
+}
+
 async function extractCheckOCR(img) {
+  if (S.ocrSpaceKey)  return _ocrOcrSpace(img);
   if (S.anthropicKey) return _ocrAnthropic(img);
   if (S.geminiKey)    return _ocrGemini(img);
   return null;
@@ -2515,7 +2606,7 @@ function onPhotoChange(input) {
     setTimeout(() => {
       document.querySelector('img[src^="data:image"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 100);
-    if (S.anthropicKey || S.geminiKey) {
+    if (S.ocrSpaceKey || S.anthropicKey || S.geminiKey) {
       showToast('🔍 מזהה פרטי שיק...', 'ok', 4000);
       extractCheckOCR(img)
         .then(result => {
@@ -2545,7 +2636,7 @@ function onReceiptPhotoChange(input) {
     setTimeout(() => {
       document.querySelector('#receipt-chk-fields img')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 100);
-    if (S.anthropicKey || S.geminiKey) {
+    if (S.ocrSpaceKey || S.anthropicKey || S.geminiKey) {
       showToast('🔍 מזהה פרטי שיק...', 'ok', 4000);
       extractCheckOCR(img)
         .then(result => {
