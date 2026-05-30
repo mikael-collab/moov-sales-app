@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MOOV Sales">
-<title>MOOV Sales v6.149</title>
+<title>MOOV Sales v6.151</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
@@ -386,13 +386,37 @@ function saveGeminiKey(inputId, errId) {
   showToast('✅ מפתח Gemini נשמר', 'ok', 2500);
   render();
 }
-function saveGeminiModel(inputId) {
-  const val = (document.getElementById(inputId)?.value || '').trim();
-  if (!val) return;
-  S.geminiModel = val;
-  localStorage.setItem(GEMINI_MODEL_STORAGE, val);
-  showToast('✅ מודל OCR עודכן', 'ok', 2000);
+function saveGeminiModel_direct(model) {
+  S.geminiModel = model;
+  localStorage.setItem(GEMINI_MODEL_STORAGE, model);
+  showToast('✅ מודל נבחר: ' + model, 'ok', 2500);
   render();
+}
+async function listGeminiModels() {
+  if (!S.geminiKey) { showToast('הזן מפתח Gemini תחילה', 'err'); return; }
+  const el = document.getElementById('gemini-models-list');
+  if (el) el.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px 0">🔄 טוען רשימת מודלים...</div>';
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${S.geminiKey}`);
+    const d = await res.json();
+    if (d.error) throw new Error(d.error.message);
+    const models = (d.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => m.name.replace('models/', ''));
+    if (!el) return;
+    if (!models.length) { el.innerHTML = '<div style="color:#c62828;font-size:12px">לא נמצאו מודלים עם generateContent</div>'; return; }
+    el.innerHTML =
+      `<div style="font-size:12px;color:#1e8e3e;margin-bottom:8px">✓ ${models.length} מודלים זמינים — לחץ לבחירה:</div>` +
+      models.map(m =>
+        `<button onclick="saveGeminiModel_direct('${m}')"
+          style="display:block;width:100%;text-align:left;padding:7px 10px;margin-bottom:4px;
+          border:1.5px solid ${S.geminiModel===m?'#1e8e3e':'#ddd'};border-radius:7px;
+          background:${S.geminiModel===m?'#e6f4ea':'#fff'};font-family:monospace;font-size:11px;cursor:pointer">
+          ${m}${S.geminiModel===m?' ✓':''}
+        </button>`).join('');
+  } catch(e) {
+    if (el) el.innerHTML = `<div style="color:#c62828;font-size:12px">שגיאה: ${esc(e.message.slice(0,120))}</div>`;
+  }
 }
 function clearGeminiKey() {
   S.geminiKey = '';
@@ -1075,16 +1099,16 @@ function renderSettings() {
         ${S.geminiKey ? '🔄 עדכן מפתח' : '✅ שמור מפתח'}
       </button>
       ${S.geminiKey ? `<button style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;margin-top:8px;display:block;font-family:inherit" onclick="clearGeminiKey()">🗑 הסר מפתח</button>` : ''}
-      <div style="margin-top:14px;font-size:12px;color:#666;text-align:right;margin-bottom:6px">
-        מודל OCR — אם תקבל שגיאה "not found" נסה שם אחר:
-      </div>
-      <select class="url-input" id="gemini-model-select" style="margin-bottom:6px"
-        onchange="S.geminiModel=this.value">
-        ${['gemini-1.5-flash-latest','gemini-1.5-flash-001','gemini-1.5-flash-002',
-           'gemini-1.5-flash-8b-latest','gemini-2.0-flash-lite','gemini-2.0-flash'].map(m =>
-          `<option value="${m}"${S.geminiModel===m?' selected':''}>${m}</option>`).join('')}
-      </select>
-      <button class="save-url-btn" onclick="saveGeminiModel('gemini-model-select')">💾 שמור מודל</button>
+      ${S.geminiKey ? `
+      <div style="margin-top:14px;border-top:1px solid #eee;padding-top:12px">
+        <div style="font-size:12px;color:#444;margin-bottom:8px;text-align:right">
+          מודל נוכחי: <strong style="direction:ltr;display:inline-block">${esc(S.geminiModel)}</strong>
+        </div>
+        <button class="save-url-btn" style="background:#1a73e8" onclick="listGeminiModels()">
+          🔍 הצג מודלים זמינים למפתח זה
+        </button>
+        <div id="gemini-models-list" style="margin-top:10px"></div>
+      </div>` : ''}
     </div>`;
 
   if (connected) {
@@ -1176,7 +1200,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.149</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.151</div></div>`;
   return h;
 }
 
