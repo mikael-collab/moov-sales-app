@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MOOV Sales">
-<title>MOOV Sales v6.151</title>
+<title>MOOV Sales v6.156</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
@@ -368,11 +368,31 @@ function saveUrl(inputId, errId) {
   pingSheets().then(() => { if (S.csState === 'idle') loadCustomers(); });
 }
 
-const GEMINI_KEY_STORAGE   = 'moov_gemini_key_v1';
-const GEMINI_MODEL_STORAGE = 'moov_gemini_model_v1';
-const GEMINI_MODEL_DEFAULT = 'gemini-1.5-flash-latest';
-function getSavedGeminiKey()   { return localStorage.getItem(GEMINI_KEY_STORAGE)   || ''; }
-function getSavedGeminiModel() { return localStorage.getItem(GEMINI_MODEL_STORAGE) || GEMINI_MODEL_DEFAULT; }
+const GEMINI_KEY_STORAGE    = 'moov_gemini_key_v1';
+const GEMINI_MODEL_STORAGE  = 'moov_gemini_model_v1';
+const GEMINI_MODEL_DEFAULT  = 'gemini-1.5-flash-latest';
+const ANTHROPIC_KEY_STORAGE = 'moov_anthropic_key_v1';
+function getSavedGeminiKey()    { return localStorage.getItem(GEMINI_KEY_STORAGE)    || ''; }
+function getSavedGeminiModel()  { return localStorage.getItem(GEMINI_MODEL_STORAGE)  || GEMINI_MODEL_DEFAULT; }
+function getSavedAnthropicKey() { return localStorage.getItem(ANTHROPIC_KEY_STORAGE) || ''; }
+function saveAnthropicKey(inputId, errId) {
+  const val = (document.getElementById(inputId)?.value || '').trim();
+  const errEl = document.getElementById(errId);
+  if (!val || !val.startsWith('sk-ant-')) {
+    if (errEl) { errEl.textContent = 'מפתח Anthropic אמור להתחיל ב-sk-ant-'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  S.anthropicKey = val;
+  localStorage.setItem(ANTHROPIC_KEY_STORAGE, val);
+  showToast('✅ מפתח Claude נשמר', 'ok', 2500);
+  render();
+}
+function clearAnthropicKey() {
+  S.anthropicKey = '';
+  localStorage.removeItem(ANTHROPIC_KEY_STORAGE);
+  render();
+}
 function saveGeminiKey(inputId, errId) {
   const val = (document.getElementById(inputId)?.value || '').trim();
   const errEl = document.getElementById(errId);
@@ -491,6 +511,7 @@ const S = {
   scriptUrl: getSavedUrl(),
   geminiKey: getSavedGeminiKey(),
   geminiModel: getSavedGeminiModel(),
+  anthropicKey: getSavedAnthropicKey(),
   availableSheets: [],
   diagData: {}, diagRunning: false,
   errors: {},
@@ -1081,34 +1102,51 @@ function renderSettings() {
         placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
       <button class="save-url-btn" onclick="saveUrl('script-url-input2','url-err2')">${connected ? '🔄 עדכן URL' : '✅ התחבר'}</button>
     </div>
-    <div class="stitle">🔍 OCR שיקים — Gemini AI</div>
+    <div class="stitle">🔍 OCR שיקים — זיהוי אוטומטי</div>
     <div class="scard" style="padding:14px">
-      <div style="font-size:12px;color:#666;margin-bottom:10px;line-height:1.5;text-align:right">
-        צלם שיק ← המספר והסכום ימולאו אוטומטית.<br>
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
-          style="color:${color}">קבל מפתח חינמי ב-Google AI Studio ←</a>
+      <div style="font-size:12px;color:#444;margin-bottom:12px;text-align:right;line-height:1.6">
+        צלם שיק ← מספר שיק, סכום ותאריך ימולאו אוטומטית.<br>
+        <strong>הגדר אחד מהמפתחות:</strong>
       </div>
-      ${S.geminiKey ? `<div class="srow" style="border-top:none;margin-bottom:10px">
-        <span class="slabel">מפתח</span>
-        <span class="sval" style="color:#1e8e3e">✓ מוגדר (...${esc(S.geminiKey.slice(-6))})</span>
-      </div>` : '<div style="font-size:11px;color:#e65100;margin-bottom:8px;text-align:right">⚠️ מפתח לא מוגדר — OCR לא פעיל</div>'}
-      <div class="url-err" id="gemini-key-err"></div>
-      <input class="url-input" id="gemini-key-input" type="password"
-        placeholder="AIzaSy..." value="${esc(S.geminiKey)}">
-      <button class="save-url-btn" onclick="saveGeminiKey('gemini-key-input','gemini-key-err')">
-        ${S.geminiKey ? '🔄 עדכן מפתח' : '✅ שמור מפתח'}
-      </button>
-      ${S.geminiKey ? `<button style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;margin-top:8px;display:block;font-family:inherit" onclick="clearGeminiKey()">🗑 הסר מפתח</button>` : ''}
-      ${S.geminiKey ? `
-      <div style="margin-top:14px;border-top:1px solid #eee;padding-top:12px">
-        <div style="font-size:12px;color:#444;margin-bottom:8px;text-align:right">
-          מודל נוכחי: <strong style="direction:ltr;display:inline-block">${esc(S.geminiModel)}</strong>
+
+      <!-- Claude (Anthropic) — recommended -->
+      <div style="background:#f0f7ff;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;color:#1a73e8;margin-bottom:6px">
+          🤖 Claude (Anthropic) — מומלץ
+          ${S.anthropicKey ? `<span style="color:#1e8e3e;font-size:11px;font-weight:400"> ✓ פעיל (...${esc(S.anthropicKey.slice(-6))})</span>` : ''}
         </div>
-        <button class="save-url-btn" style="background:#1a73e8" onclick="listGeminiModels()">
-          🔍 הצג מודלים זמינים למפתח זה
+        <div style="font-size:11px;color:#666;margin-bottom:8px">
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#1a73e8">קבל מפתח ב-Anthropic Console ←</a>
+          &nbsp;(שימוש: ~0.03¢ לשיק)
+        </div>
+        <div class="url-err" id="anthropic-key-err"></div>
+        <input class="url-input" id="anthropic-key-input" type="password"
+          placeholder="sk-ant-..." value="${esc(S.anthropicKey)}">
+        <button class="save-url-btn" style="background:#1a73e8"
+          onclick="saveAnthropicKey('anthropic-key-input','anthropic-key-err')">
+          ${S.anthropicKey ? '🔄 עדכן' : '✅ שמור'}
         </button>
-        <div id="gemini-models-list" style="margin-top:10px"></div>
-      </div>` : ''}
+        ${S.anthropicKey ? `<button style="background:none;border:none;color:#c62828;font-size:11px;cursor:pointer;margin-top:6px;display:block;font-family:inherit" onclick="clearAnthropicKey()">🗑 הסר</button>` : ''}
+      </div>
+
+      <!-- Gemini — fallback -->
+      <details style="margin-top:4px">
+        <summary style="font-size:12px;color:#888;cursor:pointer;padding:4px 0">
+          Gemini (גיבוי — אם Claude לא מוגדר)
+          ${S.geminiKey ? `<span style="color:#1e8e3e"> ✓ מוגדר</span>` : ''}
+        </summary>
+        <div style="padding-top:10px">
+          <div class="url-err" id="gemini-key-err"></div>
+          <input class="url-input" id="gemini-key-input" type="password"
+            placeholder="AIzaSy..." value="${esc(S.geminiKey)}">
+          <button class="save-url-btn" onclick="saveGeminiKey('gemini-key-input','gemini-key-err')">
+            ${S.geminiKey ? '🔄 עדכן' : '✅ שמור'}
+          </button>
+          ${S.geminiKey ? `<button style="background:none;border:none;color:#c62828;font-size:11px;cursor:pointer;margin-top:6px;display:block;font-family:inherit" onclick="clearGeminiKey()">🗑 הסר</button>
+          <button class="save-url-btn" style="background:#1a73e8;margin-top:8px" onclick="listGeminiModels()">🔍 הצג מודלים זמינים</button>
+          <div id="gemini-models-list" style="margin-top:8px"></div>` : ''}
+        </div>
+      </details>
     </div>`;
 
   if (connected) {
@@ -1200,7 +1238,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.151</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.156</div></div>`;
   return h;
 }
 
@@ -2372,54 +2410,78 @@ function buildOverInvPickerHtml() {
 }
 
 // ── Gemini Vision OCR for cheques ──
-async function extractCheckOCR(img) {
-  if (!S.geminiKey) return null;
-  // High-quality canvas (up to 1600px) for better OCR accuracy
+function _ocrCanvas(img) {
   const OCR_MAX = 1600;
-  const ocrRatio = Math.min(OCR_MAX / img.width, OCR_MAX / img.height, 1);
-  const oc = document.createElement('canvas');
-  oc.width  = Math.round(img.width  * ocrRatio);
-  oc.height = Math.round(img.height * ocrRatio);
-  oc.getContext('2d').drawImage(img, 0, 0, oc.width, oc.height);
-  const ocrB64 = oc.toDataURL('image/jpeg', 0.92).split(',')[1];
+  const r = Math.min(OCR_MAX / img.width, OCR_MAX / img.height, 1);
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.92).split(',')[1];
+}
+function _ocrNormalise(result) {
+  if (result.amount)    result.amount    = String(result.amount).replace(/[^\d.]/g, '');
+  if (result.chequeNum) result.chequeNum = String(result.chequeNum).replace(/\D/g, '');
+  return result;
+}
+const OCR_PROMPT = `This is an Israeli bank cheque (שיק). Extract three values:
+1. chequeNum – cheque number from the MICR line at the bottom. Israeli cheques are RTL: cheque number is on the RIGHT of the MICR line, account number in the middle, bank/branch on the LEFT. Return digits only.
+2. amount – payment amount, digits and decimal point only (no ₪, no commas).
+3. date – due date (תאריך פירעון) in DD/MM/YYYY format, or "" if unclear.
+Reply ONLY with JSON: {"chequeNum":"...","amount":"...","date":"..."}`;
 
+async function extractCheckOCR(img) {
+  if (S.anthropicKey) return _ocrAnthropic(img);
+  if (S.geminiKey)    return _ocrGemini(img);
+  return null;
+}
+
+async function _ocrAnthropic(img) {
+  const body = {
+    model: 'claude-3-5-haiku-20241022',
+    max_tokens: 150,
+    messages: [{ role: 'user', content: [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: _ocrCanvas(img) } },
+      { type: 'text',  text: OCR_PROMPT }
+    ]}]
+  };
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': S.anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  const d = await res.json();
+  if (d.error) throw new Error(d.error.message || `Claude error ${res.status}`);
+  const text = (d.content?.[0]?.text || '').trim()
+    .replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/,'').trim();
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('No JSON from Claude');
+  return _ocrNormalise(JSON.parse(m[0]));
+}
+
+async function _ocrGemini(img) {
   const body = {
     contents: [{ parts: [
-      { text: `This is an Israeli bank cheque (שיק). Extract three values:
-
-1. chequeNum – The cheque number from the MICR line at the very bottom of the cheque.
-   Israeli cheques are read RIGHT-TO-LEFT: the cheque number is the group of digits on the RIGHT side of the MICR line, the account number is in the middle, and the bank/branch code is on the LEFT.
-   Return ONLY the digits of the cheque number (typically 3–9 digits).
-
-2. amount – The payment amount in numbers. Look for a box or field labelled "סכום" or a clearly printed number near the top-right of the cheque.
-   Return digits and decimal point ONLY — no commas, no ₪, no spaces (e.g. "1500" or "1500.00").
-
-3. date – The due/payment date (תאריך פירעון) written on the cheque. Return in DD/MM/YYYY format if possible. Return empty string if not visible.
-
-Reply with ONLY this exact JSON (no markdown, no explanation):
-{"chequeNum":"...","amount":"...","date":"..."}` },
-      { inline_data: { mime_type: 'image/jpeg', data: ocrB64 } }
+      { text: OCR_PROMPT },
+      { inline_data: { mime_type: 'image/jpeg', data: _ocrCanvas(img) } }
     ]}],
     generationConfig: { temperature: 0, maxOutputTokens: 150 }
   };
-
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${S.geminiModel}:generateContent?key=${S.geminiKey}`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   );
   const d = await res.json();
   if (d.error) throw new Error(d.error.message || `Gemini error ${res.status}`);
-  const raw = (d.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
-  // Strip markdown code fences that the model sometimes adds
-  const cleaned = raw.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();
-  const m = cleaned.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('No JSON in OCR response');
-  const result = JSON.parse(m[0]);
-  // Normalise amount: strip commas, spaces, currency symbols
-  if (result.amount) result.amount = String(result.amount).replace(/[^\d.]/g, '');
-  // Normalise chequeNum: digits only
-  if (result.chequeNum) result.chequeNum = String(result.chequeNum).replace(/\D/g, '');
-  return result;
+  const text = (d.candidates?.[0]?.content?.parts?.[0]?.text || '').trim()
+    .replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/,'').trim();
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('No JSON from Gemini');
+  return _ocrNormalise(JSON.parse(m[0]));
 }
 
 function _compressPhoto(img, maxPx, quality) {
@@ -2453,7 +2515,7 @@ function onPhotoChange(input) {
     setTimeout(() => {
       document.querySelector('img[src^="data:image"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 100);
-    if (S.geminiKey) {
+    if (S.anthropicKey || S.geminiKey) {
       showToast('🔍 מזהה פרטי שיק...', 'ok', 4000);
       extractCheckOCR(img)
         .then(result => {
@@ -2483,7 +2545,7 @@ function onReceiptPhotoChange(input) {
     setTimeout(() => {
       document.querySelector('#receipt-chk-fields img')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 100);
-    if (S.geminiKey) {
+    if (S.anthropicKey || S.geminiKey) {
       showToast('🔍 מזהה פרטי שיק...', 'ok', 4000);
       extractCheckOCR(img)
         .then(result => {
