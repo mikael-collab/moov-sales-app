@@ -2468,38 +2468,54 @@ Reply ONLY with JSON: {"chequeNum":"...","amount":"...","date":"..."}`;
 // Parse raw OCR text into {chequeNum, amount, date}
 function _parseCheckText(text) {
   const result = { chequeNum: '', amount: '', date: '' };
-  console.log('[OCR raw]', text); // debug: visible in browser DevTools console
+  console.log('[OCR raw]', text); // viewable in your browser developer console
 
-  // ── 1. CHEQUE NUMBER ──────────────────────────────────────────────────────
-  // Israeli checks always print "CHEQUE No." or "מספר שיק" as a label
+  // 1. CHEQUE NUMBER
   const chqLabel = text.match(/(?:CHEQUE\s*N[o0O]\.?\s*|מספר\s*שיק\s*[:\-]?\s*)(\d{4,10})/i);
   if (chqLabel) {
     result.chequeNum = chqLabel[1];
   } else {
-    // Fallback: look for a 4-8 digit standalone number that appears near start of text
-    // (CHEQUE No. is usually near the top of the cheque)
     const firstBlock = text.slice(0, Math.min(text.length, 400));
     const early = firstBlock.match(/\b(\d{4,8})\b/g) || [];
     if (early.length) result.chequeNum = early[0];
   }
 
-  // ── 2. DATE ───────────────────────────────────────────────────────────────
-  // Match D.M.YY / DD/MM/YYYY / DD-MM-YY etc.
-  const dm = text.match(/\b(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})\b/);
+  // 2. DATE - Now accepts spacing variations natively (e.g., "28 . 5 . 26")
+  const dm = text.match(/\b(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{2,4})\b/);
   if (dm) {
-    const yr = dm[3].length === 2 ? '20' + dm[3] : dm[3];
-    result.date = dm[1].padStart(2,'0') + '/' + dm[2].padStart(2,'0') + '/' + yr;
+    const yr = dm[3].trim().length === 2 ? '20' + dm[3].trim() : dm[3].trim();
+    result.date = dm[1].trim().padStart(2,'0') + '/' + dm[2].trim().padStart(2,'0') + '/' + yr;
   }
 
-  // ── 3. AMOUNT ─────────────────────────────────────────────────────────────
-  // Strip all 6+ digit numbers first (account nos, phone nos, branch codes)
-  // so they cannot be mistaken for the payment amount
-  const stripped = text.replace(/\b\d{6,}\b/g, ' ');
+  // 3. AMOUNT - Contextual scoring system
+  const stripped = text.replace(/\b\d{6,}\b/g, ' '); // Clear out long account numbers
   const dateDigits = new Set((result.date || '').split('/').filter(Boolean));
-  const amtCandidates = [...stripped.matchAll(/\b(\d{2,5}(?:[.,]\d{1,2})?)\b/g)]
-    .map(m => ({ str: m[1].replace(',','.'), val: parseFloat(m[1].replace(',','.')) }))
-    .filter(m => m.val >= 10 && m.val < 100000 && !dateDigits.has(m.str.split('.')[0]));
-  if (amtCandidates.length) result.amount = amtCandidates[0].str.replace(/\.00$/, '');
+  
+  // Extract all potential 1-to-5 digit numbers
+  const amtCandidates = [...stripped.matchAll(/\b(\d{1,5}(?:[.,]\d{1,2})?)\b/g)]
+    .map(m => {
+      const strVal = m[1].replace(',', '.');
+      const val = parseFloat(strVal);
+      
+      // Look at a 30-character text window surrounding the number
+      const startIdx = Math.max(0, m.index - 15);
+      const endIdx = Math.min(stripped.length, m.index + m[0].length + 15);
+      const context = stripped.slice(startIdx, endIdx);
+      
+      let score = 0;
+      if (context.includes('#')) score += 100;                 // Massive priority boost for matching your handwritten "537#"
+      if (context.includes('₪') || context.includes('סכום')) score += 50; 
+      if (val === 20 || val === 26 || val === 522) score -= 40; // Deprioritize structural bank/branch codes and current year numbers
+      
+      return { str: strVal, val: val, score: score };
+    })
+    .filter(m => m.val >= 5 && m.val < 100000 && !dateDigits.has(m.str.split('.')[0]));
+
+  if (amtCandidates.length) {
+    // Sort candidate results by contextual score first, then by numerical value size
+    amtCandidates.sort((a, b) => b.score - a.score || b.val - a.val);
+    result.amount = amtCandidates[0].str.replace(/\.00$/, '');
+  }
 
   return result;
 }
