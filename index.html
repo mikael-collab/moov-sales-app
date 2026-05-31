@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MOOV Sales">
-<title>MOOV Sales v6.162</title>
+<title>MOOV Sales v6.170</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
@@ -186,7 +186,6 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <body>
 <div id="app">
   <div id="toast-container"></div>
-  <!-- Custom Premium Confirm Modal for Sandboxed Frame Modals -->
   <div id="confirm-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(2px);">
     <div style="background:#fff; width:90%; max-width:400px; padding:20px; border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,0.25); direction:rtl; text-align:right;">
       <h3 id="confirm-title" style="font-size:16px; font-weight:700; margin-bottom:10px; color:#1a1a1a;">⚠️ שים לב</h3>
@@ -321,7 +320,6 @@ const PRODS=[
   {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
 ];
 
-// Removed invPayType, invPayAmt, invPayDate, invChkNum so payment fields are completely non-existent for invoices
 const INV_TAIL=[
   {k:COLS.invTerms,label:'תנאי תשלום'},
   {k:COLS.invTotalVat,label:'סה"כ כולל מע"מ',money:true,hi:true},
@@ -473,7 +471,7 @@ function refreshAll() {
   S.rsState = 'idle'; S.receipts = [];
   S.tsState = 'idle'; S.tax = [];
   S.screen = 'list';
-  setHeader(); // must run before render() so header reflects 'list' state
+  setHeader(); 
   pingSheets().then(() => {
     loadCustomers();
     loadInvoices();
@@ -481,6 +479,27 @@ function refreshAll() {
     loadTax();
   });
   render();
+}
+
+// ── Smart State Evaluators ──
+function _isFieldEmpty(val) {
+  const s = (val || '').toString().trim();
+  return s === '' || s === '0' || s === '0.00' || s === '0.0';
+}
+
+function _cleanDateStr(rawDate) {
+  if (!rawDate) return '';
+  let s = String(rawDate).trim().replace(/\s+/g, '');
+  let mISO = s.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})$/);
+  if (mISO) {
+    return mISO[3].padStart(2, '0') + '/' + mISO[2].padStart(2, '0') + '/' + mISO[1];
+  }
+  let mNormal = s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})$/);
+  if (mNormal) {
+    let yr = mNormal[3].length === 2 ? '20' + mNormal[3] : mNormal[3];
+    return mNormal[1].padStart(2, '0') + '/' + mNormal[2].padStart(2, '0') + '/' + yr;
+  }
+  return rawDate;
 }
 
 function setElValue(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
@@ -497,6 +516,7 @@ function showToast(msg, type, duration) {
   setTimeout(() => el.remove(), duration || 3000);
 }
 
+// ── Shared Content Elements ──
 function alertHtml(msg) {
   if (!msg) return '';
   return `<div class="alert ${msg.t === 's' ? 'ok' : 'err'}">${esc(msg.m)}</div>`;
@@ -687,8 +707,6 @@ function rowBg(r, isExp) {
   const bg = (r._bg || '#ffffff').toLowerCase().replace(/\s/g, '');
   return (bg === '#ffffff' || bg === '#fff' || bg === 'white' || bg === '') ? '#ffffff' : r._bg;
 }
-// Returns true when the row background is an orange/amber shade (dark or light)
-// so we can switch text from theme-orange to red for legibility
 function isOrangeBg(rawBg) {
   if (!rawBg) return false;
   const b = rawBg.toLowerCase().replace(/\s/g, '');
@@ -696,7 +714,6 @@ function isOrangeBg(rawBg) {
   const m = b.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/);
   if (!m) return false;
   const r = parseInt(m[1], 16), g = parseInt(m[2], 16), bl = parseInt(m[3], 16);
-  // Orange family: high red, mid green, low blue; red dominates green by enough margin
   return r > 140 && g > 60 && bl < 100 && r > g + 20 && r > bl + 80;
 }
 function calcInv(f) {
@@ -722,9 +739,7 @@ async function apiFetch(params) {
 
 async function apiPost(body) {
   if (!S.scriptUrl) return { status: 'ok' };
-  // Phase 1 carries the full payload (including photo) via POST body.
-  // Phase 2 (iframe GET) drops the photo — base64 is too large for a URL.
-  const sendBodyFull = Object.assign({}, body);                     // includes photoBase64
+  const sendBodyFull = Object.assign({}, body);                     
   const sendBodyNoPhoto = Object.assign({}, body);
   delete sendBodyNoPhoto.photoBase64;
   const hasPhoto = !!(body.photoBase64);
@@ -736,10 +751,6 @@ async function apiPost(body) {
   const t = new Date().toLocaleTimeString('he-IL');
   S._lastSave = { t, bodyLen: bodyStrFull.length, phase: '?', resp: '', payloadPreview: bodyStrNoPhoto.slice(0, 200) };
 
-  // Phase 1: POST with redirect:'manual' — GAS fully executes (write + photo embed) before
-  // redirecting its response to googleusercontent.com.  With redirect:'manual' the browser
-  // stops at the redirect and returns an opaque-redirect response instead of throwing
-  // "Failed to fetch", so we know the request was delivered and processed.
   try {
     const r = await fetch(base, {
       method: 'POST',
@@ -748,7 +759,6 @@ async function apiPost(body) {
       redirect: 'manual'
     });
     if (r.type === 'opaqueredirect' || r.status === 0) {
-      // GAS processed write + photo then issued its normal redirect — cannot read body.
       S._lastSave.phase = '1-sent';
       S._lastSave.resp  = 'opaque-redirect (write+photo likely ok)';
       return { status: 'ok', unconfirmed: true };
@@ -765,11 +775,8 @@ async function apiPost(body) {
       S._lastSave.phase = '1-err';
       throw fetchErr;
     }
-    // Real network error — fall through to Phase 2 iframe
   }
 
-  // Phase 2: iframe navigation fallback (photo dropped — base64 too large for URL).
-  // Only reached on actual network failure in Phase 1.
   console.warn('apiPost: network error → iframe fallback' + (hasPhoto ? ' (photo dropped)' : ''));
   await new Promise(resolve => {
     const ifr = document.createElement('iframe');
@@ -806,7 +813,6 @@ async function pingSheets() {
 async function runDiagnose() {
   S.diagRunning = true; render(); S.diagData = {};
 
-  // ── Read tests ──
   for (const tab of ['customers', 'invoices', 'receipts', 'tax']) {
     try {
       const d = await apiFetch({ sheet: SHEETS[tab], limit: 1 });
@@ -814,7 +820,6 @@ async function runDiagnose() {
     } catch (e) { S.diagData[tab] = { sheetName: SHEETS[tab], error: e.message }; }
   }
 
-  // ── Write test 1: POST ASCII payload ──
   const base = S.scriptUrl.trim();
   const body1 = JSON.stringify({ action: '_diagtest', data: {} });
   S.diagData._writeUrl = 'POST [body:' + body1.length + ' chars]';
@@ -836,12 +841,10 @@ async function runDiagnose() {
 
   S.diagData._writeResult  = await testPost(body1);
 
-  // ── Write test 2: POST with Hebrew values ──
   const body2 = JSON.stringify({ action: '_diagtest', data: { A: '1', B: 'מזומן', C: '100', D: '01/05/2026', E: '', G: 'בדיקה' } });
   S.diagData._writeUrl2    = 'POST [body:' + body2.length + ' chars]';
   S.diagData._writeResult2 = await testPost(body2);
 
-  // ── Write test 3: iframe addReceipt + read-back verification ──
   const body3 = JSON.stringify({ action: 'addReceipt', data: { A: '', B: 'מזומן', C: 1, D: '01/01/2026', E: '', G: 'בדיקה-אבחון' } });
   const diagSep = base.includes('?') ? '&' : '?';
   const diagGetUrl = base + diagSep + 'write=1&payload=' + encodeURIComponent(body3);
@@ -865,12 +868,10 @@ async function runDiagnose() {
       : 'no rows found';
   } catch(e) { S.diagData._writeVerify = 'verify error: ' + e.message; }
 
-  // ── Direct-navigate test URL (tap to open GAS in new tab and see raw response) ──
   const directPayload = { action: 'addReceipt', data: { A: '', B: 'מזומן', C: 1, D: '01/01/2026', E: '', G: 'direct-nav-test' } };
   const directSep = base.includes('?') ? '&' : '?';
   S.diagData._directUrl = base + directSep + 'write=1&payload=' + encodeURIComponent(JSON.stringify(directPayload));
 
-  // ── Last save attempt (if any) ──
   S.diagData._lastSave = S._lastSave || null;
 
   S.diagRunning = false; render();
@@ -925,7 +926,7 @@ function switchTab(tab) {
   else if (tab === 'tax' && S.tsState === 'idle') loadTax();
   if (tab === 'invoices' && S.rsState === 'idle') loadReceipts();
   else render();
-  // Background-load invoice + receipt data so customer balance chips are visible
+  
   if (tab === 'customers') {
     if (S.isState === 'idle') loadInvoices();
     if (S.rsState === 'idle') loadReceipts();
@@ -1127,7 +1128,6 @@ function renderSettings() {
         הגדר <strong>אחד</strong> מהאפשרויות (OCR.space — חינם):
       </div>
 
-      <!-- OCR.space — FREE -->
       <div style="background:#e8f5e9;border-radius:8px;padding:12px;margin-bottom:12px;border:1.5px solid #a5d6a7">
         <div style="font-size:13px;font-weight:600;color:#2e7d32;margin-bottom:4px">
           ✅ OCR.space — חינם לגמרי
@@ -1148,7 +1148,6 @@ function renderSettings() {
         ${S.ocrSpaceKey ? `<button style="background:none;border:none;color:#c62828;font-size:11px;cursor:pointer;margin-top:6px;display:block;font-family:inherit" onclick="clearOcrSpaceKey()">🗑 הסר</button>` : ''}
       </div>
 
-      <!-- Claude and Gemini as collapsible fallbacks -->
       <details>
         <summary style="font-size:12px;color:#888;cursor:pointer;padding:4px 0">
           אפשרויות נוספות (בתשלום / Gemini)
@@ -1203,7 +1202,6 @@ function renderSettings() {
     if (Object.keys(S.diagData).length) {
       h += `<div class="diag-box">`;
 
-      // ── Write test results ──
       if (S.diagData._writeResult) {
         h += `<div class="diag-sheet">
           <div class="diag-name" style="color:#1a73e8">🔧 בדיקת כתיבה (ASCII)</div>
@@ -1227,7 +1225,6 @@ function renderSettings() {
         </div>`;
       }
 
-      // ── Direct navigate test ──
       if (S.diagData._directUrl) {
         h += `<div class="diag-sheet">
           <div class="diag-name" style="color:#7b1fa2">🔗 בדיקה ישירה — לחץ לפתיחה בטאב חדש</div>
@@ -1239,7 +1236,6 @@ function renderSettings() {
         </div>`;
       }
 
-      // ── Last save attempt ──
       const ls = S.diagData._lastSave;
       if (ls) {
         const phaseColor = ls.phase && ls.phase.includes('ok') ? '#1e8e3e' : ls.phase && ls.phase.includes('err') ? '#c62828' : '#f59e0b';
@@ -1253,7 +1249,6 @@ function renderSettings() {
         </div>`;
       }
 
-      // ── Read test results ──
       ['customers', 'invoices', 'receipts', 'tax'].forEach(tab => {
         const d = S.diagData[tab]; if (!d) return;
         h += `<div class="diag-sheet"><div class="diag-name">${esc(d.sheetName)}</div>`;
@@ -1274,7 +1269,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.162</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.170</div></div>`;
   return h;
 }
 
@@ -1390,7 +1385,6 @@ function cCard(c, i) {
         ${c[COLS.custEmail] ? `<span style="direction:ltr;overflow:hidden;text-overflow:ellipsis;max-width:160px">✉ ${esc(c[COLS.custEmail])}</span>` : ''}
         ${(c[COLS.custStreet] || c[COLS.custCity]) ? `<span>📍 ${esc([c[COLS.custStreet], c[COLS.custCity]].filter(Boolean).join(', '))}</span>` : ''}
       </div>
-      <!-- Customer Notes Displayed Dynamically in the card header for visual transparency -->
       ${c[COLS.custNotes] ? `<div style="font-size:12px;color:#856404;background:#fff3cd;padding:4px 8px;border-radius:6px;margin-top:6px;display:inline-block;max-width:100%;text-align:right;white-space:normal;word-break:break-word;">📝 הערות: ${esc(c[COLS.custNotes])}</div>` : ''}
       <div class="r3">
         ${bank && !isE ? `<span class="tag">🏦 פרטי בנק</span>` : '<span></span>'}
@@ -1476,10 +1470,9 @@ function onInvCustIdInput(val) {
   _invCustLookupTimer = setTimeout(() => {
     S.iForm._openInvs = openInvsFor(val.trim());
     
-    // Auto-populate Customer notes and payment terms on ID input change
     const cust = S.customers.find(c => c[COLS.custId] === val.trim());
     S.iForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
-    S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : ''; // AUTO-POPULATE TERMS
+    S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : ''; 
     S.iForm._custEditRow = cust ? cust._row : null;
     S.iForm._custEditId = cust ? cust._id : null;
     
@@ -1511,7 +1504,7 @@ function buildTaxOpenInvsHtml() {
   const isOver = f[COLS.taxPayType] === 'שיק' && paid > total + 0.5;
   if (!isOver) return '';
   const excess = Math.round((paid - total) * 100) / 100;
-  // Only show invoices whose remaining balance matches the excess exactly
+  
   const matching = f._openInvs.filter(inv => {
     const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
     if (!n) return false;
@@ -1549,8 +1542,6 @@ function renderTaxOpenInvs() {
   const container = document.getElementById('tax-open-invs-container');
   if (container) container.innerHTML = buildTaxOpenInvsHtml();
 }
-// -------------------------------------
-
 
 function renderInvForm(isTax) {
   const color = tc(); const f = S.iForm;
@@ -1590,7 +1581,6 @@ function renderInvForm(isTax) {
       placeholder="הזן ת\"ז או ח\"פ..."
       oninput="onInvCustIdInput(this.value)">
   </div>
-  <!-- Customer Notes field inside Invoice/Tax document form -->
   <div class="field"><label>הערות לקוח <small>(יישמר ישירות בכרטיס הלקוח)</small></label>
     <input type="text" id="inv-custNotes" class="finput" value="${esc(f[COLS.custNotes] || '')}"
       placeholder="הזן או ערוך הערות לקוח..."
@@ -1701,8 +1691,6 @@ function renderInvForm(isTax) {
         oninput="uf('iForm','${COLS.taxNotes}',this.value)">${esc(f[COLS.taxNotes])}</textarea>
     </div>`;
   } else {
-    // Hiding the Invoice Number field and removing mandatory flag as they are added manually in the sheet later.
-    // תנאי תשלום is now Read-Only (only editable inside the Customers profile tab)
     h += `<div class="fdivider"><hr><span>📄 פרטי חשבונית</span><hr></div>
     <div class="field" style="display:none;"><label>מספר חשבונית <small>(עמודה ${COLS.invNum}) *</small></label>
       <input type="text" inputmode="numeric" id="f-invNum" class="finput num" value="${esc(f[COLS.invNum] || '')}"
@@ -1760,7 +1748,6 @@ function buildOpenInvsHtml() {
     const hasPartial = balance < rawTotal - 0.1;
     const selected = rf[COLS.recInvNum] === invNum;
     
-    // Safely closed syntax tags and completed the entire block cleanly
     h += '<div class="dtrow" style="cursor:pointer;' + (selected ? 'background:' + tc() + '15;' : '') + (i === 0 ? 'border-top:none;' : '') + '" ' +
          'onclick="pickReceiptInv(\'' + esc(invNum) + '\',\'' + balance + '\',\'' + esc(invDate) + '\')">' +
          '<div>' +
@@ -1809,7 +1796,6 @@ function renderReceiptForm() {
         placeholder="ת\"ז או ח\"פ..."
         oninput="onCustIdInput(this.value)">
     </div>
-    <!-- Customer Notes field inside Receipt document form -->
     <div class="field"><label>הערות לקוח <small>(יישמר ישירות בכרטיס הלקוח)</small></label>
       <input type="text" id="r-custNotes" class="finput" value="${esc(rf[COLS.custNotes] || '')}"
         placeholder="הזן או ערוך הערות לקוח..."
@@ -1860,7 +1846,7 @@ function renderReceiptForm() {
     </div>
     <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.recPayDate}) *</small></label>
       <input type="text" id="r-${COLS.recPayDate}" class="finput" value="${esc(rf[COLS.recPayDate] || tod())}"
-        oninput="uf('rForm','${COLS.recPayDate}',this.value);renderSaveBtnRec()">
+        oninput="uf('rForm','${COLS.recPayDate}',this.value);renderSaveBtnRec())">
     </div>
     <div class="field"><label>צילום שיק <small>(עמודה ${COLS.recPhoto}) *</small></label>
       <input type="file" id="receipt-cheque-photo" accept="image/*" capture="environment"
@@ -1888,7 +1874,6 @@ function renderReceiptForm() {
   return h;
 }
 
-// Shared filter bar used by invoice, tax, and receipt lists
 function filterBarHtml(filter, fdLen, totalLen, prefix, label, clearFn) {
   const hasF = !!(filter.cust || filter.num);
   const inp = 'flex:1;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;direction:rtl';
@@ -1961,7 +1946,7 @@ function buildRecCardsHtml(data) {
 function renderRecList() {
   const { receipts: data, rsState: state } = S; const color = tc();
   if (state === 'error') return errScreen(S.errors.receipts, 'loadReceipts()', 'קבלות', color);
-  if (state !== 'ok') return statusHtml(state, 'loadReceipts()', 'קבלות');
+  if (state !== 'ok')   return statusHtml(state, 'loadReceipts()', 'קבלות');
   if (!data.length) return `<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
     <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
   const fd = filteredRec(data);
@@ -1987,7 +1972,6 @@ function buildInvCardsHtml(data, isTax) {
     const balance = (!isTax && invNum) ? getInvBalance(invNum) : null;
     const hasPartialPay = balance !== null && balance < parseMoney(totVAT) - 0.5;
     const cNotes = getCustNotesById(custId);
-    // On orange-background rows the theme color is invisible — use red instead
     const amtColor = isOrangeBg(r._bg) ? '#c62828' : color;
     h += `<div class="card${isE ? ' exp' : ''}" style="background:${bg};${isE ? `--tc:${color}` : ''}">
       <div class="card-hdr" onclick="tog('${id}')">
@@ -2017,7 +2001,6 @@ function buildInvCardsHtml(data, isTax) {
           ${bizName ? `<span style="font-size:13px;font-weight:600">${esc(bizName)}</span>` : ''}
           ${date ? `<span style="font-size:12px;color:#888;margin-right:auto">📅 ${esc(date)}</span>` : ''}
         </div>
-        <!-- Unified customer notes dynamically queried for documents lists -->
         ${cNotes ? `<div style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;text-align:right;">📝 <strong>הערות לקוח:</strong> ${esc(cNotes)}</div>` : ''}
         `;
       if (prods.length) {
@@ -2095,7 +2078,6 @@ function renderDocList(data, state, isTax) {
     <button onclick="${reload}" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer">↻ רענן</button>
   </div>`;
   const fd      = filteredInv(data, isTax);
-  const hasFilter = !!(S.invFilter.cust || S.invFilter.num);
   let h = `<div style="padding-bottom:24px">`;
   h += filterBarHtml(S.invFilter, fd.length, data.length, 'inv', isTax ? 'חשמ"ק' : 'חשבוניות', 'clearInvFilter()');
   h += `<div id="inv-cards-wrap">${buildInvCardsHtml(fd, isTax)}</div>`;
@@ -2286,7 +2268,6 @@ function captureReceiptFields() {
   
   const rcn = g('r-custNotes'); if (rcn !== undefined) S.rForm[COLS.custNotes] = rcn;
   
-  // _overInvNum is set directly via pickOverReceiptInv (list-only, no manual input)
   const gEl = document.getElementById('r-' + COLS.recNotes); if (gEl) S.rForm[COLS.recNotes] = gEl.value;
 }
 
@@ -2365,17 +2346,16 @@ function pickReceiptInv(invNum, invTotal, invDate) {
   S.rForm._invTotal = invTotal;
   S.rForm._invDate = invDate;
   S.rForm._openInvs = [];
-  S.rForm._overInvNum = '';   // reset second invoice when first changes
+  S.rForm._overInvNum = '';   
 
   setElValue('r-' + COLS.recInvNum, invNum);
   setElDisplay('receipt-inv-total', 'flex');
   setElText('rcb-total-val', fmt(invTotal));
 
   renderOpenInvs();
-  renderSaveBtnRec(); // also calls renderOverInvPicker internally
+  renderSaveBtnRec(); 
 }
 
-// Select the second invoice that will receive the check overpayment balance
 function pickOverReceiptInv(invNum, invBalance) {
   captureReceiptFields();
   S.rForm._overInvNum = invNum;
@@ -2388,7 +2368,6 @@ function renderOverInvPicker() {
   if (container) container.innerHTML = buildOverInvPickerHtml();
 }
 
-// Builds the clickable list of a customer's OTHER open invoices for the check overpayment split
 function buildOverInvPickerHtml() {
   const rf = S.rForm;
   const paid  = parseFloat(rf[COLS.recPayAmt]) || 0;
@@ -2397,7 +2376,6 @@ function buildOverInvPickerHtml() {
 
   const excess = Math.round((paid - total) * 100) / 100;
   const inv1   = rf[COLS.recInvNum];
-  // Only show invoices whose remaining balance exactly matches the excess amount
   const others = (rf._custOpenInvs || []).filter(inv => {
     const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
     if (!n || n === inv1) return false;
@@ -2454,23 +2432,26 @@ function _ocrCanvas(img) {
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', 0.92).split(',')[1];
 }
+
 function _ocrNormalise(result) {
+  if (!result) return result;
   if (result.amount)    result.amount    = String(result.amount).replace(/[^\d.]/g, '');
   if (result.chequeNum) result.chequeNum = String(result.chequeNum).replace(/\D/g, '');
+  if (result.date)      result.date      = _cleanDateStr(result.date);
   return result;
 }
+
 const OCR_PROMPT = `This is an Israeli bank cheque (שיק). Extract three values:
 1. chequeNum – cheque number from the MICR line at the bottom. Israeli cheques are RTL: cheque number is on the RIGHT of the MICR line, account number in the middle, bank/branch on the LEFT. Return digits only.
 2. amount – payment amount, digits and decimal point only (no ₪, no commas).
 3. date – due date (תאריך פירעון) in DD/MM/YYYY format, or "" if unclear.
 Reply ONLY with JSON: {"chequeNum":"...","amount":"...","date":"..."}`;
 
-// Parse raw OCR text into {chequeNum, amount, date}
 function _parseCheckText(text) {
   const result = { chequeNum: '', amount: '', date: '' };
-  console.log('[OCR raw]', text); // viewable in your browser developer console
+  console.log('[OCR raw]', text);
 
-  // 1. CHEQUE NUMBER
+  // 1. CHEQUE NUMBER EXTRACTOR
   const chqLabel = text.match(/(?:CHEQUE\s*N[o0O]\.?\s*|מספר\s*שיק\s*[:\-]?\s*)(\d{4,10})/i);
   if (chqLabel) {
     result.chequeNum = chqLabel[1];
@@ -2480,39 +2461,36 @@ function _parseCheckText(text) {
     if (early.length) result.chequeNum = early[0];
   }
 
-  // 2. DATE - Now accepts spacing variations natively (e.g., "28 . 5 . 26")
-  const dm = text.match(/\b(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{2,4})\b/);
+  // 2. DATE EXTRACTOR - Whitespace insulated and punctuation safe
+  const dm = text.match(/(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{2,4})/);
   if (dm) {
     const yr = dm[3].trim().length === 2 ? '20' + dm[3].trim() : dm[3].trim();
     result.date = dm[1].trim().padStart(2,'0') + '/' + dm[2].trim().padStart(2,'0') + '/' + yr;
   }
 
-  // 3. AMOUNT - Contextual scoring system
-  const stripped = text.replace(/\b\d{6,}\b/g, ' '); // Clear out long account numbers
+  // 3. SCORING AMOUNT EXTRACTOR
+  const stripped = text.replace(/\b\d{6,}\b/g, ' '); 
   const dateDigits = new Set((result.date || '').split('/').filter(Boolean));
   
-  // Extract all potential 1-to-5 digit numbers
   const amtCandidates = [...stripped.matchAll(/\b(\d{1,5}(?:[.,]\d{1,2})?)\b/g)]
     .map(m => {
       const strVal = m[1].replace(',', '.');
       const val = parseFloat(strVal);
       
-      // Look at a 30-character text window surrounding the number
       const startIdx = Math.max(0, m.index - 15);
       const endIdx = Math.min(stripped.length, m.index + m[0].length + 15);
       const context = stripped.slice(startIdx, endIdx);
       
       let score = 0;
-      if (context.includes('#')) score += 100;                 // Massive priority boost for matching your handwritten "537#"
-      if (context.includes('₪') || context.includes('סכום')) score += 50; 
-      if (val === 20 || val === 26 || val === 522) score -= 40; // Deprioritize structural bank/branch codes and current year numbers
+      if (context.includes('#')) score += 100; 
+      if (context.includes('₪') || context.includes('סכום')) score += 50;
+      if (val === 20 || val === 26 || val === 522) score -= 40; 
       
       return { str: strVal, val: val, score: score };
     })
     .filter(m => m.val >= 5 && m.val < 100000 && !dateDigits.has(m.str.split('.')[0]));
 
   if (amtCandidates.length) {
-    // Sort candidate results by contextual score first, then by numerical value size
     amtCandidates.sort((a, b) => b.score - a.score || b.val - a.val);
     result.amount = amtCandidates[0].str.replace(/\.00$/, '');
   }
@@ -2524,8 +2502,8 @@ async function _ocrOcrSpace(img) {
   const b64 = 'data:image/jpeg;base64,' + _ocrCanvas(img);
   const fd  = new FormData();
   fd.append('base64Image', b64);
-  fd.append('language', 'eng');           // eng handles numbers + MICR better
-  fd.append('OCREngine', '2');            // Engine 2 — more accurate
+  fd.append('language', 'eng');           
+  fd.append('OCREngine', '2');            
   fd.append('detectOrientation', 'true');
   fd.append('scale', 'true');
   const res = await fetch('https://api.ocr.space/parse/image', {
@@ -2608,9 +2586,11 @@ function _compressPhoto(img, maxPx, quality) {
 function _applyOcrToForm(result, form, numKey, amtKey, dateKey) {
   if (!result) return false;
   let changed = false;
-  if (result.chequeNum && !form[numKey]?.trim())  { form[numKey]  = result.chequeNum; changed = true; }
-  if (result.amount    && !form[amtKey]?.trim())  { form[amtKey]  = result.amount;    changed = true; }
-  if (result.date)                                 { form[dateKey] = result.date;      changed = true; }
+  
+  if (result.chequeNum && _isFieldEmpty(form[numKey])) { form[numKey]  = result.chequeNum; changed = true; }
+  if (result.amount    && _isFieldEmpty(form[amtKey])) { form[amtKey]  = result.amount;    changed = true; }
+  if (result.date)                                     { form[dateKey] = result.date;      changed = true; }
+  
   return changed;
 }
 
@@ -2620,7 +2600,7 @@ function onPhotoChange(input) {
   const img = new Image();
   img.onload = function() {
     URL.revokeObjectURL(img.src);
-    const b64 = _compressPhoto(img, 800, 0.6);
+    const b64 = _compressPhoto(img, 1200, 0.85);
     S.iForm._photoDataUrl = b64;
     S.iForm._photoBase64 = b64;
     S.iForm._photoTaken = true;
@@ -2650,7 +2630,7 @@ function onReceiptPhotoChange(input) {
   const img = new Image();
   img.onload = function() {
     URL.revokeObjectURL(img.src);
-    const b64 = _compressPhoto(img, 800, 0.6);
+    const b64 = _compressPhoto(img, 1200, 0.85);
     S.rForm._photoDataUrl = b64;
     S.rForm._photoBase64 = b64;
     S.rForm._photoTaken = true;
@@ -2789,7 +2769,6 @@ async function executeSaveReceipt() {
     ? `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — שולם ₪${Math.round(balance).toLocaleString('he-IL')} לחשבונית זו | יתרה ₪${Math.round(excess).toLocaleString('he-IL')} לחשבונית מס׳ ${inv2 || '—'}${rf[COLS.recNotes]?.trim() ? ' | ' + rf[COLS.recNotes].trim() : ''}`
     : rf[COLS.recNotes] || '';
     
-  // Invoice number: send as integer if purely numeric so COUNTIF validation in sheet matches
   const invNumRaw = (rf[COLS.recInvNum] || '').trim();
   const invNumVal = invNumRaw && /^\d+$/.test(invNumRaw) ? parseInt(invNumRaw, 10) : invNumRaw;
 
@@ -2857,7 +2836,6 @@ async function saveInv(isTax) {
 
     if (total > 0 && paid < total - 0.5) {
       if (isCashPayment) {
-        // Partial cash: explain that 2 separate documents will be created
         const totalFmt = '₪' + Math.round(total).toLocaleString('he-IL');
         const paidFmt  = '₪' + Math.round(paid).toLocaleString('he-IL');
         showConfirm(
@@ -2884,10 +2862,8 @@ async function executeSaveInv(isTax, calc) {
   const paid  = parseFloat(f[COLS.taxPayAmt] || 0);
   const total = calc.withVat;
 
-  // Partial cash on a tax-invoice form → split into a regular חשבונית + קבלה
   const isCashPartial = isTax && f[COLS.taxPayType] === 'מזומן' && total > 0.5 && paid < total - 0.5;
 
-  // Append overpay note to tax notes (check overpayment only, not cash-partial)
   if (isTax && !isCashPartial && f[COLS.taxPayType] === 'שיק' && total > 0 && paid > total + 0.5 && f._overInvNum?.trim()) {
     const diff = Math.round(paid - total).toLocaleString('he-IL');
     const note = `ההפרש ₪${diff} שולם עבור חשבונית מספר ${f._overInvNum.trim()}`;
@@ -2898,13 +2874,10 @@ async function executeSaveInv(isTax, calc) {
   const allowed = new Set([COLS.docCustId, COLS.docCustName, COLS.docDate, COLS.price, COLS.discount, COLS.subtotal, COLS.afterDisc, ...qkCols]);
 
   if (isTax && !isCashPartial) {
-    // Normal tax invoice (חשבונית מס קבלה) — write to חשבוניות/קבלות
     [COLS.taxTotalVat, COLS.taxPayType, COLS.taxPayAmt, COLS.taxPayDate, COLS.taxChkNum, COLS.taxNotes, COLS.taxNum].forEach(k => allowed.add(k));
   } else if (!isCashPartial) {
-    // Regular invoice — write to חשבוניות
     [COLS.invTerms, COLS.invTotalVat, COLS.invNum, COLS.invNotes].forEach(k => allowed.add(k));
   }
-  // isCashPartial: only shared cols copied from f; invoice-specific cols set manually below
 
   const data = {};
   allowed.forEach(k => {
@@ -2914,14 +2887,10 @@ async function executeSaveInv(isTax, calc) {
   });
 
   if (isCashPartial) {
-    // AH = invTerms  → get from customer (f['AH'] holds taxTotalVat, wrong for חשבוניות)
     const cust = S.customers.find(c => c[COLS.custId] === (f[COLS.docCustId] || '').trim());
-    data[COLS.invTerms]   = cust ? (cust[COLS.custTerms] || '') : '';         // AH
-    // AI = invTotalVat → from calculation (f['AI'] holds taxPayType, wrong for חשבוניות)
-    data[COLS.invTotalVat] = total > 0 ? String(Math.round(total)) : '';      // AI
-    // AO = invNotes   → copy user notes from tax form (f['AN'] = taxNotes)
-    data[COLS.invNotes]   = (f[COLS.taxNotes] || '').toString().trim();       // AO
-    // AJ = invNum stays empty; will be assigned manually in the sheet
+    data[COLS.invTerms]   = cust ? (cust[COLS.custTerms] || '') : '';         
+    data[COLS.invTotalVat] = total > 0 ? String(Math.round(total)) : '';      
+    data[COLS.invNotes]   = (f[COLS.taxNotes] || '').toString().trim();       
   }
 
   const qtySummary = PRODS.filter(p => parseInt(data[p.qk]) > 0)
@@ -2930,7 +2899,6 @@ async function executeSaveInv(isTax, calc) {
   S.saving = true;
   renderSaveBtn();
   try {
-    // Save main document
     const saveToTax = isTax && !isCashPartial;
     const payload = {
       action:    saveToTax ? 'addTax' : 'addInvoice',
@@ -2940,7 +2908,6 @@ async function executeSaveInv(isTax, calc) {
     };
     await apiPost(payload);
 
-    // --- CHECK OVERPAYMENT: auto-receipt for the excess on a different invoice ---
     if (isTax && !isCashPartial) {
       const isChq    = f[COLS.taxPayType] === 'שיק';
       const paidAmt  = parseFloat(f[COLS.taxPayAmt] || 0);
@@ -2962,13 +2929,12 @@ async function executeSaveInv(isTax, calc) {
       }
     }
 
-    // --- PARTIAL CASH: auto-receipt for the cash portion paid now ---
     if (isCashPartial) {
       const custId  = (f[COLS.docCustId] || '').trim();
       const invDate = (f[COLS.docDate] || tod()).trim();
       const recNotes = `ת"ז/ח"פ: ${custId || '—'} | תאריך: ${invDate} | סה"כ חשבונית: ₪${Math.round(total).toLocaleString('he-IL')} | שולם מזומן: ₪${Math.round(paid).toLocaleString('he-IL')}`;
       const recData = {
-        [COLS.recInvNum]:  '',       // invoice number assigned manually later
+        [COLS.recInvNum]:  '',       
         [COLS.recPayType]: 'מזומן',
         [COLS.recPayAmt]:  Math.round(paid * 100) / 100,
         [COLS.recPayDate]: invDate,
@@ -3025,7 +2991,7 @@ function renderSaveBtnRec() {
   btn.disabled = dis;
   btn.style.background = dis ? '#ccc' : tc();
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
-  renderOverInvPicker(); // keep the overpayment invoice picker in sync with amount changes
+  renderOverInvPicker(); 
 }
 
 function showConfirm(title, text, onYes, onNo) {
@@ -3061,12 +3027,10 @@ function bindAll() {
       if (wrap) wrap.innerHTML = buildCustCardsHtml(fc);
     });
   }
-  // Live filter for invoice / tax lists
   ['inv-filter-cust', 'inv-filter-num'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', e => setInvFilter(el.dataset.key, e.target.value));
   });
-  // Live filter for receipts list
   ['rec-filter-cust', 'rec-filter-num'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', e => setRecFilter(el.dataset.key, e.target.value));
@@ -3122,9 +3086,9 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   if (S.scriptUrl) {
-    loadCustomers(); // sets state to 'loading' before first render → no false "error" flash
+    loadCustomers(); 
     render();
-    pingSheets();    // updates sheet names in background; each loadAny re-fetches when idle
+    pingSheets();    
   } else render();
 });
 </script>
