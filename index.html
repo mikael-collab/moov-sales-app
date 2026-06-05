@@ -2510,12 +2510,13 @@ async function executeSaveInv(isTax, calc) {
   }
 
   const qkCols = PRODS.map(p => p.qk);
-  const allowed = new Set([COLS.docCustId, COLS.docCustName, COLS.docDate, COLS.price, COLS.discount, COLS.subtotal, COLS.afterDisc, ...qkCols]);
+  // Only user-entered fields — never write calculated columns (AE subtotal, AG afterDisc, AI/AH totalVat, B bizName)
+  const allowed = new Set([COLS.docCustId, COLS.docDate, COLS.price, COLS.discount, ...qkCols]);
 
   if (isTax && !isCashPartial) {
-    [COLS.taxTotalVat, COLS.taxPayType, COLS.taxPayAmt, COLS.taxPayDate, COLS.taxChkNum, COLS.taxNotes, COLS.taxNum].forEach(k => allowed.add(k));
+    [COLS.taxPayType, COLS.taxPayAmt, COLS.taxPayDate, COLS.taxChkNum, COLS.taxNotes, COLS.taxNum].forEach(k => allowed.add(k));
   } else if (!isCashPartial) {
-    [COLS.invTerms, COLS.invTotalVat, COLS.invNum, COLS.invNotes].forEach(k => allowed.add(k));
+    [COLS.invTerms, COLS.invNum, COLS.invNotes].forEach(k => allowed.add(k));
   }
 
   const data = {};
@@ -2528,7 +2529,6 @@ async function executeSaveInv(isTax, calc) {
   if (isCashPartial) {
     const cust = S.customers.find(c => c[COLS.custId] === (f[COLS.docCustId] || '').trim());
     data[COLS.invTerms]   = cust ? (cust[COLS.custTerms] || '') : '';         
-    data[COLS.invTotalVat] = total > 0 ? String(Math.round(total)) : '';      
     data[COLS.invNotes]   = (f[COLS.taxNotes] || '').toString().trim();       
   }
 
