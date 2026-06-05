@@ -654,26 +654,16 @@ async function apiPost(body) {
     return d;
   } catch(fetchErr) {
     S._lastSave.p1err = fetchErr.message;
-    if (fetchErr.message !== 'Failed to fetch') {
-      S._lastSave.phase = '1-err';
-      throw fetchErr;
+    if (fetchErr.message === 'Failed to fetch') {
+      // POST was dispatched — mobile browsers often throw this instead of returning
+      // an opaque-redirect. Treat as sent to avoid double-writing via iframe fallback.
+      S._lastSave.phase = '1-sent';
+      S._lastSave.resp  = 'failed-to-fetch treated as sent (no iframe)';
+      return { status: 'ok', unconfirmed: true };
     }
+    S._lastSave.phase = '1-err';
+    throw fetchErr;
   }
-
-  console.warn('apiPost: network error → iframe fallback' + (hasPhoto ? ' (photo dropped)' : ''));
-  await new Promise(resolve => {
-    const ifr = document.createElement('iframe');
-    ifr.style.cssText = 'display:none;width:0;height:0;position:absolute;left:-9999px;';
-    document.body.appendChild(ifr);
-    ifr.src = getUrl;
-    setTimeout(() => {
-      try { document.body.removeChild(ifr); } catch(_) {}
-      resolve();
-    }, 4000);
-  });
-  S._lastSave.phase = '2-iframe-ok';
-  S._lastSave.resp  = hasPhoto ? 'nav — photo skipped (network err)' : 'nav (cannot read GAS response)';
-  return { status: 'ok', photoSkipped: hasPhoto };
 }
 
 async function pingSheets() {
