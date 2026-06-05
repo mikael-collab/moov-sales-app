@@ -535,7 +535,7 @@ function efI(isTax) {
   o[COLS.docCustId] = ''; o[COLS.docCustName] = ''; o[COLS.docDate] = tod();
   o._openInvs = []; o._overInvNum = ''; 
   o._custEditRow = null; o._custEditId = null;
-  o[COLS.custNotes] = '';
+  o._custNotes = '';  // private field — avoids collision with PRODS qk 'M' (Peppermint 20)
   PRODS.forEach(p => { o[p.nk] = p.name; o[p.qk] = '0'; });
   o[COLS.price] = '13.00'; o[COLS.subtotal] = ''; o[COLS.discount] = ''; o[COLS.afterDisc] = '';
   
@@ -680,7 +680,10 @@ async function pingSheets() {
         else if (/^קבלות$/.test(n)) SHEETS.receipts = n;
       });
     }
-  } catch (e) { console.error('ping', e); }
+  } catch (e) {
+    // 'Failed to fetch' and 'OPAQUE' are expected on mobile/cold-start — suppress console noise
+    if (e.message !== 'Failed to fetch' && e.message !== 'OPAQUE') console.warn('ping:', e.message);
+  }
 }
 
 async function runDiagnose() {
@@ -1283,13 +1286,13 @@ function onInvCustIdInput(val) {
     S.iForm._openInvs = openInvsFor(val.trim());
     
     const cust = S.customers.find(c => c[COLS.custId] === val.trim());
-    S.iForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+    S.iForm._custNotes = cust ? (cust[COLS.custNotes] || '') : '';
     S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : ''; 
     S.iForm._custEditRow = cust ? cust._row : null;
     S.iForm._custEditId = cust ? cust._id : null;
     
     const notesField = document.getElementById('inv-custNotes');
-    if (notesField) notesField.value = S.iForm[COLS.custNotes];
+    if (notesField) notesField.value = S.iForm._custNotes;
     
     const termsField = document.getElementById('inv-custTerms');
     if (termsField) termsField.value = S.iForm[COLS.invTerms];
@@ -1394,9 +1397,9 @@ function renderInvForm(isTax) {
       oninput="onInvCustIdInput(this.value)">
   </div>
   <div class="field"><label>הערות לקוח <small>(יישמר ישירות בכרטיס הלקוח)</small></label>
-    <input type="text" id="inv-custNotes" class="finput" value="${esc(f[COLS.custNotes] || '')}"
+    <input type="text" id="inv-custNotes" class="finput" value="${esc(f._custNotes || '')}"
       placeholder="הזן או ערוך הערות לקוח..."
-      oninput="uf('iForm','${COLS.custNotes}',this.value)">
+      oninput="uf('iForm','_custNotes',this.value)">
   </div>
   <div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
     <input type="date" id="inv-date" class="finput" style="direction:ltr;text-align:left"
@@ -2289,7 +2292,7 @@ function pickInvCust(custId, bizName) {
   S.iForm._openInvs = openInvsFor(custId);
   
   const cust = S.customers.find(c => c[COLS.custId] === custId);
-  S.iForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  S.iForm._custNotes = cust ? (cust[COLS.custNotes] || '') : '';
   S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : '';
   S.iForm._custEditRow = cust ? cust._row : null;
   S.iForm._custEditId = cust ? cust._id : null;
@@ -2301,7 +2304,7 @@ function pickInvCust(custId, bizName) {
   if (idField) idField.value = custId || '';
   
   const notesField = document.getElementById('inv-custNotes');
-  if (notesField) notesField.value = S.iForm[COLS.custNotes];
+  if (notesField) notesField.value = S.iForm._custNotes;
   
   const termsField = document.getElementById('inv-custTerms');
   if (termsField) termsField.value = S.iForm[COLS.invTerms];
@@ -2574,8 +2577,8 @@ async function executeSaveInv(isTax, calc) {
       S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
     }
 
-    if (f._custEditRow && f[COLS.custNotes] !== undefined) {
-      await updateCustomerNotesIfNeeded(f._custEditId, f._custEditRow, f[COLS.custNotes]);
+    if (f._custEditRow && f._custNotes !== undefined) {
+      await updateCustomerNotesIfNeeded(f._custEditId, f._custEditRow, f._custNotes);
     }
 
     S.msg = {
