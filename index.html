@@ -887,6 +887,8 @@ function openNewInvoice(isTax) {
   S.screen = isTax ? 'new-tax' : 'new-invoice';
   S.iForm = efI(isTax); S.msg = null; S.showSuggest = false;
   setHeader(); render(); scrollToTop();
+  // iOS Safari restores cached form values without firing oninput — force-clear all qty inputs
+  PRODS.forEach(p => { const el = document.getElementById('pf-' + p.qk); if (el) el.value = ''; });
 }
 function openSettings() { S.screen = 'settings'; setHeader(); render(); }
 
@@ -1412,8 +1414,8 @@ function renderInvForm(isTax) {
   PRODS.forEach(p => {
     const qty = parseInt(f[p.qk]) || 0;
     h += `<div class="prod-field">
-      <input type="text" inputmode="numeric" class="pf-input" value="${qty || ''}"
-        placeholder="0" style="--tc:${color}"
+      <input type="text" inputmode="numeric" id="pf-${p.qk}" class="pf-input" value="${qty || ''}"
+        placeholder="0" style="--tc:${color}" autocomplete="off"
         oninput="updProd('${p.qk}',this.value)">
       <div class="pf-left">
         <div><div class="pf-name">${p.short}</div><div class="pf-sub">${p.heb} • ${p.nic}mg</div></div>
