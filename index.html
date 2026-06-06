@@ -215,7 +215,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v1.7'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v1.8'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -471,7 +471,10 @@ function taxFormErrors() {
     const excess = Math.round((paid - total) * 100) / 100;
     const hasMatch = (f._openInvs || []).some(inv => {
       const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
-      return n && Math.abs(getInvBalance(n) - excess) <= 0.5;
+      if (n) return Math.abs(getInvBalance(n) - excess) <= 0.5;
+      // Invoice has no number yet — match by its total directly
+      const tot = parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0;
+      return tot > 0 && Math.abs(tot - excess) <= 0.5;
     });
     return hasMatch
       ? 'בחר חשבונית עבור ההפרש מהרשימה'
@@ -1343,8 +1346,10 @@ function buildTaxOpenInvsHtml() {
   
   const matching = f._openInvs.filter(inv => {
     const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
-    if (!n) return false;
-    return Math.abs(getInvBalance(n) - excess) <= 0.5;
+    if (n) return Math.abs(getInvBalance(n) - excess) <= 0.5;
+    // No number — match by raw total
+    const tot = parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0;
+    return tot > 0 && Math.abs(tot - excess) <= 0.5;
   });
   if (!matching.length) {
     return `<div style="background:#fff3e0;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#e65100">
@@ -1354,14 +1359,17 @@ function buildTaxOpenInvsHtml() {
   let h = `<div class="dtable" style="margin-bottom:12px">
     <div class="dthead" style="background:${tc()}"><span>חשבונית לכיסוי ההפרש</span><span style="font-weight:700">₪${Math.round(excess).toLocaleString('he-IL')}</span></div>`;
   matching.forEach((inv, i) => {
-    const invNum  = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
+    const invNum  = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
     const invDate = nz(inv[COLS.docDate]) || '';
-    const balance = getInvBalance(invNum);
-    const selected = f._overInvNum === invNum;
+    const invTot  = parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0;
+    const label   = invNum || `ללא מס' | ${invDate} | ₪${Math.round(invTot).toLocaleString('he-IL')}`;
+    const key     = invNum || `row_${inv._rowIndex}`;
+    const balance = invNum ? getInvBalance(invNum) : invTot;
+    const selected = f._overInvNum === key;
     h += `<div class="dtrow" style="cursor:pointer;${selected ? `background:${tc()}15;` : ''}${i === 0 ? 'border-top:none' : ''}"
-      onclick="setTaxOverInv('${esc(invNum)}')">
+      onclick="setTaxOverInv('${esc(key)}')">
       <div>
-        <div style="font-size:13px;font-weight:600;color:${selected ? tc() : '#222'}">#${esc(invNum)}</div>
+        <div style="font-size:13px;font-weight:600;color:${selected ? tc() : '#222'}">${invNum ? '#' + esc(invNum) : esc(label)}</div>
         <div style="font-size:11px;color:#888">${esc(invDate)}</div>
       </div>
       <div style="text-align:left">
@@ -2522,7 +2530,8 @@ async function executeSaveInv(isTax, calc) {
   const paid  = parseFloat(f[COLS.taxPayAmt] || 0);
   const total = calc.withVat;
 
-  const isCashPartial = isTax && f[COLS.taxPayType] === 'מזומן' && total > 0.5 && paid < total - 0.5;
+  // Partial payment creates invoice + receipt — applies to both cash AND check
+  const isCashPartial = isTax && (f[COLS.taxPayType] === 'מזומן' || f[COLS.taxPayType] === 'שיק') && total > 0.5 && paid < total - 0.5;
 
   if (isTax && !isCashPartial && f[COLS.taxPayType] === 'שיק' && total > 0 && paid > total + 0.5 && f._overInvNum?.trim()) {
     const diff = Math.round(paid - total).toLocaleString('he-IL');
@@ -2594,15 +2603,16 @@ async function executeSaveInv(isTax, calc) {
       const custId  = (f[COLS.docCustId] || '').trim();
       const invDate = (f[COLS.docDate] || tod()).trim();
       const recNotes = `ת"ז/ח"פ: ${custId || '—'} | תאריך: ${invDate} | סה"כ חשבונית: ₪${Math.round(total).toLocaleString('he-IL')} | שולם מזומן: ₪${Math.round(paid).toLocaleString('he-IL')}`;
+      const isChqPartial = f[COLS.taxPayType] === 'שיק';
       const recData = {
-        [COLS.recInvNum]:  '',       
-        [COLS.recPayType]: 'מזומן',
+        [COLS.recInvNum]:  '',
+        [COLS.recPayType]: f[COLS.taxPayType],
         [COLS.recPayAmt]:  Math.round(paid * 100) / 100,
-        [COLS.recPayDate]: invDate,
-        [COLS.recChkNum]:  '',
+        [COLS.recPayDate]: isChqPartial ? (f[COLS.taxPayDate] || invDate) : invDate,
+        [COLS.recChkNum]:  isChqPartial ? (f[COLS.taxChkNum] || '') : '',
         [COLS.recNotes]:   recNotes
       };
-      await apiPost({ action: 'addReceipt', data: recData });
+      await apiPost({ action: 'addReceipt', data: recData, photoBase64: isChqPartial && f._photoDataUrl ? (f._photoBase64 || '') : '' });
       S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
     }
 
