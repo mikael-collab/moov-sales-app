@@ -215,7 +215,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v1.6'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v1.7'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -2437,8 +2437,7 @@ async function executeSaveReceipt() {
   S.saving = true;
   renderSaveBtnRec();
   try {
-    const res1 = await apiPost({ action: 'addReceipt', data: data1 });
-    await embedPhotoSeparately(SHEETS.receipts, res1 && res1.savedRow, data1[COLS.recPayDate] || '', rf._photoDataUrl ? (rf._photoBase64 || '') : '');
+    const res1 = await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
     const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : '';
     const photoNote = '';
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
@@ -2565,11 +2564,10 @@ async function executeSaveInv(isTax, calc) {
     const payload = {
       action:    saveToTax ? 'addTax' : 'addInvoice',
       sheetName: invSheetName,
-      data
+      data,
+      photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''
     };
-    const invResp = await apiPost(payload);
-    const invSavedRow = invResp && invResp.savedRow;
-    await embedPhotoSeparately(invSheetName, invSavedRow, data[COLS.docDate] || '', f._photoDataUrl ? (f._photoBase64 || '') : '');
+    await apiPost(payload);
 
     if (isTax && !isCashPartial) {
       const isChq    = f[COLS.taxPayType] === 'שיק';
@@ -2587,8 +2585,7 @@ async function executeSaveInv(isTax, calc) {
           [COLS.recChkNum]:  f[COLS.taxChkNum] || '',
           [COLS.recNotes]:   'יתרת שיק מחשמ"ק שנוצר עכשיו'
         };
-        const taxRecResp = await apiPost({ action: 'addReceipt', data: recData });
-        await embedPhotoSeparately(SHEETS.receipts, taxRecResp && taxRecResp.savedRow, recData[COLS.recPayDate] || '', f._photoDataUrl ? (f._photoBase64 || '') : '');
+        await apiPost({ action: 'addReceipt', data: recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
         S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
       }
     }
