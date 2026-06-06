@@ -689,6 +689,12 @@ async function pingSheets() {
 async function runDiagnose() {
   S.diagRunning = true; render(); S.diagData = {};
 
+  // Version check — confirms which GAS deployment is live
+  try {
+    const vd = await apiFetch({});
+    S.diagData._gasVersion = (vd.version || '?') + (vd.sheets ? ' | sheets: ' + vd.sheets.join(', ') : '');
+  } catch(e) { S.diagData._gasVersion = 'ERROR: ' + e.message; }
+
   for (const tab of ['customers', 'invoices', 'receipts', 'tax']) {
     try {
       const d = await apiFetch({ sheet: SHEETS[tab], limit: 1 });
@@ -1018,6 +1024,14 @@ function renderSettings() {
         ${S.diagRunning ? '⏳ מאבחן...' : '🔬 הרץ אבחון'}</button>`;
     if (Object.keys(S.diagData).length) {
       h += `<div class="diag-box">`;
+
+      if (S.diagData._gasVersion) {
+        const vok = !S.diagData._gasVersion.startsWith('ERROR');
+        h += `<div class="diag-sheet" style="background:${vok ? '#e8f5e9' : '#ffebee'}">
+          <div class="diag-name" style="color:${vok ? '#1e8e3e' : '#c62828'}">🏷️ גרסת GAS פעילה</div>
+          <div style="font-size:12px;font-weight:700;direction:ltr">${esc(S.diagData._gasVersion)}</div>
+        </div>`;
+      }
 
       if (S.diagData._writeResult) {
         h += `<div class="diag-sheet">
@@ -2418,9 +2432,10 @@ async function executeSaveReceipt() {
   S.saving = true;
   renderSaveBtnRec();
   try {
-    const res1 = await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
+    const res1 = await apiPost({ action: 'addReceipt', data: data1 });
+    await embedPhotoSeparately(SHEETS.receipts, res1 && res1.savedRow, data1[COLS.recPayDate] || '', rf._photoDataUrl ? (rf._photoBase64 || '') : '');
     const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : '';
-    const photoNote = res1 && res1.photoSkipped ? ' — 📷 תמונה לא נשמרה' : '';
+    const photoNote = '';
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
     if (isOverpay && inv2) {
@@ -2434,7 +2449,7 @@ async function executeSaveReceipt() {
         [COLS.recChkNum]: rf[COLS.recChkNum] || '',
         [COLS.recNotes]: g2Notes
       };
-      await apiPost({ action: 'addReceipt', data: data2, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
+      await apiPost({ action: 'addReceipt', data: data2 }); // overpay split receipt — no photo needed
       S.receipts.push({ ...data2, _id: S.receipts.length, _bg: '#ffffff' });
     }
 
@@ -2448,6 +2463,13 @@ async function executeSaveReceipt() {
   } catch (e) { showToast('❌ ' + (e.message || 'שגיאה'), 'err'); S.saving = false; renderSaveBtnRec(); }
 }
 
+
+async function embedPhotoSeparately(sheetName, savedRow, dateStr, photoBase64) {
+  if (!photoBase64 || !savedRow) return;
+  try {
+    await apiPost({ action: 'embedPhoto', sheetName, row: savedRow, dateStr: dateStr || '', photoBase64 });
+  } catch(e) { console.warn('embedPhoto failed:', e.message); }
+}
 async function saveInv(isTax) {
   const f = S.iForm;
   const calc = calcInv(f);
@@ -2534,13 +2556,15 @@ async function executeSaveInv(isTax, calc) {
   renderSaveBtn();
   try {
     const saveToTax = isTax && !isCashPartial;
+    const invSheetName = SHEETS[saveToTax ? 'tax' : 'invoices'];
     const payload = {
       action:    saveToTax ? 'addTax' : 'addInvoice',
-      sheetName: SHEETS[saveToTax ? 'tax' : 'invoices'],
-      data,
-      photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''
+      sheetName: invSheetName,
+      data
     };
-    await apiPost(payload);
+    const invResp = await apiPost(payload);
+    const invSavedRow = invResp && invResp.savedRow;
+    await embedPhotoSeparately(invSheetName, invSavedRow, data[COLS.docDate] || '', f._photoDataUrl ? (f._photoBase64 || '') : '');
 
     if (isTax && !isCashPartial) {
       const isChq    = f[COLS.taxPayType] === 'שיק';
@@ -2558,7 +2582,8 @@ async function executeSaveInv(isTax, calc) {
           [COLS.recChkNum]:  f[COLS.taxChkNum] || '',
           [COLS.recNotes]:   'יתרת שיק מחשמ"ק שנוצר עכשיו'
         };
-        await apiPost({ action: 'addReceipt', data: recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
+        const taxRecResp = await apiPost({ action: 'addReceipt', data: recData });
+        await embedPhotoSeparately(SHEETS.receipts, taxRecResp && taxRecResp.savedRow, recData[COLS.recPayDate] || '', f._photoDataUrl ? (f._photoBase64 || '') : '');
         S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
       }
     }
