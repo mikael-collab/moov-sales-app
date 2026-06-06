@@ -215,6 +215,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
+const APP_VERSION = 'v1.6'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -1025,11 +1026,15 @@ function renderSettings() {
     if (Object.keys(S.diagData).length) {
       h += `<div class="diag-box">`;
 
+      h += `<div class="diag-sheet" style="background:#e3f2fd">
+          <div class="diag-name" style="color:#1565c0">📱 גרסת App (index.html)</div>
+          <div style="font-size:13px;font-weight:700;direction:ltr">${APP_VERSION}</div>
+        </div>`;
       if (S.diagData._gasVersion) {
         const vok = !S.diagData._gasVersion.startsWith('ERROR');
         h += `<div class="diag-sheet" style="background:${vok ? '#e8f5e9' : '#ffebee'}">
-          <div class="diag-name" style="color:${vok ? '#1e8e3e' : '#c62828'}">🏷️ גרסת GAS פעילה</div>
-          <div style="font-size:12px;font-weight:700;direction:ltr">${esc(S.diagData._gasVersion)}</div>
+          <div class="diag-name" style="color:${vok ? '#1e8e3e' : '#c62828'}">⚙️ גרסת GAS (Code.gs)</div>
+          <div style="font-size:13px;font-weight:700;direction:ltr">${esc(S.diagData._gasVersion)}</div>
         </div>`;
       }
 
