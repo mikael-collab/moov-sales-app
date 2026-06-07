@@ -215,7 +215,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v2.0'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v2.1'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -1269,26 +1269,27 @@ function checkCustIdExists(val) {
   val = (val || '').trim();
   if (!val) return;
   const isEdit = (S.cForm._editId !== undefined && S.cForm._editId !== null);
-  if (isEdit) return; // skip in edit mode — ID already belongs to this customer
+  if (isEdit) return; // skip in edit mode
   const existing = S.customers.find(c => c[COLS.custId] === val);
   if (!existing) return;
   const name = existing[COLS.custBiz] || existing[COLS.custName] || '';
+  // title, text, onYes, onNo, yesLabel, noLabel
   showConfirm(
-    `לקוח עם ת"ז / ח"פ ${val}${name ? ' (' + name + ')' : ''} כבר קיים. האם לעדכן את פרטיו?`,
+    `ת"ז / ח"פ ${val} כבר קיים`,
+    name ? `לקוח: ${name}
+שנה את הת"ז / ח"פ או בטל את יצירת הלקוח.` : 'שנה את הת"ז / ח"פ או בטל.',
     function() {
-      // Load existing customer into form for editing
-      CF.forEach(f => { S.cForm[f.k] = existing[f.k] || ''; });
-      S.cForm._editId  = existing._id;
-      S.cForm._editRow = existing._rowIndex;
-      render();
-    },
-    function() {
-      // Cancel — clear the ID field
+      // שנה ת"ז — clear the field so user can enter a different ID
       S.cForm[COLS.custId] = '';
       const el = document.getElementById('f-id');
-      if (el) el.value = '';
+      if (el) { el.value = ''; el.focus(); }
     },
-    'עדכן', 'בטל'
+    function() {
+      // בטל — exit the new customer form entirely
+      goBack();
+    },
+    'שנה ת"ז / ח"פ',
+    'בטל'
   );
 }
 
@@ -2728,7 +2729,7 @@ function renderSaveBtnRec() {
   renderOverInvPicker(); 
 }
 
-function showConfirm(title, text, onYes, onNo) {
+function showConfirm(title, text, onYes, onNo, yesLabel, noLabel) {
   const modal = document.getElementById('confirm-modal');
   const tEl = document.getElementById('confirm-title');
   const bodyEl = document.getElementById('confirm-text');
@@ -2736,9 +2737,10 @@ function showConfirm(title, text, onYes, onNo) {
   const noBtn = document.getElementById('confirm-no');
   if (!modal) return;
   tEl.textContent = title;
-  bodyEl.textContent = text;
+  bodyEl.textContent = text || '';
+  yesBtn.textContent = yesLabel || 'כן, המשך';
+  noBtn.textContent  = noLabel  || 'ביטול';
   modal.style.display = 'flex';
-  
   yesBtn.onclick = function() {
     modal.style.display = 'none';
     if (onYes) onYes();
