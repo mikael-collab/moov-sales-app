@@ -215,7 +215,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v1.9'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v2.0'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -277,7 +277,8 @@ const COLS = {
   custBankBranch: 'J', 
   custBankAcct: 'K',   // מספר חשבון (Column K)
   custBankHolder: 'L', // שם בעל החשבון (Column L)
-  custNotes: 'M'       // הערות לקוח (Column M)
+  custNotes: 'M',      // הערות לקוח (Column M)
+  custConsignment: 'N' // יתרת נזילות (Column N) — editable across all tabs
 };
 // ─────────────────────────────────────────────────────────
 
@@ -300,6 +301,7 @@ const CF=[
   {k:COLS.custCity,label:'עיר',           mode:'text'},
   {k:COLS.custTerms,label:'תנאי תשלום',    mode:'select', options: ['מזומן', 'שוטף', 'שוטף 15', 'שוטף 30', 'שוטף 45', 'שוטף 60', 'שוטף 90', 'שוטף 120', 'מזומן כנגד חשבונית']},
   {k:COLS.custNotes,label:'הערות לקוח',    mode:'text'},
+  {k:COLS.custConsignment,label:'יתרת נזילות', mode:'num'},
   {k:COLS.custBankHolder,label:'שם בעל החשבון', mode:'text',bank:true},
   {k:COLS.custBankName,label:'שם הבנק',       mode:'text',bank:true},
   {k:COLS.custBankBranch,label:'מספר הסניף',    mode:'num', bank:true},
@@ -886,6 +888,7 @@ function openNewReceiptFromInv(invId) {
   
   const cust = S.customers.find(c => c[COLS.custId] === rf._custId);
   rf[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  rf._custConsignment = cust ? (cust[COLS.custConsignment] || '') : '';
   rf._custEditRow = cust ? cust._row : null;
   rf._custEditId = cust ? cust._id : null;
   
@@ -1205,6 +1208,7 @@ function renderCustList() {
 function cCard(c, i) {
   const isE = S.expId === c._id; const bg = rowBg(c, isE); const cpd = S.copied === `${c._id}-id`;
   const color = tc(); const bank = c[COLS.custBankName] || c[COLS.custBankBranch] || c[COLS.custBankAcct];
+  const custCon = c[COLS.custConsignment] || '';
   const custBalId = c[COLS.custId] || '';
   const dataReady = (S.isState === 'ok' || S.tsState === 'ok') && S.rsState === 'ok';
   const custBal = dataReady && custBalId ? getCustTotalBalance(custBalId) : null;
@@ -1261,6 +1265,33 @@ function cCardBody(c, color) {
   return h + `</div>`;
 }
 
+function checkCustIdExists(val) {
+  val = (val || '').trim();
+  if (!val) return;
+  const isEdit = (S.cForm._editId !== undefined && S.cForm._editId !== null);
+  if (isEdit) return; // skip in edit mode — ID already belongs to this customer
+  const existing = S.customers.find(c => c[COLS.custId] === val);
+  if (!existing) return;
+  const name = existing[COLS.custBiz] || existing[COLS.custName] || '';
+  showConfirm(
+    `לקוח עם ת"ז / ח"פ ${val}${name ? ' (' + name + ')' : ''} כבר קיים. האם לעדכן את פרטיו?`,
+    function() {
+      // Load existing customer into form for editing
+      CF.forEach(f => { S.cForm[f.k] = existing[f.k] || ''; });
+      S.cForm._editId  = existing._id;
+      S.cForm._editRow = existing._rowIndex;
+      render();
+    },
+    function() {
+      // Cancel — clear the ID field
+      S.cForm[COLS.custId] = '';
+      const el = document.getElementById('f-id');
+      if (el) el.value = '';
+    },
+    'עדכן', 'בטל'
+  );
+}
+
 function renderCustForm() {
   const color = tc(); const isEdit = (S.cForm._editId !== undefined && S.cForm._editId !== null);
   let h = `<div class="fwrap" style="--tc:${color}">`;
@@ -1281,7 +1312,8 @@ function custField(f) {
   if (f.k === COLS.custId) return `<div class="field"><label>${f.label} <small>(עמודה ${f.k}${f.req ? ' *' : ''})</small></label>
     <div class="irow">
       <input type="text" inputmode="numeric" id="f-id" class="finput num" value="${vv}"
-        oninput="uf('f-id','${f.k}',this.value.replace(/[^0-9-]/g,''))">
+        oninput="uf('f-id','${f.k}',this.value.replace(/[^0-9-]/g,''))"
+        onblur="checkCustIdExists(this.value)">
       <button class="dash-btn" onclick="addDashC()">-</button>
     </div></div>`;
   if (f.mode === 'select') {
@@ -1311,6 +1343,7 @@ function onInvCustIdInput(val) {
     
     const cust = S.customers.find(c => c[COLS.custId] === val.trim());
     S.iForm._custNotes = cust ? (cust[COLS.custNotes] || '') : '';
+    S.iForm._custConsignment = cust ? (cust[COLS.custConsignment] || '') : '';
     S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : ''; 
     S.iForm._custEditRow = cust ? cust._row : null;
     S.iForm._custEditId = cust ? cust._id : null;
@@ -1429,6 +1462,11 @@ function renderInvForm(isTax) {
     <input type="text" id="inv-custNotes" class="finput" value="${esc(f._custNotes || '')}"
       placeholder="הזן או ערוך הערות לקוח..."
       oninput="uf('iForm','_custNotes',this.value)">
+  </div>
+  <div class="field"><label>יתרת נזילות <small>(עמודה N — יישמר בכרטיס הלקוח)</small></label>
+    <input type="text" inputmode="numeric" id="inv-custConsignment" class="finput num" value="${esc(f._custConsignment || '')}"
+      placeholder="0"
+      oninput="uf('iForm','_custConsignment',this.value)">
   </div>
   <div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
     <input type="date" id="inv-date" class="finput" style="direction:ltr;text-align:left"
@@ -1644,6 +1682,11 @@ function renderReceiptForm() {
       <input type="text" id="r-custNotes" class="finput" value="${esc(rf[COLS.custNotes] || '')}"
         placeholder="הזן או ערוך הערות לקוח..."
         oninput="uf('rForm','${COLS.custNotes}',this.value)">
+    </div>
+    <div class="field"><label>יתרת נזילות <small>(עמודה N — יישמר בכרטיס הלקוח)</small></label>
+      <input type="text" inputmode="numeric" id="r-custConsignment" class="finput num" value="${esc(rf._custConsignment || '')}"
+        placeholder="0"
+        oninput="uf('rForm','_custConsignment',this.value)">
     </div>`;
 
   h += `<div id="open-invs-container">${buildOpenInvsHtml()}</div>`;
@@ -2322,6 +2365,7 @@ function pickInvCust(custId, bizName) {
   
   const cust = S.customers.find(c => c[COLS.custId] === custId);
   S.iForm._custNotes = cust ? (cust[COLS.custNotes] || '') : '';
+  S.iForm._custConsignment = cust ? (cust[COLS.custConsignment] || '') : '';
   S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : '';
   S.iForm._custEditRow = cust ? cust._row : null;
   S.iForm._custEditId = cust ? cust._id : null;
@@ -2367,6 +2411,19 @@ async function updateCustomerNotesIfNeeded(custEditId, custEditRow, notesVal) {
     updatedData[COLS.custNotes] = notesVal || '';
     await apiPost({ action: 'updateCustomer', data: updatedData, editRow: custEditRow });
     cust[COLS.custNotes] = notesVal || '';
+  }
+}
+
+async function updateCustomerConsignmentIfNeeded(custEditId, custEditRow, conVal) {
+  if (!custEditRow) return;
+  const cust = S.customers.find(c => c._id === custEditId);
+  if (!cust) return;
+  if ((cust[COLS.custConsignment] || '') !== (conVal || '')) {
+    const updatedData = {};
+    CF.forEach(f => { updatedData[f.k] = cust[f.k] || ''; });
+    updatedData[COLS.custConsignment] = conVal || '';
+    await apiPost({ action: 'updateCustomer', data: updatedData, editRow: custEditRow });
+    cust[COLS.custConsignment] = conVal || '';
   }
 }
 
@@ -2467,6 +2524,9 @@ async function executeSaveReceipt() {
 
     if (rf._custEditRow && rf[COLS.custNotes] !== undefined) {
       await updateCustomerNotesIfNeeded(rf._custEditId, rf._custEditRow, rf[COLS.custNotes]);
+    }
+    if (rf._custEditRow && rf._custConsignment !== undefined) {
+      await updateCustomerConsignmentIfNeeded(rf._custEditId, rf._custEditRow, rf._custConsignment);
     }
 
     S.saving = false;
@@ -2618,6 +2678,9 @@ async function executeSaveInv(isTax, calc) {
 
     if (f._custEditRow && f._custNotes !== undefined) {
       await updateCustomerNotesIfNeeded(f._custEditId, f._custEditRow, f._custNotes);
+    }
+    if (f._custEditRow && f._custConsignment !== undefined) {
+      await updateCustomerConsignmentIfNeeded(f._custEditId, f._custEditRow, f._custConsignment);
     }
 
     S.msg = {
