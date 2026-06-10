@@ -215,7 +215,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v2.2'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v2.3'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 
 // ─────────────────────────────────────────────────────────
@@ -755,6 +755,13 @@ async function runDiagnose() {
     S.diagData._writeVerify = nr
       ? `last row: ${nr._rowIndex} | C:${nr.C||'?'} G:${esc(nr.G||'')}`
       : 'no rows found';
+    // Delete the test row so sheet stays clean
+    if (nr && nr._rowIndex && nr.G === 'בדיקה-אבחון') {
+      try {
+        await apiPost({ action: 'deleteRow', sheetName: SHEETS.receipts, row: nr._rowIndex });
+        S.diagData._writeVerify += ' | נמחק ✅';
+      } catch(de) { S.diagData._writeVerify += ' | שגיאת מחיקה: ' + de.message; }
+    }
   } catch(e) { S.diagData._writeVerify = 'verify error: ' + e.message; }
 
   const directPayload = { action: 'addReceipt', data: { A: '', B: 'מזומן', C: 1, D: '01/01/2026', E: '', G: 'direct-nav-test' } };
@@ -2544,6 +2551,16 @@ async function embedPhotoSeparately(sheetName, savedRow, dateStr, photoBase64) {
     await apiPost({ action: 'embedPhoto', sheetName, row: savedRow, dateStr: dateStr || '', photoBase64 });
   } catch(e) { console.warn('embedPhoto failed:', e.message); }
 }
+function findInvByKey(key) {
+  if (!key) return null;
+  if (key.startsWith('row_')) {
+    const ri = parseInt(key.replace('row_', ''));
+    return S.invoices.find(r => r._rowIndex === ri) || S.tax.find(r => r._rowIndex === ri);
+  }
+  return S.invoices.find(r => (nz(r[COLS.invNum]) || '') === key)
+      || S.tax.find(r => (nz(r[COLS.taxNum]) || '') === key);
+}
+
 async function saveInv(isTax) {
   const f = S.iForm;
   const calc = calcInv(f);
@@ -2595,10 +2612,34 @@ async function executeSaveInv(isTax, calc) {
   // Partial payment creates invoice + receipt — applies to both cash AND check
   const isCashPartial = isTax && (f[COLS.taxPayType] === 'מזומן' || f[COLS.taxPayType] === 'שיק') && total > 0.5 && paid < total - 0.5;
 
-  if (isTax && !isCashPartial && f[COLS.taxPayType] === 'שיק' && total > 0 && paid > total + 0.5 && f._overInvNum?.trim()) {
+  // Overpayment: check covers this invoice + another — prepare note + receipt for the other invoice
+  let _overRecData = null;
+  if (isTax && !isCashPartial && f[COLS.taxPayType] === 'שיק' && total > 0.5 && paid > total + 0.5 && f._overInvNum?.trim()) {
+    const overKey = f._overInvNum.trim();
+    const isNumKey = !overKey.startsWith('row_');
+    const overInv = findInvByKey(overKey);
+    const overTotal = overInv
+      ? (parseMoney(overInv[COLS.invTotalVat]) || parseMoney(overInv[COLS.taxTotalVat]) || 0)
+      : 0;
+    const invRef = isNumKey ? `חשבונית מספר ${overKey}` : `שורה ${overKey.replace('row_', '')}`;
     const diff = Math.round(paid - total).toLocaleString('he-IL');
-    const note = `ההפרש ₪${diff} שולם עבור חשבונית מספר ${f._overInvNum.trim()}`;
-    f[COLS.taxNotes] = f[COLS.taxNotes]?.trim() ? (f[COLS.taxNotes].trim() + ' | ' + note) : note;
+    const taxRef = `חשמ"ק ${f[COLS.docDate] || ''} לקוח ${f[COLS.docCustId] || ''}`;
+    // Note on main document
+    const mainNote = `ההפרש ₪${diff} שולם עבור ${invRef}`;
+    f[COLS.taxNotes] = f[COLS.taxNotes]?.trim() ? (f[COLS.taxNotes].trim() + ' | ' + mainNote) : mainNote;
+    // Prepare receipt for the additional invoice (created after main save)
+    if (overTotal > 0 || overInv) {
+      _overRecData = {
+        [COLS.recInvNum]:  isNumKey ? overKey : '',
+        [COLS.recPayType]: 'שיק',
+        [COLS.recPayAmt]:  overTotal || Math.round(paid - total),
+        [COLS.recPayDate]: f[COLS.taxPayDate] || f[COLS.docDate] || '',
+        [COLS.recChkNum]:  f[COLS.taxChkNum] || '',
+        [COLS.recNotes]:   `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | ${taxRef}`,
+        [COLS.recCustName]: overInv ? (overInv[COLS.docCustName] || '') : '',
+        [COLS.recCustId]:   overInv ? (overInv[COLS.docCustId]   || f[COLS.docCustId]) : f[COLS.docCustId],
+      };
+    }
   }
 
   const qkCols = PRODS.map(p => p.qk);
@@ -2645,16 +2686,26 @@ async function executeSaveInv(isTax, calc) {
       const paidAmt  = parseFloat(f[COLS.taxPayAmt] || 0);
       const isOverpay = isChq && total > 0 && paidAmt > total + 0.5;
       if (isOverpay && f._overInvNum?.trim()) {
-        const excess = Math.round((paidAmt - total) * 100) / 100;
-        const overInvRaw = f._overInvNum.trim();
-        const overInvVal = overInvRaw && /^\d+$/.test(overInvRaw) ? parseInt(overInvRaw, 10) : overInvRaw;
+        const overKey    = f._overInvNum.trim();
+        const isNumKey   = !overKey.startsWith('row_');
+        const overInv    = findInvByKey(overKey);
+        // Payment amount = full total with VAT of the additional invoice
+        const overTotal  = overInv
+          ? (parseMoney(overInv[COLS.invTotalVat]) || parseMoney(overInv[COLS.taxTotalVat]) || 0)
+          : Math.round(paidAmt - total);
+        // Reference: invoice number if exists, otherwise row number
+        const invRef     = isNumKey ? `חשבונית מספר ${overKey}` : `שורה ${overKey.replace('row_', '')}`;
+        const taxDocRef  = `חשמ"ק ${f[COLS.docDate]||''} לקוח ${f[COLS.docCustId]||''}`;
+        const recNotes   = `שיק ₪${Math.round(paidAmt).toLocaleString('he-IL')} | ${taxDocRef} | ${invRef}`;
         const recData = {
-          [COLS.recInvNum]:  overInvVal,
+          [COLS.recInvNum]:  isNumKey ? overKey : '',
           [COLS.recPayType]: f[COLS.taxPayType],
-          [COLS.recPayAmt]:  excess,
+          [COLS.recPayAmt]:  overTotal,
           [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
           [COLS.recChkNum]:  f[COLS.taxChkNum] || '',
-          [COLS.recNotes]:   'יתרת שיק מחשמ"ק שנוצר עכשיו'
+          [COLS.recNotes]:   recNotes,
+          [COLS.recCustName]: overInv ? (overInv[COLS.docCustName] || '') : '',
+          [COLS.recCustId]:   overInv ? (overInv[COLS.docCustId]   || f[COLS.docCustId]) : f[COLS.docCustId],
         };
         await apiPost({ action: 'addReceipt', data: recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
         S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
