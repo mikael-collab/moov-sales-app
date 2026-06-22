@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.1'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.2'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -692,32 +692,6 @@ async function fetchLastWriteLog() {
   render();
 }
 
-// One-time repair tool: scans every customer ID for legacy invisible bidi/zero-width
-// characters left over from before sanitizeId existed, and rewrites only the ones
-// that changed. Fixes lookups (XLOOKUP, duplicate checks, balance calc) that fail
-// silently when comparing a clean new ID against an old corrupted master record.
-async function cleanAllCustomerIds() {
-  showConfirm(
-    'ניקוי ת"ז/ח"פ פגומים בכל הלקוחות',
-    'סורק את עמודה B בגיליון לקוחות ומנקה תווים נסתרים שעלולים לגרום לאי-התאמה בXLOOKUP ובדיקת כפילויות. לא משנה ערכים תקיניים, בטוח.',
-    async () => {
-      S.cleanIdsResultText = '⏳ מנקה...'; render();
-      try {
-        const res = await apiPost({ action: 'cleanAllCustomerIds' });
-        if (res && res.fixed !== undefined) {
-          S.cleanIdsResultText = `✅ נבדקו ${res.scanned} לקוחות, תוקנו ${res.fixed}` +
-            (res.fixedRows && res.fixedRows.length ? ':\n' + res.fixedRows.map(r => `שורה ${r.row}: "${r.before}" → "${r.after}"`).join('\n') : '');
-        } else {
-          S.cleanIdsResultText = '⚠️ ' + (res && res.error ? res.error : 'תגובה לא צפויה');
-        }
-      } catch(e) {
-        S.cleanIdsResultText = '❌ ' + e.message;
-      }
-      render();
-    },
-    () => {}
-  );
-}
 
 async function apiPost(body) {
   if (!S.scriptUrl) return { status: 'ok' };
@@ -1125,14 +1099,8 @@ function renderSettings() {
       <button class="save-url-btn" style="background:#8e24aa" onclick="fetchLastWriteLog()">📋 הצג לוג שמירה אחרון</button>
       <div style="font-size:10px;color:#999;margin-top:6px">מציג בדיוק מה קרה בשמירה האחרונה בצד השרת — שימושי כשהשמירה לא נכתבה לגיליון</div>
       ${S.lastWriteLogText ? `<pre style="background:#111827;color:#9cdcfe;font-size:10.5px;padding:10px;border-radius:8px;margin-top:10px;direction:ltr;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto">${esc(S.lastWriteLogText)}</pre>` : ''}
-    </div>
-
-    <div class="stitle">תיקון נתונים</div>
-    <div class="scard" style="padding:14px">
-      <button class="save-url-btn" style="background:#c2185b" onclick="cleanAllCustomerIds()">🧹 ניקוי ת"ז/ח"פ פגומים בכל הלקוחות</button>
-      <div style="font-size:10px;color:#999;margin-top:6px">מסיר תווי הסתרה ישנים שגרמו לכשלי התאמה ב-XLOOKUP ובבדיקות כפילות — חד-פעמי, בטוח להרצה</div>
-      ${S.cleanIdsResultText ? `<pre style="background:#111827;color:#9cdcfe;font-size:11px;padding:10px;border-radius:8px;margin-top:10px;direction:rtl;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto">${esc(S.cleanIdsResultText)}</pre>` : ''}
     </div>`;
+
 
   if (connected) {
     h += `<div class="stitle">נתונים</div><div class="scard">
