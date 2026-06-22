@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v2.5'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v2.6'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -637,6 +637,39 @@ async function apiFetch(params) {
   return d;
 }
 
+// Forces a fresh fetch of index.html bypassing browser cache — fixes the
+// "saved + redeployed but app still shows old version after several refreshes" problem.
+// Changing the URL (cache-busting query param) makes the browser treat it as a new
+// resource instead of serving the cached HTML/JS.
+function forceAppUpdate() {
+  if (window.caches && caches.keys) {
+    caches.keys().then(names => names.forEach(n => caches.delete(n))).catch(()=>{});
+  }
+  const url = new URL(location.href);
+  url.searchParams.set('_t', Date.now());
+  location.href = url.toString();
+}
+
+// Pings GAS directly with a cache-busting param and no-store, bypassing any
+// intermediate caching, so you get the TRUE live deployment version immediately
+// after redeploying — instead of having to run the full diagnostic suite.
+async function forceCheckGasVersion() {
+  if (!S.scriptUrl) { S.gasVersionCheck = '❌ לא מחובר'; render(); return; }
+  S.gasVersionCheck = '⏳ בודק...'; render();
+  try {
+    const base = S.scriptUrl.trim();
+    const sep  = base.includes('?') ? '&' : '?';
+    const url  = base + sep + '_cb=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    const d = await r.json();
+    const t = new Date().toLocaleTimeString('he-IL');
+    S.gasVersionCheck = (d.version ? '✅ ' + d.version : '⚠️ אין version בתשובה') + ' (' + t + ')';
+  } catch(e) {
+    S.gasVersionCheck = '❌ ' + e.message;
+  }
+  render();
+}
+
 async function apiPost(body) {
   if (!S.scriptUrl) return { status: 'ok' };
   const sendBodyFull = Object.assign({}, body);                     
@@ -1030,6 +1063,16 @@ function renderSettings() {
       <input class="url-input" id="script-url-input2" type="url" inputmode="url"
         placeholder="https://script.google.com/macros/s/.../exec" value="${esc(S.scriptUrl)}">
       <button class="save-url-btn" onclick="saveUrl('script-url-input2','url-err2')">${connected ? '🔄 עדכן URL' : '✅ התחבר'}</button>
+    </div>
+
+    <div class="stitle">גרסאות</div>
+    <div class="scard" style="padding:14px">
+      <div style="font-size:12px;color:#666;margin-bottom:10px">📱 App: <b style="direction:ltr;display:inline-block">${APP_VERSION}</b></div>
+      <button class="save-url-btn" style="background:#1565c0" onclick="forceAppUpdate()">🔄 רענון מאולץ של האפליקציה</button>
+      <div style="font-size:10px;color:#999;margin:6px 0 14px">מנקה מטמון ומטען מחדש — לחץ אחרי שדחפת גרסה חדשה ל-GitHub Pages</div>
+      ${S.gasVersionCheck ? `<div style="font-size:13px;font-weight:700;direction:ltr;margin-bottom:8px">${esc(S.gasVersionCheck)}</div>` : ''}
+      <button class="save-url-btn" style="background:#37474f" onclick="forceCheckGasVersion()">📡 בדוק גרסת GAS חיה (ללא מטמון)</button>
+      <div style="font-size:10px;color:#999;margin-top:6px">בודק את הגרסה האמיתית שרצה כרגע ב-Apps Script — שימושי אחרי לחיצה על Deploy</div>
     </div>`;
 
   if (connected) {
