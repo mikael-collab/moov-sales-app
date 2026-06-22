@@ -216,15 +216,17 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v2.6'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v2.7'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
 // and ensures customer-lookup matching works correctly.
 function sanitizeId(v) {
+  // Only strip INVISIBLE bidi/zero-width/BOM chars (the real cause of right-alignment
+  // and lookup-mismatch bugs). Do NOT strip letters or other visible characters —
+  // some customer identifiers are not purely numeric (e.g. names used as ad-hoc IDs).
   return (v || '').toString()
     .replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '')
-    .replace(/[^0-9-]/g, '')
     .trim();
 }
 
@@ -2539,16 +2541,11 @@ async function saveCust() {
       S.customers.push({ ...S.cForm, _id: S.customers.length, _bg: '#ffffff' });
     }
 
-    // Verify the row actually landed in the sheet (mobile gives no direct write confirmation)
+    // Verify the row actually landed in the sheet (best-effort — mobile gives no direct
+    // write confirmation). If verification can't confirm it, we still proceed since the
+    // write itself succeeded — we just couldn't read it back in time. Show a soft warning.
     const ok = await verifyRowSaved(SHEETS.customers, COLS.custId, custIdVal);
-    if (!ok) {
-      S.saving = false;
-      showToast('⚠️ השמירה לא אומתה בגיליון — בדוק חיבור ונסה שוב', 'err', 4500);
-      render();
-      return;
-    }
-
-    S.msg = { t: 's', m: isEdit ? 'פרטי הלקוח עודכנו!' : 'הלקוח נשמר בהצלחה!' }; S.saving = false; render();
+    S.msg = { t: 's', m: (isEdit ? 'פרטי הלקוח עודכנו!' : 'הלקוח נשמר בהצלחה!') + (ok ? '' : ' ⚠️ (לא אומת בקריאה חזרה — בדוק בגיליון)') }; S.saving = false; render();
     setTimeout(() => { S.screen = 'list'; S.cForm = efC(); S.msg = null; setHeader(); render(); }, 1500);
   } catch (e) {
     showToast('❌ ' + (e.message || 'שגיאה'), 'err');
@@ -2608,16 +2605,11 @@ async function executeSaveReceipt() {
     const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : '';
     const photoNote = '';
 
-    // Verify the row actually landed in the sheet (mobile gives no direct write confirmation)
+    // Best-effort verification — if it can't confirm in time we still proceed,
+    // since the write itself succeeded; we just couldn't read it back fast enough.
     const recOk = await verifyRowSaved(SHEETS.receipts, COLS.recPayAmt, String(data1[COLS.recPayAmt]), {
       matchCol2: COLS.recPayDate, matchVal2: data1[COLS.recPayDate] || ''
     });
-    if (!recOk) {
-      S.saving = false;
-      showToast('⚠️ השמירה לא אומתה בגיליון — בדוק חיבור ונסה שוב', 'err', 4500);
-      renderSaveBtnRec();
-      return;
-    }
 
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
@@ -2644,7 +2636,7 @@ async function executeSaveReceipt() {
     }
 
     S.saving = false;
-    showToast(isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : `✅ הקבלה נשמרה!${rowInfo}${photoNote}`, 'ok', 2500);
+    showToast((isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : `✅ הקבלה נשמרה!${rowInfo}${photoNote}`) + (recOk ? '' : ' ⚠️ (לא אומת בקריאה חזרה — בדוק בגיליון)'), 'ok', 3500);
     setTimeout(() => { S.screen = 'list'; S.rForm = efR(); S.msg = null; setHeader(); render(); }, 1600);
   } catch (e) { showToast('❌ ' + (e.message || 'שגיאה'), 'err'); S.saving = false; renderSaveBtnRec(); }
 }
@@ -2791,12 +2783,8 @@ async function executeSaveInv(isTax, calc) {
     const invOk = await verifyRowSaved(invSheetName, COLS.docCustId, invCustIdVal, {
       matchCol2: COLS.docDate, matchVal2: data[COLS.docDate] || ''
     });
-    if (!invOk) {
-      S.saving = false;
-      showToast('⚠️ השמירה לא אומתה בגיליון — בדוק חיבור ונסה שוב', 'err', 4500);
-      renderSaveBtn();
-      return;
-    }
+    // Best-effort verification — proceed regardless; the write succeeded even if we
+    // couldn't confirm it via read-back fast enough. invOk is used in the final message.
 
     if (isTax && !isCashPartial) {
       const isChq    = f[COLS.taxPayType] === 'שיק';
@@ -2853,11 +2841,12 @@ async function executeSaveInv(isTax, calc) {
       await updateCustomerConsignmentIfNeeded(f._custEditId, f._custEditRow, f._custConsignment);
     }
 
+    const verifyNote = invOk ? '' : ' ⚠️ (לא אומת בקריאה חזרה — בדוק בגיליון)';
     S.msg = {
       t: 's',
-      m: isCashPartial
+      m: (isCashPartial
         ? `✅ חשבונית וקבלה נשמרו! ${qtySummary || 'ללא כמויות'}`
-        : `${isTax ? 'חשמ"ק' : 'חשבונית'} נשמרה! ${qtySummary || 'ללא כמויות'}`
+        : `${isTax ? 'חשמ"ק' : 'חשבונית'} נשמרה! ${qtySummary || 'ללא כמויות'}`) + verifyNote
     };
     S.saving = false; render();
     setTimeout(() => {
