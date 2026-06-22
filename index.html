@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v2.8'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v2.9'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -672,6 +672,26 @@ async function forceCheckGasVersion() {
   render();
 }
 
+// Pulls the server-side record of the LAST write attempt — captured by Code.gs
+// regardless of mobile's opaque-redirect hiding the real response from the app.
+// This is the only reliable way to see exactly what happened on a save that
+// looked successful in the app but didn't show up in the sheet.
+async function fetchLastWriteLog() {
+  if (!S.scriptUrl) { S.lastWriteLogText = '❌ לא מחובר'; render(); return; }
+  S.lastWriteLogText = '⏳ טוען...'; render();
+  try {
+    const base = S.scriptUrl.trim();
+    const sep  = base.includes('?') ? '&' : '?';
+    const url  = base + sep + 'lastlog=1&_cb=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    const d = await r.json();
+    S.lastWriteLogText = d.lastWriteLog ? JSON.stringify(d.lastWriteLog, null, 2) : 'אין רשומה עדיין';
+  } catch(e) {
+    S.lastWriteLogText = '❌ ' + e.message;
+  }
+  render();
+}
+
 async function apiPost(body) {
   if (!S.scriptUrl) return { status: 'ok' };
   const sendBodyFull = Object.assign({}, body);                     
@@ -1074,7 +1094,10 @@ function renderSettings() {
       <div style="font-size:10px;color:#999;margin:6px 0 14px">מנקה מטמון ומטען מחדש — לחץ אחרי שדחפת גרסה חדשה ל-GitHub Pages</div>
       ${S.gasVersionCheck ? `<div style="font-size:13px;font-weight:700;direction:ltr;margin-bottom:8px">${esc(S.gasVersionCheck)}</div>` : ''}
       <button class="save-url-btn" style="background:#37474f" onclick="forceCheckGasVersion()">📡 בדוק גרסת GAS חיה (ללא מטמון)</button>
-      <div style="font-size:10px;color:#999;margin-top:6px">בודק את הגרסה האמיתית שרצה כרגע ב-Apps Script — שימושי אחרי לחיצה על Deploy</div>
+      <div style="font-size:10px;color:#999;margin:6px 0 14px">בודק את הגרסה האמיתית שרצה כרגע ב-Apps Script — שימושי אחרי לחיצה על Deploy</div>
+      <button class="save-url-btn" style="background:#8e24aa" onclick="fetchLastWriteLog()">📋 הצג לוג שמירה אחרון</button>
+      <div style="font-size:10px;color:#999;margin-top:6px">מציג בדיוק מה קרה בשמירה האחרונה בצד השרת — שימושי כשהשמירה לא נכתבה לגיליון</div>
+      ${S.lastWriteLogText ? `<pre style="background:#111827;color:#9cdcfe;font-size:10.5px;padding:10px;border-radius:8px;margin-top:10px;direction:ltr;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto">${esc(S.lastWriteLogText)}</pre>` : ''}
     </div>`;
 
   if (connected) {
