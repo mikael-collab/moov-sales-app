@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v2.7'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v2.8'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2541,12 +2541,24 @@ async function saveCust() {
       S.customers.push({ ...S.cForm, _id: S.customers.length, _bg: '#ffffff' });
     }
 
-    // Verify the row actually landed in the sheet (best-effort — mobile gives no direct
-    // write confirmation). If verification can't confirm it, we still proceed since the
-    // write itself succeeded — we just couldn't read it back in time. Show a soft warning.
+    // Verify the row actually landed in the sheet. If we can't confirm it, show a
+    // sticky alert that requires acknowledgment before leaving the screen — a toast
+    // can disappear before being read, and "saved successfully" while nothing was
+    // actually written must never go unnoticed.
     const ok = await verifyRowSaved(SHEETS.customers, COLS.custId, custIdVal);
-    S.msg = { t: 's', m: (isEdit ? 'פרטי הלקוח עודכנו!' : 'הלקוח נשמר בהצלחה!') + (ok ? '' : ' ⚠️ (לא אומת בקריאה חזרה — בדוק בגיליון)') }; S.saving = false; render();
-    setTimeout(() => { S.screen = 'list'; S.cForm = efC(); S.msg = null; setHeader(); render(); }, 1500);
+    S.saving = false;
+    if (ok) {
+      S.msg = { t: 's', m: isEdit ? 'פרטי הלקוח עודכנו!' : 'הלקוח נשמר בהצלחה!' };
+      render();
+      setTimeout(() => { S.screen = 'list'; S.cForm = efC(); S.msg = null; setHeader(); render(); }, 1500);
+    } else {
+      render();
+      showAlert(
+        '⚠️ לא אומת בגיליון',
+        'שלחנו את השמירה, אך לא הצלחנו לאמת שהשורה נוצרה/עודכנה בגיליון תוך זמן סביר. בדוק ידנית בגיליון אם הלקוח נשמר.',
+        () => { S.screen = 'list'; S.cForm = efC(); S.msg = null; setHeader(); render(); }
+      );
+    }
   } catch (e) {
     showToast('❌ ' + (e.message || 'שגיאה'), 'err');
     S.saving = false;
@@ -2636,8 +2648,19 @@ async function executeSaveReceipt() {
     }
 
     S.saving = false;
-    showToast((isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : `✅ הקבלה נשמרה!${rowInfo}${photoNote}`) + (recOk ? '' : ' ⚠️ (לא אומת בקריאה חזרה — בדוק בגיליון)'), 'ok', 3500);
-    setTimeout(() => { S.screen = 'list'; S.rForm = efR(); S.msg = null; setHeader(); render(); }, 1600);
+    const closeRecAndReload = () => { S.screen = 'list'; S.rForm = efR(); S.msg = null; setHeader(); render(); };
+
+    if (recOk) {
+      showToast(isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : `✅ הקבלה נשמרה!${rowInfo}${photoNote}`, 'ok', 2500);
+      setTimeout(closeRecAndReload, 1600);
+    } else {
+      render();
+      showAlert(
+        '⚠️ לא אומת בגיליון',
+        'שלחנו את המסמך, אך לא הצלחנו לאמת שהשורה נוצרה בגיליון תוך זמן סביר. בדוק ידנית בגיליון אם הקבלה נשמרה.',
+        closeRecAndReload
+      );
+    }
   } catch (e) { showToast('❌ ' + (e.message || 'שגיאה'), 'err'); S.saving = false; renderSaveBtnRec(); }
 }
 
@@ -2841,22 +2864,33 @@ async function executeSaveInv(isTax, calc) {
       await updateCustomerConsignmentIfNeeded(f._custEditId, f._custEditRow, f._custConsignment);
     }
 
-    const verifyNote = invOk ? '' : ' ⚠️ (לא אומת בקריאה חזרה — בדוק בגיליון)';
-    S.msg = {
-      t: 's',
-      m: (isCashPartial
-        ? `✅ חשבונית וקבלה נשמרו! ${qtySummary || 'ללא כמויות'}`
-        : `${isTax ? 'חשמ"ק' : 'חשבונית'} נשמרה! ${qtySummary || 'ללא כמויות'}`) + verifyNote
-    };
-    S.saving = false; render();
-    setTimeout(() => {
+    S.saving = false;
+    const closeAndReload = () => {
       S.screen = 'list'; S.iForm = {}; S.msg = null;
       if (saveToTax) { S.tsState = 'idle'; S.tax = []; }
       else           { S.isState = 'idle'; S.invoices = []; }
       if (isCashPartial) { S.rsState = 'idle'; S.receipts = []; }
       setHeader();
       if (saveToTax) loadTax(); else loadInvoices();
-    }, 2500);
+    };
+
+    if (invOk) {
+      S.msg = {
+        t: 's',
+        m: isCashPartial
+          ? `✅ חשבונית וקבלה נשמרו! ${qtySummary || 'ללא כמויות'}`
+          : `${isTax ? 'חשמ"ק' : 'חשבונית'} נשמרה! ${qtySummary || 'ללא כמויות'}`
+      };
+      render();
+      setTimeout(closeAndReload, 2500);
+    } else {
+      render();
+      showAlert(
+        '⚠️ לא אומת בגיליון',
+        'שלחנו את המסמך, אך לא הצלחנו לאמת שהשורה נוצרה בגיליון תוך זמן סביר. בדוק ידנית בגיליון אם ' + (isTax ? 'החשמ"ק' : 'החשבונית') + ' נשמרה.',
+        closeAndReload
+      );
+    }
   } catch (e) {
     showToast('❌ שגיאה: ' + e.name + ' — ' + e.message, 'err');
     S.saving = false;
@@ -2898,6 +2932,7 @@ function showConfirm(title, text, onYes, onNo, yesLabel, noLabel) {
   bodyEl.textContent = text || '';
   yesBtn.textContent = yesLabel || 'כן, המשך';
   noBtn.textContent  = noLabel  || 'ביטול';
+  noBtn.style.display = '';
   modal.style.display = 'flex';
   yesBtn.onclick = function() {
     modal.style.display = 'none';
@@ -2906,6 +2941,28 @@ function showConfirm(title, text, onYes, onNo, yesLabel, noLabel) {
   noBtn.onclick = function() {
     modal.style.display = 'none';
     if (onNo) onNo();
+  };
+}
+
+// Single-button sticky alert — used when a save couldn't be verified in the sheet.
+// Unlike a toast (which auto-dismisses in a few seconds and can be missed), this
+// requires the user to tap "הבנתי" before continuing, so the warning is never missed.
+function showAlert(title, text, onClose) {
+  const modal = document.getElementById('confirm-modal');
+  const tEl = document.getElementById('confirm-title');
+  const bodyEl = document.getElementById('confirm-text');
+  const yesBtn = document.getElementById('confirm-yes');
+  const noBtn = document.getElementById('confirm-no');
+  if (!modal) { if (onClose) onClose(); return; }
+  tEl.textContent = title;
+  bodyEl.textContent = text || '';
+  yesBtn.textContent = 'הבנתי';
+  noBtn.style.display = 'none';
+  modal.style.display = 'flex';
+  yesBtn.onclick = function() {
+    modal.style.display = 'none';
+    noBtn.style.display = '';
+    if (onClose) onClose();
   };
 }
 
