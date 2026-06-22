@@ -216,8 +216,17 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v2.4'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v2.5'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
+// Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
+// Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
+// and ensures customer-lookup matching works correctly.
+function sanitizeId(v) {
+  return (v || '').toString()
+    .replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '')
+    .replace(/[^0-9-]/g, '')
+    .trim();
+}
 
 // ─────────────────────────────────────────────────────────
 // ⚙️ CENTRAL MAPPING (CONFIG) ⚙️
@@ -1322,7 +1331,7 @@ function custField(f) {
   if (f.k === COLS.custId) return `<div class="field"><label>${f.label} <small>(עמודה ${f.k}${f.req ? ' *' : ''})</small></label>
     <div class="irow">
       <input type="text" inputmode="numeric" id="f-id" class="finput num" value="${vv}"
-        oninput="uf('f-id','${f.k}',this.value.replace(/[^0-9-]/g,''))"
+        oninput="uf('f-id','${f.k}',sanitizeId(this.value))"
         onblur="checkCustIdExists(this.value)">
       <button class="dash-btn" onclick="addDashC()">-</button>
     </div></div>`;
@@ -1466,7 +1475,7 @@ function renderInvForm(isTax) {
   <div class="field"><label>ת"ז / ח"פ <small>(עמודה ${COLS.docCustId}) *</small></label>
     <input type="text" inputmode="numeric" id="inv-custId" class="finput num" value="${esc(f[COLS.docCustId])}"
       placeholder="הזן ת\"ז או ח\"פ..."
-      oninput="onInvCustIdInput(this.value)">
+      oninput="onInvCustIdInput(sanitizeId(this.value))">
   </div>
   <div class="field"><label>הערות לקוח <small>(יישמר ישירות בכרטיס הלקוח)</small></label>
     <input type="text" id="inv-custNotes" class="finput" value="${esc(f._custNotes || '')}"
@@ -1686,7 +1695,7 @@ function renderReceiptForm() {
     <div class="field"><label>ת"ז / ח"פ</label>
       <input type="text" inputmode="numeric" id="r-I" class="finput num" value="${esc(rf._custId)}"
         placeholder="ת\"ז או ח\"פ..."
-        oninput="onCustIdInput(this.value)">
+        oninput="onCustIdInput(sanitizeId(this.value))">
     </div>
     <div class="field"><label>הערות לקוח <small>(יישמר ישירות בכרטיס הלקוח)</small></label>
       <input type="text" id="r-custNotes" class="finput" value="${esc(rf[COLS.custNotes] || '')}"
@@ -2437,6 +2446,35 @@ async function updateCustomerConsignmentIfNeeded(custEditId, custEditRow, conVal
   }
 }
 
+// Verifies a save actually landed in the sheet — re-fetches and checks for a matching row.
+// Returns true if found, false if not found after retries (mobile opaque-redirect gives no
+// direct confirmation, so this is the only reliable way to know a write succeeded).
+async function verifyRowSaved(sheetName, matchCol, matchVal, opts) {
+  opts = opts || {};
+  const retries   = opts.retries   || 3;
+  const delayMs   = opts.delayMs   || 900;
+  const limit     = opts.limit     || 8;
+  const matchCol2 = opts.matchCol2 || null; // optional 2nd column for tighter matching (e.g. date)
+  const matchVal2 = (opts.matchVal2 || '').toString().trim();
+  const target    = (matchVal || '').toString().trim();
+  if (!target) return true; // nothing to match against — skip check
+  for (let i = 0; i < retries; i++) {
+    await new Promise(r => setTimeout(r, delayMs));
+    try {
+      const res = await apiFetch({ sheet: sheetName, limit: limit });
+      const rows = res.data || [];
+      const found = rows.some(r => {
+        const m1 = (r[matchCol] || '').toString().trim() === target;
+        if (!m1) return false;
+        if (matchCol2 && matchVal2) return (r[matchCol2] || '').toString().trim() === matchVal2;
+        return true;
+      });
+      if (found) return true;
+    } catch(e) { /* network hiccup — retry */ }
+  }
+  return false;
+}
+
 async function saveCust() {
   if (!S.cForm[COLS.custName]?.trim()) {
     showToast('❌ שם לקוח הוא שדה חובה', 'err');
@@ -2448,6 +2486,7 @@ async function saveCust() {
   
   S.saving = true; S.msg = null; render();
   try {
+    const custIdVal = sanitizeId(S.cForm[COLS.custId] || '');
     if (isEdit) {
       await apiPost({ action: 'updateCustomer', data: { ...S.cForm }, editRow: S.cForm._editRow });
       const idx = S.customers.findIndex(c => c._id === S.cForm._editId);
@@ -2456,6 +2495,16 @@ async function saveCust() {
       await apiPost({ action: 'addCustomer', data: { ...S.cForm } });
       S.customers.push({ ...S.cForm, _id: S.customers.length, _bg: '#ffffff' });
     }
+
+    // Verify the row actually landed in the sheet (mobile gives no direct write confirmation)
+    const ok = await verifyRowSaved(SHEETS.customers, COLS.custId, custIdVal);
+    if (!ok) {
+      S.saving = false;
+      showToast('⚠️ השמירה לא אומתה בגיליון — בדוק חיבור ונסה שוב', 'err', 4500);
+      render();
+      return;
+    }
+
     S.msg = { t: 's', m: isEdit ? 'פרטי הלקוח עודכנו!' : 'הלקוח נשמר בהצלחה!' }; S.saving = false; render();
     setTimeout(() => { S.screen = 'list'; S.cForm = efC(); S.msg = null; setHeader(); render(); }, 1500);
   } catch (e) {
@@ -2515,6 +2564,18 @@ async function executeSaveReceipt() {
     const res1 = await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
     const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : '';
     const photoNote = '';
+
+    // Verify the row actually landed in the sheet (mobile gives no direct write confirmation)
+    const recOk = await verifyRowSaved(SHEETS.receipts, COLS.recPayAmt, String(data1[COLS.recPayAmt]), {
+      matchCol2: COLS.recPayDate, matchVal2: data1[COLS.recPayDate] || ''
+    });
+    if (!recOk) {
+      S.saving = false;
+      showToast('⚠️ השמירה לא אומתה בגיליון — בדוק חיבור ונסה שוב', 'err', 4500);
+      renderSaveBtnRec();
+      return;
+    }
+
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
     if (isOverpay && inv2) {
@@ -2681,6 +2742,18 @@ async function executeSaveInv(isTax, calc) {
       photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''
     };
     await apiPost(payload);
+
+    // Verify the row actually landed in the sheet (mobile gives no direct write confirmation)
+    const invCustIdVal = sanitizeId(data[COLS.docCustId] || '');
+    const invOk = await verifyRowSaved(invSheetName, COLS.docCustId, invCustIdVal, {
+      matchCol2: COLS.docDate, matchVal2: data[COLS.docDate] || ''
+    });
+    if (!invOk) {
+      S.saving = false;
+      showToast('⚠️ השמירה לא אומתה בגיליון — בדוק חיבור ונסה שוב', 'err', 4500);
+      renderSaveBtn();
+      return;
+    }
 
     if (isTax && !isCashPartial) {
       const isChq    = f[COLS.taxPayType] === 'שיק';
