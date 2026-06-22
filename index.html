@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v2.9'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.0'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2517,28 +2517,28 @@ async function updateCustomerConsignmentIfNeeded(custEditId, custEditRow, conVal
 // Verifies a save actually landed in the sheet — re-fetches and checks for a matching row.
 // Returns true if found, false if not found after retries (mobile opaque-redirect gives no
 // direct confirmation, so this is the only reliable way to know a write succeeded).
-async function verifyRowSaved(sheetName, matchCol, matchVal, opts) {
+// Returns the _rowIndex of the last meaningful row in a sheet, or -1 on fetch failure.
+async function getLastRowIndex(sheetName) {
+  try {
+    const res = await apiFetch({ sheet: sheetName, limit: 1 });
+    const rows = res.data || [];
+    return rows.length ? (rows[0]._rowIndex || 0) : 0;
+  } catch(e) { return -1; }
+}
+
+// Simple, reliable save verification: compare the last row index before vs after
+// the save. If it increased, a new row was added — exactly what the working
+// diagnostic test already does. Far more robust than matching field values, which
+// is brittle (timing, formatting, column drift) and was producing false negatives.
+async function verifyRowAdded(sheetName, beforeRowIndex, opts) {
   opts = opts || {};
-  const retries   = opts.retries   || 3;
-  const delayMs   = opts.delayMs   || 900;
-  const limit     = opts.limit     || 8;
-  const matchCol2 = opts.matchCol2 || null; // optional 2nd column for tighter matching (e.g. date)
-  const matchVal2 = (opts.matchVal2 || '').toString().trim();
-  const target    = (matchVal || '').toString().trim();
-  if (!target) return true; // nothing to match against — skip check
+  const retries = opts.retries || 4;
+  const delayMs = opts.delayMs || 900;
   for (let i = 0; i < retries; i++) {
     await new Promise(r => setTimeout(r, delayMs));
-    try {
-      const res = await apiFetch({ sheet: sheetName, limit: limit });
-      const rows = res.data || [];
-      const found = rows.some(r => {
-        const m1 = (r[matchCol] || '').toString().trim() === target;
-        if (!m1) return false;
-        if (matchCol2 && matchVal2) return (r[matchCol2] || '').toString().trim() === matchVal2;
-        return true;
-      });
-      if (found) return true;
-    } catch(e) { /* network hiccup — retry */ }
+    const after = await getLastRowIndex(sheetName);
+    if (after === -1) continue; // fetch failed — retry, don't count against the save
+    if (after > beforeRowIndex) return true;
   }
   return false;
 }
@@ -2554,7 +2554,10 @@ async function saveCust() {
   
   S.saving = true; S.msg = null; render();
   try {
-    const custIdVal = sanitizeId(S.cForm[COLS.custId] || '');
+    // Row-count verification only applies to NEW rows — editing an existing
+    // customer doesn't change the row count, so we skip verification for edits.
+    const beforeRow = isEdit ? -1 : await getLastRowIndex(SHEETS.customers);
+
     if (isEdit) {
       await apiPost({ action: 'updateCustomer', data: { ...S.cForm }, editRow: S.cForm._editRow });
       const idx = S.customers.findIndex(c => c._id === S.cForm._editId);
@@ -2564,11 +2567,8 @@ async function saveCust() {
       S.customers.push({ ...S.cForm, _id: S.customers.length, _bg: '#ffffff' });
     }
 
-    // Verify the row actually landed in the sheet. If we can't confirm it, show a
-    // sticky alert that requires acknowledgment before leaving the screen — a toast
-    // can disappear before being read, and "saved successfully" while nothing was
-    // actually written must never go unnoticed.
-    const ok = await verifyRowSaved(SHEETS.customers, COLS.custId, custIdVal);
+    // Verify a new row actually landed in the sheet (skip for edits — see above).
+    const ok = isEdit ? true : await verifyRowAdded(SHEETS.customers, beforeRow);
     S.saving = false;
     if (ok) {
       S.msg = { t: 's', m: isEdit ? 'פרטי הלקוח עודכנו!' : 'הלקוח נשמר בהצלחה!' };
@@ -2636,15 +2636,14 @@ async function executeSaveReceipt() {
   S.saving = true;
   renderSaveBtnRec();
   try {
+    const beforeRow = await getLastRowIndex(SHEETS.receipts);
     const res1 = await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
     const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : '';
     const photoNote = '';
 
-    // Best-effort verification — if it can't confirm in time we still proceed,
-    // since the write itself succeeded; we just couldn't read it back fast enough.
-    const recOk = await verifyRowSaved(SHEETS.receipts, COLS.recPayAmt, String(data1[COLS.recPayAmt]), {
-      matchCol2: COLS.recPayDate, matchVal2: data1[COLS.recPayDate] || ''
-    });
+    // Verify a new row actually landed in the sheet (simple row-count comparison —
+    // far more reliable than matching field values, which produced false negatives).
+    const recOk = await verifyRowAdded(SHEETS.receipts, beforeRow);
 
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
@@ -2816,6 +2815,7 @@ async function executeSaveInv(isTax, calc) {
   try {
     const saveToTax = isTax && !isCashPartial;
     const invSheetName = SHEETS[saveToTax ? 'tax' : 'invoices'];
+    const beforeRow = await getLastRowIndex(invSheetName);
     const payload = {
       action:    saveToTax ? 'addTax' : 'addInvoice',
       sheetName: invSheetName,
@@ -2824,13 +2824,9 @@ async function executeSaveInv(isTax, calc) {
     };
     await apiPost(payload);
 
-    // Verify the row actually landed in the sheet (mobile gives no direct write confirmation)
-    const invCustIdVal = sanitizeId(data[COLS.docCustId] || '');
-    const invOk = await verifyRowSaved(invSheetName, COLS.docCustId, invCustIdVal, {
-      matchCol2: COLS.docDate, matchVal2: data[COLS.docDate] || ''
-    });
-    // Best-effort verification — proceed regardless; the write succeeded even if we
-    // couldn't confirm it via read-back fast enough. invOk is used in the final message.
+    // Verify a new row actually landed in the sheet (simple row-count comparison —
+    // far more reliable than matching field values, which produced false negatives).
+    const invOk = await verifyRowAdded(invSheetName, beforeRow);
 
     if (isTax && !isCashPartial) {
       const isChq    = f[COLS.taxPayType] === 'שיק';
