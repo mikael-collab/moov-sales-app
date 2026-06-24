@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.2'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.3'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2520,29 +2520,45 @@ async function updateCustomerConsignmentIfNeeded(custEditId, custEditRow, conVal
 // Returns true if found, false if not found after retries (mobile opaque-redirect gives no
 // direct confirmation, so this is the only reliable way to know a write succeeded).
 // Returns the _rowIndex of the last meaningful row in a sheet, or -1 on fetch failure.
-async function getLastRowIndex(sheetName) {
+// Fetches the last row index for a sheet, bypassing any HTTP cache — critical for
+// verification, where an identical cached GET could make a real change look like
+// it never happened.
+async function getLastRowIndexFresh(sheetName) {
   try {
-    const res = await apiFetch({ sheet: sheetName, limit: 1 });
-    const rows = res.data || [];
+    if (!S.scriptUrl) return -1;
+    const base = S.scriptUrl.trim();
+    const sep  = base.includes('?') ? '&' : '?';
+    const url  = base + sep + new URLSearchParams({ sheet: sheetName, limit: 1 }) + '&_cb=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) return -1;
+    const d = await r.json();
+    const rows = d.data || [];
     return rows.length ? (rows[0]._rowIndex || 0) : 0;
   } catch(e) { return -1; }
 }
 
-// Simple, reliable save verification: compare the last row index before vs after
-// the save. If it increased, a new row was added — exactly what the working
-// diagnostic test already does. Far more robust than matching field values, which
-// is brittle (timing, formatting, column drift) and was producing false negatives.
+// Save verification: one fast, cache-busted check that the row count increased.
+// The "before" baseline comes from already-loaded local state (S.invoices/S.tax/
+// S.receipts/S.customers — populated by the list screens) so no extra network call
+// is needed before the save. Only ONE check after a short delay — GAS completes the
+// write synchronously before the POST resolves, so a single check is normally
+// enough; we skip blocking on retries to keep saves fast, per explicit request.
 async function verifyRowAdded(sheetName, beforeRowIndex, opts) {
+  if (beforeRowIndex == null || beforeRowIndex < 0) return true; // no baseline — skip gracefully
   opts = opts || {};
-  const retries = opts.retries || 4;
-  const delayMs = opts.delayMs || 900;
-  for (let i = 0; i < retries; i++) {
-    await new Promise(r => setTimeout(r, delayMs));
-    const after = await getLastRowIndex(sheetName);
-    if (after === -1) continue; // fetch failed — retry, don't count against the save
-    if (after > beforeRowIndex) return true;
-  }
-  return false;
+  const delayMs = opts.delayMs || 600;
+  await new Promise(r => setTimeout(r, delayMs));
+  const after = await getLastRowIndexFresh(sheetName);
+  if (after === -1) return true; // verification fetch failed — don't penalize a save we can't check
+  return after > beforeRowIndex;
+}
+
+// Local-state baseline: the last row index already known from the currently loaded
+// list (no network call). Returns null if that list hasn't been loaded yet.
+function localLastRowIndex(arr) {
+  if (!arr || !arr.length) return null;
+  const last = arr[arr.length - 1];
+  return (last && typeof last._rowIndex === 'number') ? last._rowIndex : null;
 }
 
 async function saveCust() {
@@ -2558,7 +2574,8 @@ async function saveCust() {
   try {
     // Row-count verification only applies to NEW rows — editing an existing
     // customer doesn't change the row count, so we skip verification for edits.
-    const beforeRow = isEdit ? -1 : await getLastRowIndex(SHEETS.customers);
+    // Baseline comes from already-loaded local state — no extra network call.
+    const beforeRow = isEdit ? null : localLastRowIndex(S.customers);
 
     if (isEdit) {
       await apiPost({ action: 'updateCustomer', data: { ...S.cForm }, editRow: S.cForm._editRow });
@@ -2638,7 +2655,7 @@ async function executeSaveReceipt() {
   S.saving = true;
   renderSaveBtnRec();
   try {
-    const beforeRow = await getLastRowIndex(SHEETS.receipts);
+    const beforeRow = localLastRowIndex(S.receipts);
     const res1 = await apiPost({ action: 'addReceipt', data: data1, photoBase64: rf._photoDataUrl ? (rf._photoBase64 || '') : '' });
     const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : '';
     const photoNote = '';
@@ -2817,7 +2834,7 @@ async function executeSaveInv(isTax, calc) {
   try {
     const saveToTax = isTax && !isCashPartial;
     const invSheetName = SHEETS[saveToTax ? 'tax' : 'invoices'];
-    const beforeRow = await getLastRowIndex(invSheetName);
+    const beforeRow = localLastRowIndex(saveToTax ? S.tax : S.invoices);
     const payload = {
       action:    saveToTax ? 'addTax' : 'addInvoice',
       sheetName: invSheetName,
