@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.3'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.4'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -897,8 +897,17 @@ function switchTab(tab) {
 }
 
 function goBack() {
-  S.screen = 'list'; S.msg = null; S.cForm = efC(); S.rForm = efR(); S.iForm = {};
-  S.showSuggest = false; setHeader(); render();
+  const inForm = S.screen && S.screen !== 'list' && S.screen !== 'settings';
+  const doGoBack = () => {
+    S.screen = 'list'; S.msg = null; S.cForm = efC(); S.rForm = efR(); S.iForm = {};
+    S.showSuggest = false; setHeader(); render();
+  };
+  if (inForm) {
+    showConfirm('יציאה מהטופס', 'לצאת ללא שמירה? הנתונים שהזנת יאבדו.',
+      doGoBack, () => {}, 'כן, צא', 'המשך עריכה');
+  } else {
+    doGoBack();
+  }
 }
 function scrollToTop() { requestAnimationFrame(() => { const el = document.getElementById('content'); if (el) el.scrollTop = 0; }); }
 function openNewCustomer() { S.screen = 'new-customer'; S.cForm = efC(); S.msg = null; setHeader(); render(); scrollToTop(); }
@@ -2537,19 +2546,20 @@ async function getLastRowIndexFresh(sheetName) {
   } catch(e) { return -1; }
 }
 
-// Save verification: one fast, cache-busted check that the row count increased.
-// The "before" baseline comes from already-loaded local state (S.invoices/S.tax/
-// S.receipts/S.customers — populated by the list screens) so no extra network call
-// is needed before the save. Only ONE check after a short delay — GAS completes the
-// write synchronously before the POST resolves, so a single check is normally
-// enough; we skip blocking on retries to keep saves fast, per explicit request.
+// Save verification: skip entirely when apiPost returned a confirmed savedRow
+// (non-opaque response — desktop or direct JSON). Only runs on mobile opaque-
+// redirects where we genuinely can't read the POST response. On mobile, GAS has
+// already finished writing by the time the opaque-redirect fires, so we use a
+// minimal delay before the single cache-busted check.
 async function verifyRowAdded(sheetName, beforeRowIndex, opts) {
-  if (beforeRowIndex == null || beforeRowIndex < 0) return true; // no baseline — skip gracefully
+  if (beforeRowIndex == null || beforeRowIndex < 0) return true; // no baseline — skip
   opts = opts || {};
-  const delayMs = opts.delayMs || 600;
-  await new Promise(r => setTimeout(r, delayMs));
+  // Allow callers to skip verification when they already have a confirmed savedRow
+  if (opts.skip) return true;
+  const delayMs = opts.delayMs !== undefined ? opts.delayMs : 300;
+  if (delayMs > 0) await new Promise(r => setTimeout(r, delayMs));
   const after = await getLastRowIndexFresh(sheetName);
-  if (after === -1) return true; // verification fetch failed — don't penalize a save we can't check
+  if (after === -1) return true; // fetch failed — don't penalize a successful save
   return after > beforeRowIndex;
 }
 
@@ -2577,17 +2587,19 @@ async function saveCust() {
     // Baseline comes from already-loaded local state — no extra network call.
     const beforeRow = isEdit ? null : localLastRowIndex(S.customers);
 
+    let custRes = null;
     if (isEdit) {
       await apiPost({ action: 'updateCustomer', data: { ...S.cForm }, editRow: S.cForm._editRow });
       const idx = S.customers.findIndex(c => c._id === S.cForm._editId);
       if (idx >= 0) S.customers[idx] = { ...S.customers[idx], ...S.cForm };
     } else {
-      await apiPost({ action: 'addCustomer', data: { ...S.cForm } });
+      custRes = await apiPost({ action: 'addCustomer', data: { ...S.cForm } });
       S.customers.push({ ...S.cForm, _id: S.customers.length, _bg: '#ffffff' });
     }
-
-    // Verify a new row actually landed in the sheet (skip for edits — see above).
-    const ok = isEdit ? true : await verifyRowAdded(SHEETS.customers, beforeRow);
+    // Skip verification when we got a confirmed savedRow from the POST response —
+    // only verify on mobile opaque-redirects where we can't read the response.
+    const ok = isEdit ? true : await verifyRowAdded(SHEETS.customers, beforeRow,
+      { skip: !!(custRes && custRes.savedRow && !custRes.unconfirmed) });
     S.saving = false;
     if (ok) {
       S.msg = { t: 's', m: isEdit ? 'פרטי הלקוח עודכנו!' : 'הלקוח נשמר בהצלחה!' };
@@ -2660,9 +2672,10 @@ async function executeSaveReceipt() {
     const rowInfo = res1 && res1.savedRow ? ` (שורה ${res1.savedRow})` : '';
     const photoNote = '';
 
-    // Verify a new row actually landed in the sheet (simple row-count comparison —
-    // far more reliable than matching field values, which produced false negatives).
-    const recOk = await verifyRowAdded(SHEETS.receipts, beforeRow);
+    // Skip verification when we got a confirmed savedRow from the POST response —
+    // only verify on mobile opaque-redirects where we can't read the response.
+    const recOk = await verifyRowAdded(SHEETS.receipts, beforeRow,
+      { skip: !!(res1 && res1.savedRow && !res1.unconfirmed) });
 
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
@@ -2841,11 +2854,12 @@ async function executeSaveInv(isTax, calc) {
       data,
       photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''
     };
-    await apiPost(payload);
+    const invRes = await apiPost(payload);
 
-    // Verify a new row actually landed in the sheet (simple row-count comparison —
-    // far more reliable than matching field values, which produced false negatives).
-    const invOk = await verifyRowAdded(invSheetName, beforeRow);
+    // Skip verification when we got a confirmed savedRow from the POST response —
+    // only verify on mobile opaque-redirects where we can't read the response.
+    const invOk = await verifyRowAdded(invSheetName, beforeRow,
+      { skip: !!(invRes && invRes.savedRow && !invRes.unconfirmed) });
 
     if (isTax && !isCashPartial) {
       const isChq    = f[COLS.taxPayType] === 'שיק';
