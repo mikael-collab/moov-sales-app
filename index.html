@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.4'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.5'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -285,10 +285,10 @@ const COLS = {
   custStreet: 'F',     
   custCity: 'G',       
   custTerms: 'H',      // תנאי תשלום (Column H)
-  custBankName: 'I',   
-  custBankBranch: 'J', 
-  custBankAcct: 'K',   // מספר חשבון (Column K)
-  custBankHolder: 'L', // שם בעל החשבון (Column L)
+  custBankHolder: 'I', // שם בעל החשבון (Column I)
+  custBankName: 'J',   // שם הבנק (Column J)
+  custBankBranch: 'K', // מספר הסניף (Column K)
+  custBankAcct: 'L',   // מספר חשבון (Column L)
   custNotes: 'M',      // הערות לקוח (Column M)
   custConsignment: 'N' // יתרת נזילות (Column N) — editable across all tabs
 };
@@ -315,9 +315,9 @@ const CF=[
   {k:COLS.custNotes,label:'הערות לקוח',    mode:'text'},
   {k:COLS.custConsignment,label:'יתרת נזילות', mode:'num'},
   {k:COLS.custBankHolder,label:'שם בעל החשבון', mode:'text',bank:true},
-  {k:COLS.custBankName,label:'שם הבנק',       mode:'text',bank:true},
-  {k:COLS.custBankBranch,label:'מספר הסניף',    mode:'num', bank:true},
-  {k:COLS.custBankAcct,label:'מספר חשבון',    mode:'num', bank:true},
+  {k:COLS.custBankName,  label:'שם הבנק',        mode:'text',bank:true},
+  {k:COLS.custBankBranch,label:'מספר הסניף',     mode:'num', bank:true},
+  {k:COLS.custBankAcct,  label:'מספר חשבון',     mode:'num', bank:true},
 ];
 
 const PRODS=[
@@ -1930,7 +1930,9 @@ function buildRecCardsHtml(data) {
 }
 function renderRecList() {
   const { receipts: data, rsState: state } = S; const color = tc();
-  if (state === 'error') return errScreen(S.errors.receipts, 'loadReceipts()', 'קבלות', color);
+  const label  = 'קבלות';
+  const reload = 'loadReceipts()';
+  if (state === 'error') return errScreen(S.errors.receipts, reload, label, color);
   if (state !== 'ok')   return statusHtml(state, reload, label);
   if (!data.length) return `<div class="status"><p style="color:#999;margin-bottom:16px">אין קבלות</p>
     <button onclick="loadReceipts()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">טען</button></div>`;
