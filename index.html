@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.5'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.6'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -239,30 +239,30 @@ const COLS = {
   docCustName: 'B',    // שם העסק
   docDate: 'C',        // תאריך
   
-  price: 'AF',         // מחיר ליחידה
-  subtotal: 'AG',      // סה"כ לפני מע"מ
-  discount: 'AH',      // הנחה
-  afterDisc: 'AI',     // סה"כ אחר הנחה
+  price: 'AN',         // מחיר ליחידה
+  subtotal: 'AO',      // סה"כ לפני מע"מ
+  discount: 'AP',      // הנחה
+  afterDisc: 'AQ',     // סה"כ אחר הנחה
   
   // -- 2. Invoices Specific (חשבוניות) --
-  invTerms: 'AJ',      // תנאי תשלום
-  invTotalVat: 'AK',   // סה"כ כולל מע"מ
-  invNum: 'AL',        // מספר חשבונית
-  invPayType: 'AM',    // סוג תשלום
-  invPayAmt: 'AN',     // סכום התשלום
-  invPayDate: 'AO',    // תאריך פרעון שיק
-  invChkNum: 'AP',     // מספר שיק
-  invNotes: 'AQ',      // הערות
+  invTerms: 'AR',      // תנאי תשלום
+  invTotalVat: 'AS',   // סה"כ כולל מע"מ
+  invNum: 'AT',        // מספר חשבונית
+  invPayType: 'AU',    // סוג תשלום
+  invPayAmt: 'AV',     // סכום התשלום
+  invPayDate: 'AW',    // תאריך פרעון שיק
+  invChkNum: 'AX',     // מספר שיק
+  invNotes: 'AY',      // הערות
   
   // -- 3. Tax Specific (חשבוניות/קבלות) --
-  taxTotalVat: 'AJ',   // סה"כ כולל מע"מ
-  taxPayType: 'AK',    // סוג תשלום
-  taxPayAmt: 'AL',     // סכום התשלום
-  taxPayDate: 'AM',    // תאריך פרעון שיק
-  taxChkNum: 'AN',     // מספר שיק
-  taxPhoto: 'AO',      // צילום שיק
-  taxNotes: 'AP',      // הערות
-  taxNum: 'AQ',        // מספר חשבונית מס / קבלה
+  taxTotalVat: 'AR',   // סה"כ כולל מע"מ
+  taxPayType: 'AS',    // סוג תשלום
+  taxPayAmt: 'AT',     // סכום התשלום
+  taxPayDate: 'AU',    // תאריך פרעון שיק
+  taxChkNum: 'AV',     // מספר שיק
+  taxPhoto: 'AW',      // צילום שיק
+  taxNotes: 'AX',      // הערות
+  taxNum: 'AY',        // מספר חשבונית מס / קבלה
 
   // -- 4. Receipts (קבלות) --
   recInvNum: 'A',      // מספר חשבונית
@@ -335,6 +335,10 @@ const PRODS=[
   {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25, em:'🍊'},
   {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
   {nk:'AD',qk:'AE', name:'Voon/Moov Mojito 50mg - מוחיטו',  short:'Voon Mojito 50',    heb:'מוחיטו',   nic:50, em:'🍹'},
+  {nk:'AF',qk:'AG', name:'Kola 25 - קולה',                         short:'Kola 25',           heb:'קולה',        nic:25, em:'🥤'},
+  {nk:'AH',qk:'AI', name:'Pineapple Ice 25 - אננס קרח',            short:'Pineapple Ice 25',  heb:'אננס קרח',    nic:25, em:'🍍'},
+  {nk:'AJ',qk:'AK', name:'Nana Mint 25 - נענע מנטה',               short:'Nana Mint 25',      heb:'נענע מנטה',   nic:25, em:'🌱'},
+  {nk:'AL',qk:'AM', name:'Strawberry/Kiwi 25 - תות/קיווי',         short:'Strawberry Kiwi 25',heb:'תות/קיווי',  nic:25, em:'🍓'},
 ];
 
 const INV_TAIL=[
