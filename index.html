@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.6'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.7'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -334,11 +334,11 @@ const PRODS=[
   {nk:'X',qk:'Y', name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
   {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25, em:'🍊'},
   {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
-  {nk:'AD',qk:'AE', name:'Voon/Moov Mojito 50mg - מוחיטו',  short:'Voon Mojito 50',    heb:'מוחיטו',   nic:50, em:'🍹'},
   {nk:'AF',qk:'AG', name:'Kola 25 - קולה',                         short:'Kola 25',           heb:'קולה',        nic:25, em:'🥤'},
   {nk:'AH',qk:'AI', name:'Pineapple Ice 25 - אננס קרח',            short:'Pineapple Ice 25',  heb:'אננס קרח',    nic:25, em:'🍍'},
   {nk:'AJ',qk:'AK', name:'Nana Mint 25 - נענע מנטה',               short:'Nana Mint 25',      heb:'נענע מנטה',   nic:25, em:'🌱'},
   {nk:'AL',qk:'AM', name:'Strawberry/Kiwi 25 - תות/קיווי',         short:'Strawberry Kiwi 25',heb:'תות/קיווי',  nic:25, em:'🍓'},
+  {nk:'AD',qk:'AE', name:'Voon/Moov Mojito 50mg - מוחיטו',  short:'Voon Mojito 50',    heb:'מוחיטו',   nic:50, em:'🍹'},
 ];
 
 const INV_TAIL=[
@@ -486,18 +486,16 @@ function taxFormErrors() {
   if (!f[COLS.taxPayAmt]?.trim()) return 'הזן סכום תשלום';
   if (f[COLS.taxPayType] !== 'שיק' && total > 0 && paid > total + 0.5)
     return `רק שיק מאפשר תשלום גבוה מהחשבונית (₪${Math.round(total).toLocaleString('he-IL')})`;
-  if (isOver && !f._overInvNum?.trim()) {
+  if (isOver) {
     const excess = Math.round((paid - total) * 100) / 100;
-    const hasMatch = (f._openInvs || []).some(inv => {
-      const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
-      if (n) return Math.abs(getInvBalance(n) - excess) <= 0.5;
-      // Invoice has no number yet — match by its total directly
-      const tot = parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0;
-      return tot > 0 && Math.abs(tot - excess) <= 0.5;
-    });
-    return hasMatch
-      ? 'בחר חשבונית עבור ההפרש מהרשימה'
-      : `אין חשבונית פתוחה עם יתרה ₪${Math.round(excess).toLocaleString('he-IL')}`;
+    const selected = f._overInvNums || [];
+    if (!selected.length) return 'בחר חשבוניות פתוחות לכיסוי ההפרש מהרשימה';
+    const selectedTotal = selected.reduce((s, key) => {
+      const inv = findInvByKey(key);
+      return s + (inv ? (parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0) : 0);
+    }, 0);
+    if (Math.abs(selectedTotal - excess) > 0.5)
+      return `סכום החשבוניות הנבחרות (₪${Math.round(selectedTotal).toLocaleString('he-IL')}) אינו שווה להפרש (₪${Math.round(excess).toLocaleString('he-IL')})`;
   }
   if (f[COLS.taxPayType] === 'שיק') {
     if (!f[COLS.taxChkNum]?.trim()) return 'הזן מספר שיק';
@@ -556,7 +554,7 @@ function receiptFormErrors() {
 function efI(isTax) {
   const o = {};
   o[COLS.docCustId] = ''; o[COLS.docCustName] = ''; o[COLS.docDate] = tod();
-  o._openInvs = []; o._overInvNum = ''; 
+  o._openInvs = []; o._overInvNums = []; 
   o._custEditRow = null; o._custEditId = null;
   o._custNotes = '';  // private field — avoids collision with PRODS qk 'M' (Peppermint 20)
   PRODS.forEach(p => { o[p.nk] = p.name; o[p.qk] = '0'; });
@@ -1460,13 +1458,12 @@ function onInvCustIdInput(val) {
   }, 400);
 }
 
-function setTaxOverInv(num) {
-  S.iForm._overInvNum = num;
+function toggleTaxOverInv(key) {
+  const arr = S.iForm._overInvNums || [];
+  const idx = arr.indexOf(key);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(key);
+  S.iForm._overInvNums = arr;
   renderTaxOpenInvs();
-  const conf = document.getElementById('tax-overinv-confirm');
-  if (conf) conf.innerHTML = num
-    ? `<div style="background:${tc()}15;border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:${tc()};font-weight:600">✓ נבחרה חשבונית #${esc(num)}</div>`
-    : '';
   renderSaveBtn();
 }
 
@@ -1478,38 +1475,42 @@ function buildTaxOpenInvsHtml() {
   const isOver = f[COLS.taxPayType] === 'שיק' && paid > total + 0.5;
   if (!isOver) return '';
   const excess = Math.round((paid - total) * 100) / 100;
-  
-  const matching = f._openInvs.filter(inv => {
-    const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
-    if (n) return Math.abs(getInvBalance(n) - excess) <= 0.5;
-    // No number — match by raw total
-    const tot = parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0;
-    return tot > 0 && Math.abs(tot - excess) <= 0.5;
-  });
-  if (!matching.length) {
-    return `<div style="background:#fff3e0;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#e65100">
-      ⚠️ אין חשבוניות פתוחות עם יתרה של ₪${Math.round(excess).toLocaleString('he-IL')} — שנה את סכום השיק
-    </div>`;
-  }
-  let h = `<div class="dtable" style="margin-bottom:12px">
-    <div class="dthead" style="background:${tc()}"><span>חשבונית לכיסוי ההפרש</span><span style="font-weight:700">₪${Math.round(excess).toLocaleString('he-IL')}</span></div>`;
-  matching.forEach((inv, i) => {
+  const selected = f._overInvNums || [];
+
+  // Running total of selected additional invoices
+  const selectedTotal = selected.reduce((s, key) => {
+    const inv = findInvByKey(key);
+    return s + (inv ? (parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0) : 0);
+  }, 0);
+  const remaining = Math.round((excess - selectedTotal) * 100) / 100;
+  const balanced  = Math.abs(remaining) <= 0.5;
+
+  // Status banner
+  const bannerColor = balanced ? '#1b5e20' : '#e65100';
+  const bannerBg    = balanced ? '#e8f5e9' : '#fff3e0';
+  const bannerText  = balanced
+    ? `✅ מאוזן — ₪${Math.round(selectedTotal).toLocaleString('he-IL')} נבחרו`
+    : `נותר לשיוך: ₪${Math.round(remaining).toLocaleString('he-IL')} מתוך ₪${Math.round(excess).toLocaleString('he-IL')}`;
+
+  let h = `<div style="background:${bannerBg};border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:13px;color:${bannerColor};font-weight:600;direction:rtl">${bannerText}</div>`;
+  h += `<div class="dtable" style="margin-bottom:12px">
+    <div class="dthead" style="background:${tc()}"><span>חשבוניות פתוחות — בחר לכיסוי ההפרש</span><span style="font-weight:700">הפרש ₪${Math.round(excess).toLocaleString('he-IL')}</span></div>`;
+
+  f._openInvs.forEach((inv, i) => {
     const invNum  = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
     const invDate = nz(inv[COLS.docDate]) || '';
     const invTot  = parseMoney(inv[COLS.invTotalVat]) || parseMoney(inv[COLS.taxTotalVat]) || 0;
-    const label   = invNum || `ללא מס' | ${invDate} | ₪${Math.round(invTot).toLocaleString('he-IL')}`;
     const key     = invNum || `row_${inv._rowIndex}`;
-    const balance = invNum ? getInvBalance(invNum) : invTot;
-    const selected = f._overInvNum === key;
-    h += `<div class="dtrow" style="cursor:pointer;${selected ? `background:${tc()}15;` : ''}${i === 0 ? 'border-top:none' : ''}"
-      onclick="setTaxOverInv('${esc(key)}')">
+    const isSel   = selected.includes(key);
+    h += `<div class="dtrow" style="cursor:pointer;${isSel ? `background:${tc()}15;` : ''}${i === 0 ? 'border-top:none' : ''}"
+      onclick="toggleTaxOverInv('${esc(key)}')">
       <div>
-        <div style="font-size:13px;font-weight:600;color:${selected ? tc() : '#222'}">${invNum ? '#' + esc(invNum) : esc(label)}</div>
+        <div style="font-size:13px;font-weight:600;color:${isSel ? tc() : '#222'}">${invNum ? '#' + esc(invNum) : `${esc(invDate)} ₪${Math.round(invTot).toLocaleString('he-IL')}`}</div>
         <div style="font-size:11px;color:#888">${esc(invDate)}</div>
       </div>
       <div style="text-align:left">
-        <div style="font-size:14px;font-weight:700;color:${tc()}">יתרה: ${fmt(String(balance))}</div>
-        ${selected ? `<div style="font-size:10px;color:${tc()}">✓ נבחרה</div>` : ''}
+        <div style="font-size:14px;font-weight:700;color:${tc()}">₪${Math.round(invTot).toLocaleString('he-IL')}</div>
+        ${isSel ? `<div style="font-size:11px;color:${tc()};font-weight:700">✓ נבחרה</div>` : ''}
       </div>
     </div>`;
   });
@@ -1666,7 +1667,7 @@ function renderInvForm(isTax) {
     </div>
     ${isOver ? `
     <div id="tax-open-invs-container">${buildTaxOpenInvsHtml()}</div>
-    <div id="tax-overinv-confirm">${f._overInvNum ? `<div style="background:${color}15;border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:${color};font-weight:600">✓ נבחרה חשבונית #${esc(f._overInvNum)}</div>` : ''}</div>
+    <div id="tax-overinv-confirm"></div>
     ` : ''}
     `:''}
 
@@ -2792,34 +2793,32 @@ async function executeSaveInv(isTax, calc) {
   // Partial payment creates invoice + receipt — applies to both cash AND check
   const isCashPartial = isTax && (f[COLS.taxPayType] === 'מזומן' || f[COLS.taxPayType] === 'שיק') && total > 0.5 && paid < total - 0.5;
 
-  // Overpayment: check covers this invoice + another — prepare note + receipt for the other invoice
-  let _overRecData = null;
-  if (isTax && !isCashPartial && f[COLS.taxPayType] === 'שיק' && total > 0.5 && paid > total + 0.5 && f._overInvNum?.trim()) {
-    const overKey = f._overInvNum.trim();
-    const isNumKey = !overKey.startsWith('row_');
-    const overInv = findInvByKey(overKey);
-    const overTotal = overInv
-      ? (parseMoney(overInv[COLS.invTotalVat]) || parseMoney(overInv[COLS.taxTotalVat]) || 0)
-      : 0;
-    const invRef = isNumKey ? `חשבונית מספר ${overKey}` : `שורה ${overKey.replace('row_', '')}`;
-    const diff = Math.round(paid - total).toLocaleString('he-IL');
+  // Overpayment: check covers multiple invoices — build notes and receipt list
+  const _overRecList = [];
+  if (isTax && !isCashPartial && f[COLS.taxPayType] === 'שיק' && total > 0.5 && paid > total + 0.5 && (f._overInvNums || []).length) {
     const taxRef = `חשמ"ק ${f[COLS.docDate] || ''} לקוח ${f[COLS.docCustId] || ''}`;
-    // Note on main document
-    const mainNote = `ההפרש ₪${diff} שולם עבור ${invRef}`;
-    f[COLS.taxNotes] = f[COLS.taxNotes]?.trim() ? (f[COLS.taxNotes].trim() + ' | ' + mainNote) : mainNote;
-    // Prepare receipt for the additional invoice (created after main save)
-    if (overTotal > 0 || overInv) {
-      _overRecData = {
-        [COLS.recInvNum]:  isNumKey ? overKey : '',
-        [COLS.recPayType]: 'שיק',
-        [COLS.recPayAmt]:  overTotal || Math.round(paid - total),
-        [COLS.recPayDate]: f[COLS.taxPayDate] || f[COLS.docDate] || '',
-        [COLS.recChkNum]:  f[COLS.taxChkNum] || '',
-        [COLS.recNotes]:   `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | ${taxRef}`,
+    const invRefs = [];
+    for (const overKey of f._overInvNums) {
+      const isNumKey = !overKey.startsWith('row_');
+      const overInv  = findInvByKey(overKey);
+      const overTotal = overInv
+        ? (parseMoney(overInv[COLS.invTotalVat]) || parseMoney(overInv[COLS.taxTotalVat]) || 0)
+        : 0;
+      invRefs.push(isNumKey ? `חשבונית מספר ${overKey}` : `שורה ${overKey.replace('row_', '')}`);
+      _overRecList.push({
+        [COLS.recInvNum]:   isNumKey ? overKey : '',
+        [COLS.recPayType]:  'שיק',
+        [COLS.recPayAmt]:   overTotal,
+        [COLS.recPayDate]:  f[COLS.taxPayDate] || f[COLS.docDate] || '',
+        [COLS.recChkNum]:   f[COLS.taxChkNum] || '',
+        [COLS.recNotes]:    `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | ${taxRef}`,
         [COLS.recCustName]: overInv ? (overInv[COLS.docCustName] || '') : '',
         [COLS.recCustId]:   overInv ? (overInv[COLS.docCustId]   || f[COLS.docCustId]) : f[COLS.docCustId],
-      };
+      });
     }
+    // Add note to main document listing all covered invoices
+    const mainNote = `שולם עבור: ${invRefs.join(', ')}`;
+    f[COLS.taxNotes] = f[COLS.taxNotes]?.trim() ? (f[COLS.taxNotes].trim() + ' | ' + mainNote) : mainNote;
   }
 
   const qkCols = PRODS.map(p => p.qk);
@@ -2871,28 +2870,8 @@ async function executeSaveInv(isTax, calc) {
       const isChq    = f[COLS.taxPayType] === 'שיק';
       const paidAmt  = parseFloat(f[COLS.taxPayAmt] || 0);
       const isOverpay = isChq && total > 0 && paidAmt > total + 0.5;
-      if (isOverpay && f._overInvNum?.trim()) {
-        const overKey    = f._overInvNum.trim();
-        const isNumKey   = !overKey.startsWith('row_');
-        const overInv    = findInvByKey(overKey);
-        // Payment amount = full total with VAT of the additional invoice
-        const overTotal  = overInv
-          ? (parseMoney(overInv[COLS.invTotalVat]) || parseMoney(overInv[COLS.taxTotalVat]) || 0)
-          : Math.round(paidAmt - total);
-        // Reference: invoice number if exists, otherwise row number
-        const invRef     = isNumKey ? `חשבונית מספר ${overKey}` : `שורה ${overKey.replace('row_', '')}`;
-        const taxDocRef  = `חשמ"ק ${f[COLS.docDate]||''} לקוח ${f[COLS.docCustId]||''}`;
-        const recNotes   = `שיק ₪${Math.round(paidAmt).toLocaleString('he-IL')} | ${taxDocRef} | ${invRef}`;
-        const recData = {
-          [COLS.recInvNum]:  isNumKey ? overKey : '',
-          [COLS.recPayType]: f[COLS.taxPayType],
-          [COLS.recPayAmt]:  overTotal,
-          [COLS.recPayDate]: f[COLS.taxPayDate] || tod(),
-          [COLS.recChkNum]:  f[COLS.taxChkNum] || '',
-          [COLS.recNotes]:   recNotes,
-          [COLS.recCustName]: overInv ? (overInv[COLS.docCustName] || '') : '',
-          [COLS.recCustId]:   overInv ? (overInv[COLS.docCustId]   || f[COLS.docCustId]) : f[COLS.docCustId],
-        };
+      // Create one receipt per selected additional invoice
+      for (const recData of _overRecList) {
         await apiPost({ action: 'addReceipt', data: recData, photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : '' });
         S.receipts.push({ ...recData, _id: S.receipts.length, _bg: '#ffffff' });
       }
@@ -2937,7 +2916,9 @@ async function executeSaveInv(isTax, calc) {
         t: 's',
         m: isCashPartial
           ? `✅ חשבונית וקבלה נשמרו! ${qtySummary || 'ללא כמויות'}`
-          : `${isTax ? 'חשמ"ק' : 'חשבונית'} נשמרה! ${qtySummary || 'ללא כמויות'}`
+          : _overRecList.length
+            ? `✅ חשמ"ק + ${_overRecList.length} קבלות נשמרו! ${qtySummary || 'ללא כמויות'}`
+            : `${isTax ? 'חשמ"ק' : 'חשבונית'} נשמרה! ${qtySummary || 'ללא כמויות'}`
       };
       render();
       setTimeout(closeAndReload, 2500);
