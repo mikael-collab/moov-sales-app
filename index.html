@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.7'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.8'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -429,7 +429,7 @@ function alertHtml(msg) {
 }
 
 function statusHtml(state, reloadFn, label) {
-  if (state === 'loading' || state === 'idle') return `<div class="status"><div class="spinner"></div><p style="color:#aaa">טוען ${esc(label)}...</p></div>`;
+  if (state === 'loading' || state === 'idle') return `<div class="status"><div class="spinner"></div><p style="color:#aaa;margin-top:4px">טוען ${esc(label)}...</p><p style="color:#ccc;font-size:11px;margin-top:6px">הפעלה ראשונה עשויה לקחת עד 20 שניות</p></div>`;
   if (state === 'busy') return `<div class="status"><p style="color:#f59e0b;font-size:14px">⏳ שרת עמוס</p><button onclick="${reloadFn}" style="margin-top:12px;background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;cursor:pointer">↻ נסה שוב</button></div>`;
   return `<div class="status"><p style="color:#c62828">שגיאה בטעינת ${esc(label)}</p><button onclick="${reloadFn}" style="margin-top:12px;background:#c62828;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;cursor:pointer">↻ נסה שוב</button></div>`;
 }
@@ -631,14 +631,23 @@ function calcInv(f) {
 }
 
 // ── API ──
-async function apiFetch(params) {
+async function apiFetch(params, timeoutMs) {
   if (!S.scriptUrl) throw new Error('NO_URL');
   const base = S.scriptUrl.trim();
-  const r = await fetch(base + '?' + new URLSearchParams(params));
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const d = await r.json();
-  if (d.error) throw new Error(d.error + ((d.available && Array.isArray(d.available)) ? ' | ' + d.available.join(', ') : ''));
-  return d;
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), timeoutMs || 22000);
+  try {
+    const r = await fetch(base + '?' + new URLSearchParams(params), { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error + ((d.available && Array.isArray(d.available)) ? ' | ' + d.available.join(', ') : ''));
+    return d;
+  } catch(e) {
+    clearTimeout(tid);
+    if (e.name === 'AbortError') throw new Error('TIMEOUT');
+    throw e;
+  }
 }
 
 // Forces a fresh fetch of index.html bypassing browser cache — fixes the
@@ -842,26 +851,45 @@ async function runDiagnose() {
 }
 
 // ── Loaders ──
+// Transient error = network/timeout/cold-start — safe to auto-retry once.
+// GAS logic errors (sheet not found, script error) are non-transient — don't retry.
+function isTransient(e) {
+  const m = (e?.message || '').toUpperCase();
+  return m === 'TIMEOUT' || m === 'FAILED TO FETCH' || m.includes('NETWORKERROR') || m.startsWith('HTTP 5');
+}
+
 async function loadAny(tab, stateKey, limit, req) {
+  if (S[stateKey] === 'loading') return; // already in-flight — don't double-load
   S[stateKey] = 'loading'; render();
-  try {
-    const p = { sheet: SHEETS[tab] };
-    if (limit) p.limit = limit;
-    if (req) p.require = req;
+  const p = { sheet: SHEETS[tab] };
+  if (limit) p.limit = limit;
+  if (req) p.require = req;
+
+  const doLoad = async () => {
     const d = await apiFetch(p);
-    S[tab] = (d.data || []).map((r, i) => ({ ...r, _id: i, _row: r._rowIndex ? parseInt(r._rowIndex) : (i + 2) })); 
-    
+    S[tab] = (d.data || []).map((r, i) => ({ ...r, _id: i, _row: r._rowIndex ? parseInt(r._rowIndex) : (i + 2) }));
     if (tab === 'customers' && d.termsOptions && d.termsOptions.length) {
       const termsField = CF.find(f => f.k === COLS.custTerms);
-      if (termsField) {
-        termsField.options = d.termsOptions;
-      }
+      if (termsField) termsField.options = d.termsOptions;
     }
-    
     S[stateKey] = 'ok'; delete S.errors[tab];
+  };
+
+  try {
+    await doLoad();
   } catch (e) {
-    S[stateKey] = isBusy(e) ? 'busy' : 'error';
-    S.errors[tab] = e.message;
+    // Auto-retry once on transient errors (timeout, cold-start, network blip)
+    if (isTransient(e)) {
+      await new Promise(r => setTimeout(r, 2500));
+      try { await doLoad(); }
+      catch (e2) {
+        S[stateKey] = isBusy(e2) ? 'busy' : 'error';
+        S.errors[tab] = e2.message;
+      }
+    } else {
+      S[stateKey] = isBusy(e) ? 'busy' : 'error';
+      S.errors[tab] = e.message;
+    }
   }
   render();
 }
@@ -885,16 +913,23 @@ function syncNav() {
 function switchTab(tab) {
   S.tab = tab; S.screen = 'list'; S.search = ''; S.expId = null; S.msg = null; S.showSuggest = false;
   S.invFilter = { cust: '', num: '' }; S.recFilter = { cust: '', num: '' };
-  syncNav(); setHeader();
-  if (tab === 'invoices' && S.isState === 'idle') loadInvoices();
-  else if (tab === 'receipts' && S.rsState === 'idle') loadReceipts();
-  else if (tab === 'tax' && S.tsState === 'idle') loadTax();
-  if (tab === 'invoices' && S.rsState === 'idle') loadReceipts();
-  else render();
-  
-  if (tab === 'customers') {
+  syncNav(); setHeader(); render();
+
+  // Load the PRIMARY sheet for this tab immediately.
+  // Stagger any background/secondary loads by 1.8 s to avoid firing multiple
+  // concurrent GAS executions — they compete, cause cold-start collisions, and
+  // make all of them slower than a single sequential pair.
+  if (tab === 'invoices') {
     if (S.isState === 'idle') loadInvoices();
+    if (S.rsState === 'idle') setTimeout(() => { if (S.rsState === 'idle') loadReceipts(); }, 1800);
+  } else if (tab === 'receipts') {
     if (S.rsState === 'idle') loadReceipts();
+  } else if (tab === 'tax') {
+    if (S.tsState === 'idle') loadTax();
+  } else if (tab === 'customers') {
+    // Invoices + receipts are needed for open-balance lookups — load them in sequence.
+    if (S.isState === 'idle') setTimeout(() => { if (S.isState === 'idle') loadInvoices(); }, 800);
+    if (S.rsState === 'idle') setTimeout(() => { if (S.rsState === 'idle') loadReceipts(); }, 2600);
   }
 }
 
@@ -3076,9 +3111,12 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   if (S.scriptUrl) {
-    loadCustomers(); 
     render();
-    pingSheets();    
+    // Ping first (warms up GAS cold-start, resolves sheet names), then load customers.
+    // Avoids two competing cold-start executions on app open.
+    pingSheets().then(() => {
+      if (S.csState === 'idle') loadCustomers();
+    });
   } else render();
 });
 </script>
