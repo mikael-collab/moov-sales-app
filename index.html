@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.8'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v3.9'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -467,7 +467,7 @@ function efR() {
   const o = {
     _custName: '', _custId: '', _invTotal: '', _invDate: '',
     _photoDataUrl: '', _photoBase64: '',
-    _openInvs: [], _custOpenInvs: [], _showOpenInvs: false, _overInvNum: '',
+    _openInvs: [], _custOpenInvs: [], _showOpenInvs: false, _overInvNums: [],
     _custEditRow: null, _custEditId: null
   };
   o[COLS.recInvNum] = ''; o[COLS.recPayType] = ''; o[COLS.recPayAmt] = ''; o[COLS.recPayDate] = tod();
@@ -523,16 +523,13 @@ function receiptFormErrors() {
   const balance = parseFloat(rf._invTotal) || 0;
   if (rf[COLS.recPayType] !== 'שיק' && balance > 0 && paid > balance + 0.5)
     return 'רק שיק מאפשר תשלום גבוה מהיתרה (₪' + Math.round(balance).toLocaleString('he-IL') + ')';
-  if (rf[COLS.recPayType] === 'שיק' && balance > 0 && paid > balance + 0.5 && !rf._overInvNum?.trim()) {
-    const excess = Math.round((paid - balance) * 100) / 100;
-    const inv1   = rf[COLS.recInvNum];
-    const hasMatch = (rf._custOpenInvs || []).some(inv => {
-      const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
-      return n && n !== inv1 && Math.abs(getInvBalance(n) - excess) <= 0.5;
-    });
-    return hasMatch
-      ? 'בחר חשבונית עבור ההפרש מהרשימה'
-      : `אין חשבונית פתוחה עם יתרה ₪${Math.round(excess).toLocaleString('he-IL')}`;
+  if (rf[COLS.recPayType] === 'שיק' && balance > 0 && paid > balance + 0.5) {
+    const excess   = Math.round((paid - balance) * 100) / 100;
+    const selected = rf._overInvNums || [];
+    if (!selected.length) return 'בחר חשבוניות פתוחות לכיסוי ההפרש מהרשימה';
+    const selectedTotal = selected.reduce((s, n) => s + (getInvBalance(n) || 0), 0);
+    if (Math.abs(selectedTotal - excess) > 0.5)
+      return `סכום החשבוניות הנבחרות (₪${Math.round(selectedTotal).toLocaleString('he-IL')}) אינו שווה להפרש (₪${Math.round(excess).toLocaleString('he-IL')})`;
   }
 
   const recInvNumStr = String(rf[COLS.recInvNum] || '').trim();
@@ -2306,7 +2303,7 @@ function onReceiptPayTypeChange(val) {
 
 function clearReceiptCustomer() {
   S.rForm._custName = ''; S.rForm._custId = ''; S.rForm._openInvs = []; S.rForm._custOpenInvs = [];
-  S.rForm[COLS.recInvNum] = ''; S.rForm._invTotal = ''; S.rForm._invDate = ''; S.rForm._overInvNum = '';
+  S.rForm[COLS.recInvNum] = ''; S.rForm._invTotal = ''; S.rForm._invDate = ''; S.rForm._overInvNums = [];
   setElValue('r-H', '');
   setElValue('r-I', '');
   setElValue('r-custNotes', '');
@@ -2373,7 +2370,7 @@ function pickReceiptInv(invNum, invTotal, invDate) {
   S.rForm._invTotal = invTotal;
   S.rForm._invDate = invDate;
   S.rForm._openInvs = [];
-  S.rForm._overInvNum = '';   
+  S.rForm._overInvNums = [];
 
   setElValue('r-' + COLS.recInvNum, invNum);
   setElDisplay('receipt-inv-total', 'flex');
@@ -2383,9 +2380,12 @@ function pickReceiptInv(invNum, invTotal, invDate) {
   renderSaveBtnRec(); 
 }
 
-function pickOverReceiptInv(invNum, invBalance) {
+function toggleOverReceiptInv(invNum) {
   captureReceiptFields();
-  S.rForm._overInvNum = invNum;
+  const arr = S.rForm._overInvNums || [];
+  const idx = arr.indexOf(invNum);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(invNum);
+  S.rForm._overInvNums = arr;
   renderOverInvPicker();
   renderSaveBtnRec();
 }
@@ -2401,52 +2401,53 @@ function buildOverInvPickerHtml() {
   const total = parseFloat(rf._invTotal) || 0;
   if (rf[COLS.recPayType] !== 'שיק' || total <= 0 || paid <= total + 0.5) return '';
 
-  const excess = Math.round((paid - total) * 100) / 100;
-  const inv1   = rf[COLS.recInvNum];
-  const others = (rf._custOpenInvs || []).filter(inv => {
+  const excess    = Math.round((paid - total) * 100) / 100;
+  const inv1      = rf[COLS.recInvNum];
+  const selected  = rf._overInvNums || [];
+  const others    = (rf._custOpenInvs || []).filter(inv => {
     const n = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
-    if (!n || n === inv1) return false;
-    return Math.abs(getInvBalance(n) - excess) <= 0.5;
+    return n && n !== inv1;
   });
 
-  let h = `<div style="background:#fff8e1;border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:#e65100">` +
-    `⚠️ שיק ₪${Math.round(paid).toLocaleString('he-IL')} — ₪${Math.round(total).toLocaleString('he-IL')} לחשבונית זו | יתרה ₪${Math.round(excess).toLocaleString('he-IL')}` +
-  `</div>`;
+  // Running total of selected invoices
+  const selTotal   = selected.reduce((s, n) => s + (getInvBalance(n) || 0), 0);
+  const remaining  = Math.round((excess - selTotal) * 100) / 100;
+  const balanced   = Math.abs(remaining) <= 0.5;
+  const bannerBg   = balanced ? '#e8f5e9' : '#fff8e1';
+  const bannerClr  = balanced ? '#1b5e20' : '#e65100';
+  const bannerTxt  = balanced
+    ? `✅ מאוזן — ₪${Math.round(selTotal).toLocaleString('he-IL')} נבחרו`
+    : `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | חשבונית זו ₪${Math.round(total).toLocaleString('he-IL')} | נותר לשיוך ₪${Math.round(remaining).toLocaleString('he-IL')}`;
+
+  let h = `<div style="background:${bannerBg};border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:${bannerClr};font-weight:600">${bannerTxt}</div>`;
 
   if (others.length) {
     h += '<div class="dtable" style="margin-bottom:8px">' +
-         '<div class="dthead" style="background:' + tc() + '"><span>חשבונית לכיסוי יתרת השיק</span>' +
-         '<span style="font-weight:700">₪' + Math.round(excess).toLocaleString('he-IL') + '</span></div>';
+         '<div class="dthead" style="background:' + tc() + '"><span>חשבוניות פתוחות — בחר לכיסוי ההפרש</span>' +
+         '<span style="font-weight:700">הפרש ₪' + Math.round(excess).toLocaleString('he-IL') + '</span></div>';
     others.forEach((inv, i) => {
-      const invNum    = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
-      const invDate   = nz(inv[COLS.docDate]) || '';
-      const invBal    = getInvBalance(invNum);
-      const rawTotal  = parseMoney(nz(inv[COLS.invTotalVat]) || nz(inv[COLS.taxTotalVat])) || 0;
+      const invNum   = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
+      const invDate  = nz(inv[COLS.docDate]) || '';
+      const invBal   = getInvBalance(invNum);
+      const rawTotal = parseMoney(nz(inv[COLS.invTotalVat]) || nz(inv[COLS.taxTotalVat])) || 0;
       const hasPartial = rawTotal > 0 && invBal < rawTotal - 0.1;
-      const selected  = rf._overInvNum === invNum;
-      h += '<div class="dtrow" style="cursor:pointer;' + (selected ? 'background:' + tc() + '15;' : '') +
-           (i === 0 ? 'border-top:none;' : '') + '" onclick="pickOverReceiptInv(\'' + esc(invNum) + '\',\'' + invBal + '\')">' +
+      const isSel    = selected.includes(invNum);
+      h += '<div class="dtrow" style="cursor:pointer;' + (isSel ? 'background:' + tc() + '15;' : '') +
+           (i === 0 ? 'border-top:none;' : '') + '" onclick="toggleOverReceiptInv(\'' + esc(invNum) + '\')">' +
            '<div>' +
-             '<div style="font-size:13px;font-weight:600;color:' + (selected ? tc() : '#222') + '">#' + esc(invNum) + '</div>' +
+             '<div style="font-size:13px;font-weight:600;color:' + (isSel ? tc() : '#222') + '">#' + esc(invNum) + '</div>' +
              '<div style="font-size:11px;color:#888">' + esc(invDate) + '</div>' +
              (hasPartial ? '<div style="font-size:10px;color:#e65100">שולם חלקית: ₪' + Math.round(rawTotal - invBal).toLocaleString('he-IL') + '</div>' : '') +
            '</div>' +
            '<div style="text-align:left">' +
-             '<div style="font-size:14px;font-weight:700;color:' + tc() + '">יתרה: ' + fmt(String(invBal)) + '</div>' +
-             (selected ? '<div style="font-size:10px;color:' + tc() + '">✓ נבחרה</div>' : '') +
+             '<div style="font-size:14px;font-weight:700;color:' + tc() + '">₪' + Math.round(invBal).toLocaleString('he-IL') + '</div>' +
+             (isSel ? '<div style="font-size:11px;color:' + tc() + ';font-weight:700">✓ נבחרה</div>' : '') +
            '</div></div>';
     });
     h += '</div>';
   } else {
-    h += `<div style="background:#fce4e4;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px;color:#c62828;font-weight:600">` +
-         `⛔ אין חשבוניות פתוחות עם יתרה של ₪${Math.round(excess).toLocaleString('he-IL')} — שנה את סכום השיק` +
-         `</div>`;
+    h += `<div style="background:#fce4e4;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px;color:#c62828;font-weight:600">⛔ אין חשבוניות פתוחות נוספות עבור לקוח זה</div>`;
   }
-
-  if (rf._overInvNum) {
-    h += `<div style="background:${tc()}15;border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:${tc()};font-weight:600">✓ נבחרה חשבונית #${esc(rf._overInvNum)}</div>`;
-  }
-
   return h;
 }
 
@@ -2688,10 +2689,10 @@ async function executeSaveReceipt() {
   const balance = parseFloat(rf._invTotal) || 0;
   const isOverpay = rf[COLS.recPayType] === 'שיק' && balance > 0.5 && paid > balance + 0.5;
   const excess = isOverpay ? Math.round((paid - balance) * 100) / 100 : 0;
-  const inv2 = rf._overInvNum?.trim() || '';
+  const overInvNums = isOverpay ? (rf._overInvNums || []) : [];
 
-  const g1Notes = isOverpay
-    ? `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — שולם ₪${Math.round(balance).toLocaleString('he-IL')} לחשבונית זו | יתרה ₪${Math.round(excess).toLocaleString('he-IL')} לחשבונית מס׳ ${inv2 || '—'}${rf[COLS.recNotes]?.trim() ? ' | ' + rf[COLS.recNotes].trim() : ''}`
+  const g1Notes = isOverpay && overInvNums.length
+    ? `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | שולם ₪${Math.round(balance).toLocaleString('he-IL')} לחשבונית זו | יתרה מחולקת ל-${overInvNums.length} חשבוניות${rf[COLS.recNotes]?.trim() ? ' | ' + rf[COLS.recNotes].trim() : ''}`
     : rf[COLS.recNotes] || '';
     
   const invNumRaw = (rf[COLS.recInvNum] || '').trim();
@@ -2721,19 +2722,21 @@ async function executeSaveReceipt() {
 
     S.receipts.push({ ...data1, _id: S.receipts.length, _bg: '#ffffff' });
 
-    if (isOverpay && inv2) {
-      const g2Notes = `שיק ₪${Math.round(paid).toLocaleString('he-IL')} — יתרה ₪${Math.round(excess).toLocaleString('he-IL')} לחשבונית זו | ₪${Math.round(balance).toLocaleString('he-IL')} שולמו לחשבונית מס׳ ${rf[COLS.recInvNum] || '—'}`;
-      const inv2Val = inv2 && /^\d+$/.test(inv2) ? parseInt(inv2, 10) : inv2;
-      const data2 = {
-        [COLS.recInvNum]: inv2Val,
+    // Create one receipt per additional invoice (no photo — already on main receipt)
+    for (const addInvNum of overInvNums) {
+      const addBal = getInvBalance(addInvNum) || 0;
+      const addNotes = `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | יתרה מחשבונית ${rf[COLS.recInvNum] || '—'} | ₪${Math.round(addBal).toLocaleString('he-IL')} לחשבונית זו`;
+      const addInvVal = addInvNum && /^\d+$/.test(addInvNum) ? parseInt(addInvNum, 10) : addInvNum;
+      const dataAdd = {
+        [COLS.recInvNum]:  addInvVal,
         [COLS.recPayType]: rf[COLS.recPayType],
-        [COLS.recPayAmt]: Math.round(excess * 100) / 100,
+        [COLS.recPayAmt]:  Math.round(addBal * 100) / 100,
         [COLS.recPayDate]: rf[COLS.recPayDate] || tod(),
-        [COLS.recChkNum]: rf[COLS.recChkNum] || '',
-        [COLS.recNotes]: g2Notes
+        [COLS.recChkNum]:  rf[COLS.recChkNum] || '',
+        [COLS.recNotes]:   addNotes
       };
-      await apiPost({ action: 'addReceipt', data: data2 }); // overpay split receipt — no photo needed
-      S.receipts.push({ ...data2, _id: S.receipts.length, _bg: '#ffffff' });
+      await apiPost({ action: 'addReceipt', data: dataAdd });
+      S.receipts.push({ ...dataAdd, _id: S.receipts.length, _bg: '#ffffff' });
     }
 
     if (rf._custEditRow && rf[COLS.custNotes] !== undefined) {
@@ -2747,7 +2750,7 @@ async function executeSaveReceipt() {
     const closeRecAndReload = () => { S.screen = 'list'; S.rForm = efR(); S.msg = null; setHeader(); render(); };
 
     if (recOk) {
-      showToast(isOverpay && inv2 ? '✅ נשמרו 2 קבלות!' : `✅ הקבלה נשמרה!${rowInfo}${photoNote}`, 'ok', 2500);
+      showToast(overInvNums.length ? `✅ נשמרו ${1 + overInvNums.length} קבלות!` : `✅ הקבלה נשמרה!${rowInfo}${photoNote}`, 'ok', 2500);
       setTimeout(closeRecAndReload, 1600);
     } else {
       render();
