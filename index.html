@@ -216,7 +216,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v3.9'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v4.0'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -930,18 +930,29 @@ function switchTab(tab) {
   }
 }
 
+// Labels for each form screen — used by both the header ← button and the phone back button
+const SCREEN_LABELS = {
+  'new-invoice':  'חשבונית',
+  'new-tax':      'חשמ"ק',
+  'new-receipt':  'קבלה',
+  'new-customer': 'לקוח',
+};
+
+function _doGoBackToList() {
+  S.screen = 'list'; S.msg = null; S.cForm = efC(); S.rForm = efR(); S.iForm = {};
+  S.showSuggest = false; setHeader(); render();
+}
+
 function goBack() {
-  const inForm = S.screen && S.screen !== 'list' && S.screen !== 'settings';
-  const doGoBack = () => {
-    S.screen = 'list'; S.msg = null; S.cForm = efC(); S.rForm = efR(); S.iForm = {};
-    S.showSuggest = false; setHeader(); render();
-  };
-  if (inForm) {
-    showConfirm('יציאה מהטופס', 'לצאת ללא שמירה? הנתונים שהזנת יאבדו.',
-      doGoBack, () => {}, 'כן, צא', 'המשך עריכה');
-  } else {
-    doGoBack();
-  }
+  const scr = S.screen || 'list';
+  if (scr === 'settings') { _doGoBackToList(); return; }
+  if (scr === 'list')     { return; }
+  const docType = SCREEN_LABELS[scr] || 'מסמך';
+  showConfirm(
+    `ביטול ${docType}`,
+    `לבטל את ה${docType} ללא שמירה? הנתונים שהזנת יאבדו.`,
+    _doGoBackToList, () => {}, 'כן, בטל', 'המשך עריכה'
+  );
 }
 function scrollToTop() { requestAnimationFrame(() => { const el = document.getElementById('content'); if (el) el.scrollTop = 0; }); }
 function openNewCustomer() { S.screen = 'new-customer'; S.cForm = efC(); S.msg = null; setHeader(); render(); scrollToTop(); }
@@ -3094,22 +3105,47 @@ window.addEventListener('DOMContentLoaded', () => {
   syncNav();
   requestAnimationFrame(syncNav);
 
-  window.addEventListener('beforeunload', e => {
-    e.preventDefault();
-    return e.returnValue = 'האם אתה בטוח שברצונך לצאת מהאפליקציה?';
-  });
+  // ── Phone back-button interception ──
+  // We maintain a counter so every pushState call creates a DISTINCT history entry.
+  // Using the same URL with null state is deduplicated by some mobile browsers,
+  // which causes the recapture to fail and the app to close silently.
+  let _appBackDepth = 0;
+  function _pushAppState() {
+    _appBackDepth++;
+    history.pushState({ moov: _appBackDepth }, '');
+  }
+  _pushAppState(); // initial entry — sets up the first trap
 
-  history.pushState(null, '', location.href);
-  window.addEventListener('popstate', () => {
-    if (S.screen !== 'list') {
-      history.pushState(null, '', location.href);
-      goBack();
+  window.addEventListener('popstate', function() {
+    // Always recapture FIRST with a new distinct entry, so the next back press
+    // is also intercepted reliably.
+    _pushAppState();
+
+    const scr = S.screen || 'list';
+
+    if (scr !== 'list' && scr !== 'settings') {
+      // Inside a new-document or new-customer form — ask before discarding
+      const docType = SCREEN_LABELS[scr] || 'מסמך';
+      showConfirm(
+        `ביטול ${docType}`,
+        `לבטל את ה${docType} ללא שמירה? הנתונים שהזנת יאבדו.`,
+        _doGoBackToList,
+        () => {},
+        'כן, בטל',
+        'המשך עריכה'
+      );
+    } else if (scr === 'settings') {
+      _doGoBackToList();
     } else {
-      showConfirm('יציאה מהאפליקציה', 'האם אתה בטוח שברצונך לצאת מהאפליקציה?', function() {
-        history.back();
-      }, function() {
-        history.pushState(null, '', location.href);
-      });
+      // On the list — confirm before leaving the app entirely
+      showConfirm(
+        'יציאה מהאפליקציה',
+        'לצאת מ-MOOV Sales?',
+        () => { history.go(-(_appBackDepth + 1)); },
+        () => {},
+        'כן, צא',
+        'הישאר'
+      );
     }
   });
 
