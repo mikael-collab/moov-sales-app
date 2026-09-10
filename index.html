@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v4.1'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v4.4'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -1066,11 +1066,12 @@ function setHeader() {
 
   const titles = {
     'list': TABS[tab]?.label,
-    'new-customer': '+ לקוח חדש',
-    'new-receipt': '+ קבלה חדשה',
-    'new-invoice': '+ חשבונית חדשה',
-    'new-tax': '+ חשמ"ק חדש',
-    'settings': '⚙️ הגדרות'
+    'new-customer':  '+ לקוח חדש',
+    'new-receipt':   '+ קבלה חדשה',
+    'new-invoice':   '+ חשבונית חדשה',
+    'new-tax':       '+ חשמ"ק חדש',
+    'new-delivery':  '+ תעודת משלוח',
+    'settings':      '⚙️ הגדרות'
   };
   document.getElementById('hdr-title').textContent = titles[S.screen] || TABS[tab]?.label || '';
 
@@ -1098,6 +1099,7 @@ function setHeader() {
       if (tab === 'customers') openNewCustomer();
       else if (tab === 'receipts') openNewReceipt();
       else if (tab === 'invoices') openNewInvoice(false);
+      else if (tab === 'delivery') openNewDelivery();
       else openNewInvoice(true);
     };
   } else {
@@ -2165,49 +2167,32 @@ function renderDeliveryList() {
     const num      = d[COLS.delivNum] || '';
     const rowIdx   = d._rowIndex;
 
-    h += `<div class="card" style="border-right:4px solid ${color}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+    const isExp = S.expId === rowIdx;
+    h += `<div class="card" style="border-right:4px solid ${color};cursor:pointer"
+      onclick="S.expId=(S.expId===${rowIdx}?null:${rowIdx});render()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div style="font-weight:700;font-size:14px">${esc(custName)}</div>
           <div style="font-size:11px;color:#888">${esc(d[COLS.docCustId]||'')}${num ? ' | ת.מ. ' + esc(num) : ''}</div>
         </div>
         <div style="text-align:left">
-          <div style="font-size:15px;font-weight:700;color:${color}">${total ? fmt(String(total)) : '—'}</div>
+          <div style="font-size:15px;font-weight:700;color:${color}">${total ? fmt(String(total)) : '\u2014'}</div>
           <div style="font-size:11px;color:#aaa">${esc(date)}</div>
         </div>
       </div>
-      ${notes ? `<div style="font-size:12px;color:#666;margin-bottom:8px">${esc(notes)}</div>` : ''}
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button onclick="convertToInvoice(${rowIdx})"
-          style="flex:1;background:${color};color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-          📄 המר לחשבונית
+      ${notes && isExp ? `<div style="font-size:12px;color:#666;margin-top:6px">${esc(notes)}</div>` : ''}
+      ${isExp ? `
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="event.stopPropagation();convertToInvoice(${rowIdx})"
+          style="flex:1;background:${color};color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+          📄 חשבונית
         </button>
-        <button onclick="convertToInvoice(${rowIdx}, true)"
-          style="flex:1;background:${color}22;color:${color};border:1.5px solid ${color};border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-          📄 המר לחשמ"ק
+        <button onclick="event.stopPropagation();convertToInvoice(${rowIdx}, true)"
+          style="flex:1;background:${color}22;color:${color};border:1.5px solid ${color};border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+          📋 חשמ"ק
         </button>
-      </div>
+      </div>` : ''}
     </div>`;
-  });
-
-  h += `<div style="padding:16px;text-align:center">
-    <button onclick="openNewDelivery()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:600;cursor:pointer">
-      + תעודת משלוח חדשה
-    </button>
-  </div>`;
-
-  return h;
-}
-
-function openNewDelivery() {
-  S.dForm = efD(); S.screen = 'new-delivery'; S.msg = null;
-  setHeader(); render(); scrollToTop();
-}
-
-function renderDeliveryForm() {
-  const f = S.dForm; const color = tc();
-  let h = `<div class="fwrap" style="--tc:${color}">`;
-  if (S.msg) h += alertHtml(S.msg);
 
   h += `<div class="sec-t">📦 תעודת משלוח חדשה</div>`;
 
@@ -2429,7 +2414,6 @@ function convertToInvoice(rowIndex, asTax) {
   // Store reference so executeSaveInv can write the note
   S.iForm._fromDelivery = { ref, origQtys };
 
-  // Open invoice (false) or tax invoice (true) form
   S.screen = asTax ? 'new-tax' : 'new-invoice';
   S.tab    = asTax ? 'tax' : 'invoices';
   S.msg    = null;
