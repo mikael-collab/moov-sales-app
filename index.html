@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v4.4'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v4.5'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -1126,11 +1126,18 @@ function render() {
   else if (scr === 'new-invoice') el.innerHTML = renderInvForm(false);
   else if (scr === 'new-tax') el.innerHTML = renderInvForm(true);
   else if (scr === 'new-delivery') el.innerHTML = renderDeliveryForm();
-  else if (S.tab === 'customers') el.innerHTML = renderCustList();
-  else if (S.tab === 'invoices') el.innerHTML = renderDocList(S.invoices, S.isState, false);
-  else if (S.tab === 'receipts') el.innerHTML = renderRecList();
-  else if (S.tab === 'delivery') el.innerHTML = renderDeliveryList();
-  else el.innerHTML = renderDocList(S.tax, S.tsState, true);
+  else {
+    try {
+      if      (S.tab === 'customers') el.innerHTML = renderCustList();
+      else if (S.tab === 'invoices') el.innerHTML = renderDocList(S.invoices, S.isState, false);
+      else if (S.tab === 'receipts') el.innerHTML = renderRecList();
+      else if (S.tab === 'delivery') el.innerHTML = renderDeliveryList();
+      else                           el.innerHTML = renderDocList(S.tax, S.tsState, true);
+    } catch(renderErr) {
+      el.innerHTML = `<div class="status"><p style="color:#c62828">שגיאת תצוגה: ${esc(renderErr.message)}</p>
+        <button onclick="location.reload()" style="margin-top:12px;background:#c62828;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer">↻ רענן</button></div>`;
+    }
+  }
 
   el.scrollTop = pos; bindAll();
 }
@@ -3486,11 +3493,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (S.scriptUrl) {
     render();
-    // Ping first (warms up GAS cold-start, resolves sheet names), then load customers.
-    // Avoids two competing cold-start executions on app open.
-    pingSheets().then(() => {
-      if (S.csState === 'idle') loadCustomers();
-    });
+    // Load customers immediately — never make data loading conditional on ping.
+    // If ping times out (22s timeout), loadCustomers() must still run; otherwise
+    // the app hangs forever on the spinner. Ping runs in parallel for sheet-name
+    // discovery but must not gate the primary data load.
+    loadCustomers();
+    pingSheets(); // background — updates SHEETS names, not blocking
   } else render();
 });
 </script>
