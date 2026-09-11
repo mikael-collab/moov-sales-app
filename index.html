@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v4.5'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v4.6'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2133,48 +2133,48 @@ function buildInvCardsHtml(data, isTax) {
   return h;
 }
 // ════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // DELIVERY NOTES (תעודות משלוח)
 // ════════════════════════════════════════════════════
 
 function renderDeliveryList() {
-  const color  = tc();
-  const state  = S.dnState;
-  const label  = 'תעודות משלוח';
-  const reload = 'loadDeliveries()';
+  const color = tc(), state = S.dnState;
+  const label = 'תעודות משלוח', reload = 'loadDeliveries()';
   if (state === 'error') return errScreen(S.errors.delivery, reload, label, color);
   if (state !== 'ok')   return statusHtml(state, reload, label);
 
   let h = `<div class="sbar" style="position:sticky;top:0;z-index:10;background:#fff">
     <div class="swrap">
-      <input class="sinput" id="sinput" type="text" placeholder="חיפוש לקוח, שם..." value="${esc(S.search)}"
-        oninput="S.search=this.value;render()">
+      <input class="sinput" id="sinput" type="text" placeholder="חיפוש לקוח, שם..."
+        value="${esc(S.search)}" oninput="S.search=this.value;render()">
       <span class="sico">🔍</span>
     </div>
   </div>`;
 
   const q = S.search.trim().toLowerCase();
-  const list = S.deliveries.filter(d => {
-    if (!q) return true;
-    return (d[COLS.docCustId]||'').toLowerCase().includes(q)
-        || (d[COLS.docCustName]||'').toLowerCase().includes(q)
-        || (d[COLS.delivNum]||'').toLowerCase().includes(q);
-  });
+  const list = S.deliveries.filter(d =>
+    !q ||
+    (d[COLS.docCustId]||'').toLowerCase().includes(q) ||
+    (d[COLS.docCustName]||'').toLowerCase().includes(q) ||
+    (d[COLS.delivNum]||'').toLowerCase().includes(q)
+  );
 
   if (!list.length) {
-    h += `<div class="status"><p style="font-size:36px">📦</p><p style="color:#999;margin-bottom:16px">אין תעודות משלוח${q ? ' תואמות' : ''}</p>
+    h += `<div class="status"><p style="font-size:36px">📦</p>
+      <p style="color:#999;margin-bottom:16px">אין תעודות משלוח${q ? ' תואמות' : ''}</p>
       <button onclick="openNewDelivery()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer">+ תעודה חדשה</button></div>`;
     return h;
   }
 
   list.slice().reverse().forEach(d => {
     const custName = d[COLS.docCustName] || d[COLS.docCustId] || '—';
-    const date     = d[COLS.docDate] || '';
-    const total    = parseMoney(d[COLS.delivTotalVat]) || 0;
-    const notes    = d[COLS.delivNotes] || '';
-    const num      = d[COLS.delivNum] || '';
-    const rowIdx   = d._rowIndex;
+    const date = d[COLS.docDate] || '';
+    const total = parseMoney(d[COLS.delivTotalVat]) || 0;
+    const notes = d[COLS.delivNotes] || '';
+    const num   = d[COLS.delivNum] || '';
+    const rowIdx = d._rowIndex;
+    const isExp  = S.expId === rowIdx;
 
-    const isExp = S.expId === rowIdx;
     h += `<div class="card" style="border-right:4px solid ${color};cursor:pointer"
       onclick="S.expId=(S.expId===${rowIdx}?null:${rowIdx});render()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -2183,46 +2183,60 @@ function renderDeliveryList() {
           <div style="font-size:11px;color:#888">${esc(d[COLS.docCustId]||'')}${num ? ' | ת.מ. ' + esc(num) : ''}</div>
         </div>
         <div style="text-align:left">
-          <div style="font-size:15px;font-weight:700;color:${color}">${total ? fmt(String(total)) : '\u2014'}</div>
+          <div style="font-size:15px;font-weight:700;color:${color}">${total ? fmt(String(total)) : '—'}</div>
           <div style="font-size:11px;color:#aaa">${esc(date)}</div>
         </div>
       </div>
       ${notes && isExp ? `<div style="font-size:12px;color:#666;margin-top:6px">${esc(notes)}</div>` : ''}
-      ${isExp ? `
-      <div style="display:flex;gap:8px;margin-top:10px">
+      ${isExp ? `<div style="display:flex;gap:8px;margin-top:10px">
         <button onclick="event.stopPropagation();convertToInvoice(${rowIdx})"
           style="flex:1;background:${color};color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
           📄 חשבונית
         </button>
-        <button onclick="event.stopPropagation();convertToInvoice(${rowIdx}, true)"
+        <button onclick="event.stopPropagation();convertToInvoice(${rowIdx},true)"
           style="flex:1;background:${color}22;color:${color};border:1.5px solid ${color};border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-          📋 חשמ"ק
+          📋 חשמק
         </button>
       </div>` : ''}
     </div>`;
+  });
 
+  h += `<div style="padding:16px;text-align:center">
+    <button onclick="openNewDelivery()" style="background:${color};color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:600;cursor:pointer">
+      + תעודת משלוח חדשה
+    </button>
+  </div>`;
+  return h;
+}
+
+function openNewDelivery() {
+  S.dForm = efD(); S.screen = 'new-delivery'; S.msg = null;
+  setHeader(); render(); scrollToTop();
+}
+
+function renderDeliveryForm() {
+  const f = S.dForm; const color = tc();
+  let h = `<div class="fwrap" style="--tc:${color}">`;
+  if (S.msg) h += alertHtml(S.msg);
   h += `<div class="sec-t">📦 תעודת משלוח חדשה</div>`;
 
-  // Customer search (reuse invoice search pattern)
   h += `<div class="field"><label>שם לקוח *</label>
-    <input type="text" id="dn-custName" class="finput" value="${esc(f[COLS.docCustName]||f[COLS.docCustId]||'')}"
-      placeholder="הקלד שם..."
+    <input type="text" id="dn-custName" class="finput"
+      value="${esc(f[COLS.docCustName]||f[COLS.docCustId]||'')}" placeholder="הקלד שם..."
       oninput="onDnCustSearch(this.value)">
     ${S.showSuggest && S.suggest.length ? suggestHtmlDn() : ''}
   </div>
-  <div class="field"><label>ת"ז / ח"פ</label>
-    <input type="text" inputmode="numeric" id="dn-custId" class="finput num" value="${esc(f[COLS.docCustId]||'')}"
-      placeholder="הזן ת\"ז או ח\"פ..."
+  <div class="field"><label>ת.ז. / ח.פ.</label>
+    <input type="text" inputmode="numeric" id="dn-custId" class="finput num"
+      value="${esc(f[COLS.docCustId]||'')}" placeholder="הזן ת.ז. או ח.פ."
       oninput="onDnCustIdInput(sanitizeId(this.value))">
   </div>
   <div class="field"><label>תאריך *</label>
-    <input type="text" id="dn-date" class="finput" value="${esc(f[COLS.docDate]||'')}" placeholder="DD/MM/YYYY"
-      oninput="S.dForm[COLS.docDate]=this.value">
+    <input type="text" id="dn-date" class="finput" value="${esc(f[COLS.docDate]||'')}"
+      placeholder="DD/MM/YYYY" oninput="S.dForm[COLS.docDate]=this.value">
   </div>`;
 
-  // Product grid — same as invoice
-  h += `<div class="sec-t" style="margin-top:12px">כמויות</div>
-    <div class="prod-table">`;
+  h += `<div class="sec-t" style="margin-top:12px">כמויות</div><div class="prod-table">`;
   PRODS.forEach(p => {
     const qty = f[p.qk] || '';
     h += `<div class="prod-field">
@@ -2237,7 +2251,6 @@ function renderDeliveryList() {
   });
   h += `</div>`;
 
-  // Price + discount
   h += `<div class="irow" style="margin-top:12px;gap:10px">
     <div class="field" style="flex:1"><label>מחיר ₪</label>
       <input type="number" inputmode="decimal" class="finput" value="${esc(f[COLS.price]||'')}"
@@ -2249,20 +2262,15 @@ function renderDeliveryList() {
     </div>
   </div>`;
 
-  // Calculated totals bar
   h += `<div id="dn-bar"></div>`;
-
-  // Notes
   h += `<div class="field"><label>הערות</label>
     <textarea class="finput" rows="2" placeholder="הערות לתעודה..."
       oninput="S.dForm[COLS.delivNotes]=this.value">${esc(f[COLS.delivNotes]||'')}</textarea>
   </div>`;
-
-  h += `<button id="dn-save-btn" onclick="saveDelivery()"
+  h += `<button onclick="saveDelivery()"
     style="width:100%;padding:14px;background:${color};color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px">
-    💾 שמור תעודה
+    שמור תעודה
   </button>`;
-
   h += `</div>`;
   return h;
 }
@@ -2282,10 +2290,10 @@ function suggestHtmlDn() {
 function pickDnCust(id, name) {
   S.dForm[COLS.docCustId] = id; S.dForm[COLS.docCustName] = name;
   const cust = S.customers.find(c => c[COLS.custId] === id);
-  S.dForm._custNotes = cust ? (cust[COLS.custNotes] || '') : '';
-  S.dForm._custConsignment = cust ? (cust[COLS.custConsignment] || '') : '';
-  S.dForm._custEditRow = cust ? cust._row : null;
-  S.dForm._custEditId = cust ? cust._id : null;
+  S.dForm._custNotes       = cust ? (cust[COLS.custNotes]||'') : '';
+  S.dForm._custConsignment = cust ? (cust[COLS.custConsignment]||'') : '';
+  S.dForm._custEditRow     = cust ? cust._row : null;
+  S.dForm._custEditId      = cust ? cust._id  : null;
   S.showSuggest = false; render();
 }
 
@@ -2296,8 +2304,7 @@ function onDnCustSearch(val) {
   S.suggest = S.customers.filter(c =>
     (c[COLS.custName]||'').toLowerCase().includes(q) || (c[COLS.custId]||'').includes(q)
   ).slice(0, 6);
-  S.showSuggest = !!S.suggest.length;
-  render();
+  S.showSuggest = !!S.suggest.length; render();
 }
 
 function onDnCustIdInput(val) {
@@ -2310,8 +2317,7 @@ function onDnCustIdInput(val) {
 }
 
 function adjDnQty(qk, delta) {
-  const cur = parseInt(S.dForm[qk] || 0) || 0;
-  const next = Math.max(0, cur + delta);
+  const next = Math.max(0, (parseInt(S.dForm[qk]||0)||0) + delta);
   S.dForm[qk] = next || '';
   const el = document.getElementById('dn-qty-' + qk);
   if (el) el.value = next || '';
@@ -2321,7 +2327,7 @@ function adjDnQty(qk, delta) {
 function renderDnBar() {
   const el = document.getElementById('dn-bar');
   if (!el) return;
-  const calc = calcInv(S.dForm); // reuse invoice calculator
+  const calc = calcInv(S.dForm);
   const color = tc();
   el.innerHTML = calc.totalQty
     ? `<div class="inv-bar" style="background:${color}12;border-radius:8px;padding:10px 12px;margin:8px 0;direction:rtl;font-size:13px">
@@ -2333,16 +2339,14 @@ function renderDnBar() {
 
 function deliveryFormErrors() {
   const f = S.dForm;
-  if (!f[COLS.docCustId]?.trim() && !f[COLS.docCustName]?.trim()) return 'שם לקוח או ת"ז חסרים';
-  // Validate customer exists in לקוחות
+  if (!f[COLS.docCustId]?.trim() && !f[COLS.docCustName]?.trim()) return 'שם לקוח או ת.ז. חסרים';
   const custId = (f[COLS.docCustId]||'').trim();
   if (custId && S.csState === 'ok') {
-    const found = S.customers.find(c => (c[COLS.custId]||'').trim() === custId);
-    if (!found) return 'הלקוח אינו קיים בטבלת לקוחות — הוסף תחילה';
+    if (!S.customers.find(c => (c[COLS.custId]||'').trim() === custId))
+      return 'הלקוח אינו קיים בטבלת לקוחות';
   }
   if (!f[COLS.docDate]?.trim()) return 'תאריך חסר';
-  const calc = calcInv(f);
-  if (!calc.totalQty) return 'יש להזין לפחות מוצר אחד';
+  if (!calcInv(f).totalQty) return 'יש להזין לפחות מוצר אחד';
   return null;
 }
 
@@ -2350,82 +2354,63 @@ async function saveDelivery() {
   if (S.saving) return;
   const err = deliveryFormErrors();
   if (err) { showToast('❌ ' + err, 'err'); return; }
-
   S.saving = true; S.msg = null; render();
   const f = S.dForm;
-
   const allowed = new Set([COLS.docCustId, COLS.docDate, COLS.price, COLS.discount, COLS.delivNotes,
     ...PRODS.map(p => p.qk)]);
   const data = {};
-  allowed.forEach(k => {
-    const v = (f[k] || '').toString().trim();
-    if (v) data[k] = v;
-  });
-
+  allowed.forEach(k => { const v = (f[k]||'').toString().trim(); if (v) data[k] = v; });
   try {
     const res = await apiPost({ action: 'addDelivery', data });
     const beforeRow = localLastRowIndex(S.deliveries);
     const ok = await verifyRowAdded(SHEETS.delivery, beforeRow,
       { skip: !!(res && res.savedRow && !res.unconfirmed) });
-
     S.saving = false;
     if (ok) {
       S.deliveries.push({ ...data, _id: S.deliveries.length, _bg: '#ffffff' });
-      S.msg = { t: 's', m: 'תעודת המשלוח נשמרה!' };
-      render();
+      S.msg = { t: 's', m: 'תעודת המשלוח נשמרה!' }; render();
       setTimeout(() => { S.screen = 'list'; S.dForm = {}; S.msg = null; setHeader(); render(); }, 1500);
     } else {
       render();
       showAlert('⚠️ לא אומת בגיליון',
-        'שלחנו את התעודה אך לא הצלחנו לאמת שנוצרה. בדוק ידנית בגיליון.',
+        'שלחנו את התעודה אך לא הצלחנו לאמת שנוצרה.',
         () => { S.screen = 'list'; S.dForm = {}; S.msg = null; setHeader(); render(); });
     }
   } catch(e) {
-    showToast('❌ ' + (e.message || 'שגיאה'), 'err');
+    showToast('❌ ' + (e.message||'שגיאה'), 'err');
     S.saving = false; render();
   }
 }
 
-// Convert a delivery note to an invoice or tax invoice.
-// Pre-fills the invoice form with the delivery's quantities and customer.
-// After the user saves, the invoice note automatically reflects full/partial conversion.
 function convertToInvoice(rowIndex, asTax) {
   const d = S.deliveries.find(r => r._rowIndex === rowIndex);
   if (!d) { showToast('❌ תעודה לא נמצאה', 'err'); return; }
-
-  const num = (d[COLS.delivNum] || '').trim();
-  const ref = num ? `ת.מ. מספר ${num}` : `ת.מ. שורה ${rowIndex}`;
-
-  // Snapshot original quantities for full/partial auto-detection on save
+  const num = (d[COLS.delivNum]||'').trim();
+  const ref = num ? 'ת.מ. מספר ' + num : 'ת.מ. שורה ' + rowIndex;
   const origQtys = {};
-  PRODS.forEach(p => { origQtys[p.qk] = (d[p.qk] || '').toString().trim(); });
-
+  PRODS.forEach(p => { origQtys[p.qk] = (d[p.qk]||'').toString().trim(); });
   S.iForm = {};
-  S.iForm[COLS.docCustId]   = (d[COLS.docCustId]   || '').trim();
-  S.iForm[COLS.docCustName] = (d[COLS.docCustName]  || '').trim();
+  S.iForm[COLS.docCustId]   = (d[COLS.docCustId]  ||'').trim();
+  S.iForm[COLS.docCustName] = (d[COLS.docCustName] ||'').trim();
   S.iForm[COLS.docDate]     = tod();
-  S.iForm[COLS.price]       = (d[COLS.price]        || '').toString().trim();
-  S.iForm[COLS.discount]    = (d[COLS.discount]      || '').toString().trim();
+  S.iForm[COLS.price]       = (d[COLS.price]       ||'').toString().trim();
+  S.iForm[COLS.discount]    = (d[COLS.discount]     ||'').toString().trim();
   PRODS.forEach(p => { S.iForm[p.qk] = origQtys[p.qk]; });
-
-  // Load customer context for the pre-filled form
   const custId = S.iForm[COLS.docCustId];
   const cust = S.customers.find(c => (c[COLS.custId]||'').trim() === custId);
-  S.iForm._custEditRow = cust ? cust._row : null;
-  S.iForm._custEditId  = cust ? cust._id  : null;
-  S.iForm._custNotes   = cust ? (cust[COLS.custNotes]||'') : '';
+  S.iForm._custEditRow     = cust ? cust._row : null;
+  S.iForm._custEditId      = cust ? cust._id  : null;
+  S.iForm._custNotes       = cust ? (cust[COLS.custNotes]||'') : '';
   S.iForm._custConsignment = cust ? (cust[COLS.custConsignment]||'') : '';
   S.iForm[COLS.invTerms]   = cust ? (cust[COLS.custTerms]||'') : '';
   S.iForm._openInvs        = openInvsFor(custId);
-
-  // Store reference so executeSaveInv can write the note
-  S.iForm._fromDelivery = { ref, origQtys };
-
+  S.iForm._fromDelivery    = { ref, origQtys };
   S.screen = asTax ? 'new-tax' : 'new-invoice';
-  S.tab    = asTax ? 'tax' : 'invoices';
+  S.tab    = asTax ? 'tax'     : 'invoices';
   S.msg    = null;
   setHeader(); syncNav(); render(); scrollToTop();
 }
+
 
 function renderDocList(data, state, isTax) {
   const label  = isTax ? 'חשבוניות/קבלות' : 'חשבוניות';
