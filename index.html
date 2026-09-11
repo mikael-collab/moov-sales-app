@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v4.6'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v4.8'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -1727,8 +1727,9 @@ function renderInvForm(isTax) {
         oninput="uf('iForm','${COLS.taxChkNum}',this.value);renderSaveBtn()">
     </div>
     <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.taxPayDate}) *</small></label>
-      <input type="text" id="f-taxPayDate" class="finput" value="${esc(f[COLS.taxPayDate] || tod())}"
-        oninput="uf('iForm','${COLS.taxPayDate}',this.value);renderSaveBtn()">
+      <input type="date" id="f-taxPayDate" class="finput"
+        value="${dateToISO(f[COLS.taxPayDate] || tod())}"
+        onchange="uf('iForm','${COLS.taxPayDate}',this.value.split('-').reverse().join('/'));renderSaveBtn()">
     </div>
     <div class="field"><label>צילום שיק <small>(עמודה ${COLS.taxPhoto}) *</small></label>
       <input type="file" id="cheque-photo" accept="image/*" capture="environment"
@@ -1910,8 +1911,9 @@ function renderReceiptForm() {
         oninput="uf('rForm','${COLS.recChkNum}',this.value);renderSaveBtnRec()">
     </div>
     <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.recPayDate}) *</small></label>
-      <input type="text" id="r-${COLS.recPayDate}" class="finput" value="${esc(rf[COLS.recPayDate] || tod())}"
-        oninput="uf('rForm','${COLS.recPayDate}',this.value);renderSaveBtnRec()">
+      <input type="date" id="r-${COLS.recPayDate}" class="finput"
+        value="${dateToISO(rf[COLS.recPayDate] || tod())}"
+        onchange="uf('rForm','${COLS.recPayDate}',this.value.split('-').reverse().join('/'));renderSaveBtnRec()">
     </div>
     <div class="field"><label>צילום שיק <small>(עמודה ${COLS.recPhoto}) *</small></label>
       <input type="file" id="receipt-cheque-photo" accept="image/*" capture="environment"
@@ -2224,7 +2226,6 @@ function renderDeliveryForm() {
     <input type="text" id="dn-custName" class="finput"
       value="${esc(f[COLS.docCustName]||f[COLS.docCustId]||'')}" placeholder="הקלד שם..."
       oninput="onDnCustSearch(this.value)">
-    ${S.showSuggest && S.suggest.length ? suggestHtmlDn() : ''}
   </div>
   <div class="field"><label>ת.ז. / ח.פ.</label>
     <input type="text" inputmode="numeric" id="dn-custId" class="finput num"
@@ -2288,23 +2289,52 @@ function suggestHtmlDn() {
 }
 
 function pickDnCust(id, name) {
-  S.dForm[COLS.docCustId] = id; S.dForm[COLS.docCustName] = name;
+  S.dForm[COLS.docCustId]  = id;
+  S.dForm[COLS.docCustName] = name;
   const cust = S.customers.find(c => c[COLS.custId] === id);
   S.dForm._custNotes       = cust ? (cust[COLS.custNotes]||'') : '';
   S.dForm._custConsignment = cust ? (cust[COLS.custConsignment]||'') : '';
   S.dForm._custEditRow     = cust ? cust._row : null;
   S.dForm._custEditId      = cust ? cust._id  : null;
-  S.showSuggest = false; render();
+  S.showSuggest = false;
+  // Update input value directly so the field shows the chosen name,
+  // remove the dropdown via DOM (no keyboard-dismissing render needed)
+  const box = document.getElementById('dn-suggest-box');
+  if (box) box.remove();
+  const inp = document.getElementById('dn-custName');
+  if (inp) inp.value = name;
 }
 
 function onDnCustSearch(val) {
   S.dForm[COLS.docCustName] = val;
-  if (!val.trim()) { S.suggest = []; S.showSuggest = false; render(); return; }
+  const inp  = document.getElementById('dn-custName');
+  const wrap = inp?.parentElement;
+  let box = document.getElementById('dn-suggest-box');
+  if (!val.trim()) {
+    S.suggest = []; S.showSuggest = false;
+    if (box) box.remove();
+    return;
+  }
   const q = val.trim().toLowerCase();
   S.suggest = S.customers.filter(c =>
     (c[COLS.custName]||'').toLowerCase().includes(q) || (c[COLS.custId]||'').includes(q)
   ).slice(0, 6);
-  S.showSuggest = !!S.suggest.length; render();
+  S.showSuggest = !!S.suggest.length;
+  if (S.showSuggest && wrap) {
+    const inner = S.suggest.map(c =>
+      `<div class="sug-item" onmousedown="event.preventDefault()"
+        onclick="pickDnCust('${esc(c[COLS.custId]||'')}','${esc(c[COLS.custName]||'')}')">
+        <div>${esc(c[COLS.custName]||'')}</div>
+        <div class="sug-sub">${esc(c[COLS.custId]||'')}</div>
+      </div>`
+    ).join('');
+    if (box) { box.innerHTML = inner; }
+    else {
+      const el = document.createElement('div');
+      el.className = 'suggest-box'; el.id = 'dn-suggest-box';
+      el.innerHTML = inner; wrap.style.position = 'relative'; wrap.appendChild(el);
+    }
+  } else if (box) { box.remove(); }
 }
 
 function onDnCustIdInput(val) {
