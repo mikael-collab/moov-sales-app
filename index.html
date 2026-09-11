@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.0'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.1'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -1190,8 +1190,8 @@ function renderSettings() {
 
   if (connected) {
     h += `<div class="stitle">נתונים</div><div class="scard">
-      ${[['customers', 'לקוחות', 'csState'], ['invoices', 'חשבוניות', 'isState'], ['receipts', 'קבלות', 'rsState'], ['tax', 'חשמ"ק', 'tsState'], ['delivery', 'ת.מ.', 'dnState']].map(([k, lbl, sk], i) => {
-        const st = S[sk]; const cnt = S[k].length; const err = S.errors[k] || '';
+      ${[['customers','לקוחות','csState','customers'],['invoices','חשבוניות','isState','invoices'],['receipts','קבלות','rsState','receipts'],['tax','חשמ"ק','tsState','tax'],['delivery','ת.מ.','dnState','deliveries']].map(([k, lbl, sk, dk], i) => {
+        const st = S[sk]; const cnt = (S[dk]||[]).length; const err = S.errors[k] || '';
         return `<div class="srow"${i === 0 ? ' style="border-top:none"' : ''}>
           <span class="slabel" style="font-size:12px">${lbl}</span>
           <span style="font-size:11px;color:${st === 'ok' ? (cnt > 0 ? '#1e8e3e' : '#f59e0b') : st === 'error' ? '#c62828' : '#aaa'}">
