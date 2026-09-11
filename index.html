@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v4.9'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.0'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2139,6 +2139,17 @@ function buildInvCardsHtml(data, isTax) {
 // DELIVERY NOTES (תעודות משלוח)
 // ════════════════════════════════════════════════════
 
+// Resolves the customer display name for a delivery note row:
+// prefers the stored name in col B, falls back to live customer lookup by ID
+// so existing DNs saved before this fix still show a name.
+function dnCustName(d) {
+  const stored = (d[COLS.docCustName] || '').trim();
+  if (stored && stored !== '0') return stored;
+  const id = (d[COLS.docCustId] || '').trim();
+  const cust = id ? S.customers.find(c => (c[COLS.custId]||'').trim() === id) : null;
+  return (cust && cust[COLS.custName]) ? cust[COLS.custName] : (id || '—');
+}
+
 function renderDeliveryList() {
   const color = tc(), state = S.dnState;
   const label = 'תעודות משלוח', reload = 'loadDeliveries()';
@@ -2169,7 +2180,7 @@ function renderDeliveryList() {
   }
 
   list.slice().reverse().forEach(d => {
-    const custName = d[COLS.docCustName] || d[COLS.docCustId] || '—';
+    const custName = dnCustName(d);
     const date = d[COLS.docDate] || '';
     const total = parseMoney(d[COLS.delivTotalVat]) || 0;
     const notes = d[COLS.delivNotes] || '';
@@ -2388,7 +2399,7 @@ async function saveDelivery() {
   if (err) { showToast('❌ ' + err, 'err'); return; }
   S.saving = true; S.msg = null; render();
   const f = S.dForm;
-  const allowed = new Set([COLS.docCustId, COLS.docDate, COLS.price, COLS.discount, COLS.delivNotes,
+  const allowed = new Set([COLS.docCustId, COLS.docCustName, COLS.docDate, COLS.price, COLS.discount, COLS.delivNotes,
     ...PRODS.map(p => p.qk)]);
   const data = {};
   allowed.forEach(k => { const v = (f[k]||'').toString().trim(); if (v) data[k] = v; });
@@ -2423,7 +2434,7 @@ function convertToInvoice(rowIndex, asTax) {
   PRODS.forEach(p => { origQtys[p.qk] = (d[p.qk]||'').toString().trim(); });
   S.iForm = {};
   S.iForm[COLS.docCustId]   = (d[COLS.docCustId]  ||'').trim();
-  S.iForm[COLS.docCustName] = (d[COLS.docCustName] ||'').trim();
+  S.iForm[COLS.docCustName] = dnCustName(d); // uses stored col B or live customer lookup
   S.iForm[COLS.docDate]     = tod();
   S.iForm[COLS.price]       = (d[COLS.price]       ||'').toString().trim();
   S.iForm[COLS.discount]    = (d[COLS.discount]     ||'').toString().trim();
@@ -2435,6 +2446,8 @@ function convertToInvoice(rowIndex, asTax) {
   S.iForm._custNotes       = cust ? (cust[COLS.custNotes]||'') : '';
   S.iForm._custConsignment = cust ? (cust[COLS.custConsignment]||'') : '';
   S.iForm[COLS.invTerms]   = cust ? (cust[COLS.custTerms]||'') : '';
+  // If the DN's col B was empty, the customer lookup gives us the name
+  if (!S.iForm[COLS.docCustName] && cust) S.iForm[COLS.docCustName] = cust[COLS.custName] || '';
   S.iForm._openInvs        = openInvsFor(custId);
   S.iForm._fromDelivery    = { ref, origQtys };
   S.screen = asTax ? 'new-tax' : 'new-invoice';
