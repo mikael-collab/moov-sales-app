@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v4.8'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v4.9'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2241,12 +2241,12 @@ function renderDeliveryForm() {
   PRODS.forEach(p => {
     const qty = f[p.qk] || '';
     h += `<div class="prod-field">
-      <div style="font-size:13px;direction:rtl">${esc(p.short)}</div>
-      <div style="display:flex;align-items:center;gap:6px;direction:ltr">
-        <button class="qty-btn" onclick="adjDnQty('${p.qk}',-1)">−</button>
-        <input type="number" inputmode="numeric" class="qty-inp" value="${esc(qty)}"
-          oninput="S.dForm['${p.qk}']=this.value;renderDnBar()" id="dn-qty-${p.qk}">
-        <button class="qty-btn" onclick="adjDnQty('${p.qk}',1)">+</button>
+      <input type="text" inputmode="numeric" id="dn-qty-${p.qk}" class="pf-input" value="${qty||''}"
+        placeholder="0" style="--tc:${color}" autocomplete="off"
+        oninput="S.dForm['${p.qk}']=this.value.replace(/[^0-9]/g,'');renderDnBar()">
+      <div class="pf-left">
+        <div><div class="pf-name">${p.short}</div><div class="pf-sub">${p.heb} • ${p.nic}mg</div></div>
+        <span class="pf-em">${p.em}</span>
       </div>
     </div>`;
   });
@@ -2303,6 +2303,8 @@ function pickDnCust(id, name) {
   if (box) box.remove();
   const inp = document.getElementById('dn-custName');
   if (inp) inp.value = name;
+  const idInp = document.getElementById('dn-custId');
+  if (idInp) idInp.value = id;
 }
 
 function onDnCustSearch(val) {
