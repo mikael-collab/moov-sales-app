@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.1'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.2'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -306,7 +306,7 @@ const TABS={
   tax:      {label:'חשבוניות/קבלות', color:'#7b1fa2',bg:'#f3e5f5'},
   delivery: {label:'ת.מ.',            color:'#00796b',bg:'#e0f2f1'},
 };
-const SHEETS={customers:'לקוחות',invoices:'חשבוניות',receipts:'קבלות',tax:'חשבוניות/קבלות',delivery:'תעודות משלוח'};
+const SHEETS={customers:'לקוחות',invoices:'חשבוניות',receipts:'קבלות',tax:'חשבוניות/קבלות',delivery:'תעודות משלוח',deliveries:'תעודות משלוח'};
 const PAYMENT_TYPES=['מזומן','שיק'];
 
 const CF=[
@@ -485,7 +485,7 @@ function efR() {
 function efD() {
   const o = {};
   o[COLS.docCustId] = ''; o[COLS.docDate] = tod();
-  o[COLS.price] = ''; o[COLS.discount] = ''; o[COLS.delivNotes] = '';
+  o[COLS.price] = '13'; o[COLS.discount] = ''; o[COLS.delivNotes] = '';
   PRODS.forEach(p => { o[p.qk] = ''; o[p.nk] = p.name; });
   o._custEditRow = null; o._custEditId = null; o._custNotes = ''; o._custConsignment = '';
   o._fromDelivery = null; // {rowIndex, num, origQtys} when converting from a delivery note
@@ -912,7 +912,7 @@ const loadCustomers = () => loadAny('customers', 'csState', 0, COLS.custId);
 const loadInvoices = () => loadAny('invoices', 'isState', 0, COLS.docCustId);
 const loadReceipts = () => loadAny('receipts', 'rsState', 0, COLS.recInvNum);
 const loadTax = () => loadAny('tax', 'tsState', 0, COLS.docCustId);
-const loadDeliveries = () => loadAny('delivery', 'dnState', 0, COLS.docCustId);
+const loadDeliveries = () => loadAny('deliveries', 'dnState', 0, COLS.docCustId);
 
 // ── Nav ──
 function syncNav() {
