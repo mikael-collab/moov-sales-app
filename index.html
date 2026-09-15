@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.2'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.3'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -238,32 +238,34 @@ const COLS = {
   // -- 1. Shared Invoices & Tax (חשבוניות / חשמ"ק) --
   docCustId: 'A',      // ת"ז / ח"פ
   docCustName: 'B',    // שם העסק
-  docDate: 'C',        // תאריך
+  invDelivRef: 'C',    // מספר תעודת משלוח (אם רלוונטי) — NEW col C in invoice sheets
+  docDate: 'D',        // תאריך (was C — shifted +1 by new col C)
+  dnDate: 'C',         // תאריך in DN sheet (unchanged — DN sheet has no new col)
   
-  price: 'AN',         // מחיר ליחידה
-  subtotal: 'AO',      // סה"כ לפני מע"מ
-  discount: 'AP',      // הנחה
-  afterDisc: 'AQ',     // סה"כ אחר הנחה
+  price: 'AO',         // מחיר ליחידה
+  subtotal: 'AP',      // סה"כ לפני מע"מ
+  discount: 'AQ',      // הנחה
+  afterDisc: 'AR',     // סה"כ אחר הנחה
   
   // -- 2. Invoices Specific (חשבוניות) --
-  invTerms: 'AR',      // תנאי תשלום
-  invTotalVat: 'AS',   // סה"כ כולל מע"מ
-  invNum: 'AT',        // מספר חשבונית
-  invPayType: 'AU',    // סוג תשלום
-  invPayAmt: 'AV',     // סכום התשלום
-  invPayDate: 'AW',    // תאריך פרעון שיק
-  invChkNum: 'AX',     // מספר שיק
-  invNotes: 'AY',      // הערות
+  invTerms: 'AS',      // תנאי תשלום
+  invTotalVat: 'AT',   // סה"כ כולל מע"מ
+  invNum: 'AU',        // מספר חשבונית
+  invPayType: 'AV',    // סוג תשלום
+  invPayAmt: 'AW',     // סכום התשלום
+  invPayDate: 'AX',    // תאריך פרעון שיק
+  invChkNum: 'AY',     // מספר שיק
+  invNotes: 'AZ',      // הערות
   
   // -- 3. Tax Specific (חשבוניות/קבלות) --
-  taxTotalVat: 'AR',   // סה"כ כולל מע"מ
-  taxPayType: 'AS',    // סוג תשלום
-  taxPayAmt: 'AT',     // סכום התשלום
-  taxPayDate: 'AU',    // תאריך פרעון שיק
-  taxChkNum: 'AV',     // מספר שיק
-  taxPhoto: 'AW',      // צילום שיק
-  taxNotes: 'AX',      // הערות
-  taxNum: 'AY',        // מספר חשבונית מס / קבלה
+  taxTotalVat: 'AS',   // סה"כ כולל מע"מ
+  taxPayType: 'AT',    // סוג תשלום
+  taxPayAmt: 'AU',     // סכום התשלום
+  taxPayDate: 'AV',    // תאריך פרעון שיק
+  taxChkNum: 'AW',     // מספר שיק
+  taxPhoto: 'AX',      // צילום שיק
+  taxNotes: 'AY',      // הערות
+  taxNum: 'AZ',        // מספר חשבונית מס / קבלה
 
   // -- 4. Receipts (קבלות) --
   recInvNum: 'A',      // מספר חשבונית
@@ -326,7 +328,8 @@ const CF=[
   {k:COLS.custBankAcct,  label:'מספר חשבון',     mode:'num', bank:true},
 ];
 
-const PRODS=[
+// DN_PRODS: delivery note sheet column layout (unchanged — no new col C in DN sheet)
+const DN_PRODS=[
   {nk:'D',qk:'E', name:'Blueberry Mint 10 - אוכמניות',     short:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
   {nk:'F',qk:'G', name:'Blueberry Mint 6 - אוכמניות',      short:'Blueberry Mint 6',  heb:'אוכמניות',    nic:6, em:'🫐'},
   {nk:'H',qk:'I', name:'Jalapeno Lime 14 - חלפיניו ליים',  short:'Jalapeno Lime 14',  heb:'חלפיניו ליים',nic:14,em:'🌶'},
@@ -338,13 +341,34 @@ const PRODS=[
   {nk:'T',qk:'U', name:'Watermelon 20 - אבטיח',            short:'Watermelon 20',     heb:'אבטיח',       nic:20,em:'🍉'},
   {nk:'V',qk:'W', name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
   {nk:'X',qk:'Y', name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
-  {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25, em:'🍊'},
+  {nk:'Z',qk:'AA', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25,em:'🍊'},
   {nk:'AB',qk:'AC', name:'Double Apple 25 - תפוח כפול',    short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
-  {nk:'AF',qk:'AG', name:'Kola 25 - קולה',                         short:'Kola 25',           heb:'קולה',        nic:25, em:'🥤'},
-  {nk:'AH',qk:'AI', name:'Pineapple Ice 25 - אננס קרח',            short:'Pineapple Ice 25',  heb:'אננס קרח',    nic:25, em:'🍍'},
-  {nk:'AJ',qk:'AK', name:'Nana Mint 25 - נענע מנטה',               short:'Nana Mint 25',      heb:'נענע מנטה',   nic:25, em:'🌱'},
-  {nk:'AL',qk:'AM', name:'Strawberry/Kiwi 25 - תות/קיווי',         short:'Strawberry Kiwi 25',heb:'תות/קיווי',  nic:25, em:'🍓'},
-  {nk:'AD',qk:'AE', name:'Voon/Moov Mojito 50mg - מוחיטו',  short:'Voon Mojito 50',    heb:'מוחיטו',   nic:50, em:'🍹'},
+  {nk:'AF',qk:'AG', name:'Kola 25 - קולה',                 short:'Kola 25',           heb:'קולה',        nic:25,em:'🥤'},
+  {nk:'AH',qk:'AI', name:'Pineapple Ice 25 - אננס קרח',   short:'Pineapple Ice 25',  heb:'אננס קרח',    nic:25,em:'🍍'},
+  {nk:'AJ',qk:'AK', name:'Nana Mint 25 - נענע מנטה',      short:'Nana Mint 25',      heb:'נענע מנטה',   nic:25,em:'🌱'},
+  {nk:'AL',qk:'AM', name:'Strawberry/Kiwi 25 - תות/קיווי',short:'Strawberry Kiwi 25',heb:'תות/קיווי',   nic:25,em:'🍓'},
+  {nk:'AD',qk:'AE', name:'Voon/Moov Mojito 50mg - מוחיטו', short:'Voon Mojito 50',   heb:'מוחיטו',      nic:50,em:'🍹'},
+];
+// PRODS: invoice/tax sheet column layout (shifted +1 by new col C)
+const PRODS=[
+  {nk:'E',qk:'F',  name:'Blueberry Mint 10 - אוכמניות',     short:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
+  {nk:'G',qk:'H',  name:'Blueberry Mint 6 - אוכמניות',      short:'Blueberry Mint 6',  heb:'אוכמניות',    nic:6, em:'🫐'},
+  {nk:'I',qk:'J',  name:'Jalapeno Lime 14 - חלפיניו ליים',  short:'Jalapeno Lime 14',  heb:'חלפיניו ליים',nic:14,em:'🌶'},
+  {nk:'K',qk:'L',  name:'Jalapeno Lime 6 - חלפיניע ליים',   short:'Jalapeno Lime 6',   heb:'חלפיניו ליים',nic:6, em:'🌶'},
+  {nk:'M',qk:'N',  name:'Peppermint 20 - מנטה',             short:'Peppermint 20',     heb:'מנטה',        nic:20,em:'🌿'},
+  {nk:'O',qk:'P',  name:'Peppermint 10 - מנטה',             short:'Peppermint 10',     heb:'מנטה',        nic:10,em:'🌿'},
+  {nk:'Q',qk:'R',  name:'Peppermint 3 - מנטה',              short:'Peppermint 3',      heb:'מנטה',        nic:3, em:'🌿'},
+  {nk:'S',qk:'T',  name:'Raspberry Soda 10 - פטל',          short:'Raspberry Soda 10', heb:'פטל',         nic:10,em:'🍓'},
+  {nk:'U',qk:'V',  name:'Watermelon 20 - אבטיח',            short:'Watermelon 20',     heb:'אבטיח',       nic:20,em:'🍉'},
+  {nk:'W',qk:'X',  name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
+  {nk:'Y',qk:'Z',  name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
+  {nk:'AA',qk:'AB', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25,em:'🍊'},
+  {nk:'AC',qk:'AD', name:'Double Apple 25 - תפוח כפול',     short:'Double Apple 25',   heb:'תפוח כפול',   nic:3, em:'🍏🍏'},
+  {nk:'AG',qk:'AH', name:'Kola 25 - קולה',                  short:'Kola 25',           heb:'קולה',        nic:25,em:'🥤'},
+  {nk:'AI',qk:'AJ', name:'Pineapple Ice 25 - אננס קרח',    short:'Pineapple Ice 25',  heb:'אננס קרח',    nic:25,em:'🍍'},
+  {nk:'AK',qk:'AL', name:'Nana Mint 25 - נענע מנטה',       short:'Nana Mint 25',      heb:'נענע מנטה',   nic:25,em:'🌱'},
+  {nk:'AM',qk:'AN', name:'Strawberry/Kiwi 25 - תות/קיווי', short:'Strawberry Kiwi 25',heb:'תות/קיווי',   nic:25,em:'🍓'},
+  {nk:'AE',qk:'AF', name:'Voon/Moov Mojito 50mg - מוחיטו',  short:'Voon Mojito 50',   heb:'מוחיטו',      nic:50,em:'🍹'},
 ];
 
 const INV_TAIL=[
@@ -484,7 +508,7 @@ function efR() {
 
 function efD() {
   const o = {};
-  o[COLS.docCustId] = ''; o[COLS.docDate] = tod();
+  o[COLS.docCustId] = ''; o[COLS.dnDate] = tod();
   o[COLS.price] = '13'; o[COLS.discount] = ''; o[COLS.delivNotes] = '';
   PRODS.forEach(p => { o[p.qk] = ''; o[p.nk] = p.name; });
   o._custEditRow = null; o._custEditId = null; o._custNotes = ''; o._custConsignment = '';
@@ -634,6 +658,20 @@ function isOrangeBg(rawBg) {
   const r = parseInt(m[1], 16), g = parseInt(m[2], 16), bl = parseInt(m[3], 16);
   return r > 140 && g > 60 && bl < 100 && r > g + 20 && r > bl + 80;
 }
+function calcDnInv(f) {
+  // Same as calcInv but uses DN_PRODS (DN sheet column layout)
+  let totalQty = 0, subtotal = 0;
+  DN_PRODS.forEach(p => {
+    const qty = parseInt(f[p.qk] || 0) || 0;
+    const price = parseFloat(f[COLS.price] || 0);
+    totalQty += qty; subtotal += qty * price;
+  });
+  const disc = parseFloat(f[COLS.discount] || 0) / 100;
+  const afterDisc = subtotal * (1 - disc);
+  const withVat = Math.round(afterDisc * 1.18 * 100) / 100;
+  return { totalQty, subtotal, afterDisc, withVat };
+}
+
 function calcInv(f) {
   const price = parseFloat(f[COLS.price]) || 0;
   const totalQty = PRODS.reduce((s, p) => s + (parseInt(f[p.qk]) || 0), 0);
@@ -1646,6 +1684,10 @@ function renderInvForm(isTax) {
       placeholder="0"
       oninput="uf('iForm','_custConsignment',this.value)">
   </div>
+  ${f[COLS.invDelivRef] ? `<div class="field"><label>מספר ת.מ. <small>(עמודה ${COLS.invDelivRef})</small></label>
+    <input type="text" class="finput" value="${esc(f[COLS.invDelivRef]||'')}" readonly
+      style="background:#f0f0f0;color:#555;cursor:default">
+  </div>` : ''}
   <div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
     <input type="date" id="inv-date" class="finput" style="direction:ltr;text-align:left"
       value="${dateToISO(f[COLS.docDate])}" max="${dateToISO(tod())}"
@@ -2245,11 +2287,11 @@ function renderDeliveryForm() {
   </div>
   <div class="field"><label>תאריך *</label>
     <input type="text" id="dn-date" class="finput" value="${esc(f[COLS.docDate]||'')}"
-      placeholder="DD/MM/YYYY" oninput="S.dForm[COLS.docDate]=this.value">
+      placeholder="DD/MM/YYYY" oninput="S.dForm[COLS.dnDate]=this.value">
   </div>`;
 
   h += `<div class="sec-t" style="margin-top:12px">כמויות</div><div class="prod-table">`;
-  PRODS.forEach(p => {
+  DN_PRODS.forEach(p => {
     const qty = f[p.qk] || '';
     h += `<div class="prod-field">
       <input type="text" inputmode="numeric" id="dn-qty-${p.qk}" class="pf-input" value="${qty||''}"
@@ -2370,7 +2412,7 @@ function adjDnQty(qk, delta) {
 function renderDnBar() {
   const el = document.getElementById('dn-bar');
   if (!el) return;
-  const calc = calcInv(S.dForm);
+  const calc = calcDnInv(S.dForm);
   const color = tc();
   el.innerHTML = calc.totalQty
     ? `<div class="inv-bar" style="background:${color}12;border-radius:8px;padding:10px 12px;margin:8px 0;direction:rtl;font-size:13px">
@@ -2389,7 +2431,7 @@ function deliveryFormErrors() {
       return 'הלקוח אינו קיים בטבלת לקוחות';
   }
   if (!f[COLS.docDate]?.trim()) return 'תאריך חסר';
-  if (!calcInv(f).totalQty) return 'יש להזין לפחות מוצר אחד';
+  if (!calcDnInv(f).totalQty) return 'יש להזין לפחות מוצר אחד';
   return null;
 }
 
@@ -2399,8 +2441,8 @@ async function saveDelivery() {
   if (err) { showToast('❌ ' + err, 'err'); return; }
   S.saving = true; S.msg = null; render();
   const f = S.dForm;
-  const allowed = new Set([COLS.docCustId, COLS.docCustName, COLS.docDate, COLS.price, COLS.discount, COLS.delivNotes,
-    ...PRODS.map(p => p.qk)]);
+  const allowed = new Set([COLS.docCustId, COLS.docCustName, COLS.dnDate, COLS.price, COLS.discount, COLS.delivNotes,
+    ...DN_PRODS.map(p => p.qk)]);
   const data = {};
   allowed.forEach(k => { const v = (f[k]||'').toString().trim(); if (v) data[k] = v; });
   try {
@@ -2430,15 +2472,18 @@ function convertToInvoice(rowIndex, asTax) {
   if (!d) { showToast('❌ תעודה לא נמצאה', 'err'); return; }
   const num = (d[COLS.delivNum]||'').trim();
   const ref = num ? 'ת.מ. מספר ' + num : 'ת.מ. שורה ' + rowIndex;
+  // origQtys: keyed by INVOICE column (PRODS[i].qk), values from DN row (DN_PRODS[i].qk)
   const origQtys = {};
-  PRODS.forEach(p => { origQtys[p.qk] = (d[p.qk]||'').toString().trim(); });
+  DN_PRODS.forEach((dnP, i) => { origQtys[PRODS[i].qk] = (d[dnP.qk]||'').toString().trim(); });
   S.iForm = {};
   S.iForm[COLS.docCustId]   = (d[COLS.docCustId]  ||'').trim();
   S.iForm[COLS.docCustName] = dnCustName(d); // uses stored col B or live customer lookup
   S.iForm[COLS.docDate]     = tod();
+  S.iForm[COLS.invDelivRef]  = (d[COLS.delivNum]||'').trim(); // DN ID → invoice col C
   S.iForm[COLS.price]       = (d[COLS.price]       ||'').toString().trim();
   S.iForm[COLS.discount]    = (d[COLS.discount]     ||'').toString().trim();
-  PRODS.forEach(p => { S.iForm[p.qk] = origQtys[p.qk]; });
+  // Map DN qty columns (DN_PRODS) → invoice qty columns (PRODS)
+  DN_PRODS.forEach((dnP, i) => { S.iForm[PRODS[i].qk] = (d[dnP.qk]||'').toString().trim(); });
   const custId = S.iForm[COLS.docCustId];
   const cust = S.customers.find(c => (c[COLS.custId]||'').trim() === custId);
   S.iForm._custEditRow     = cust ? cust._row : null;
@@ -3244,7 +3289,7 @@ async function executeSaveInv(isTax, calc) {
 
   const qkCols = PRODS.map(p => p.qk);
   // Only user-entered fields — never write calculated columns (AE subtotal, AG afterDisc, AI/AH totalVat, B bizName)
-  const allowed = new Set([COLS.docCustId, COLS.docDate, COLS.price, COLS.discount, ...qkCols]);
+  const allowed = new Set([COLS.docCustId, COLS.invDelivRef, COLS.docDate, COLS.price, COLS.discount, ...qkCols]);
 
   if (isTax && !isCashPartial) {
     [COLS.taxPayType, COLS.taxPayAmt, COLS.taxPayDate, COLS.taxChkNum, COLS.taxNotes, COLS.taxNum].forEach(k => allowed.add(k));
