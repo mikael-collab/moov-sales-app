@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.3'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.4'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -510,7 +510,7 @@ function efD() {
   const o = {};
   o[COLS.docCustId] = ''; o[COLS.dnDate] = tod();
   o[COLS.price] = '13'; o[COLS.discount] = ''; o[COLS.delivNotes] = '';
-  PRODS.forEach(p => { o[p.qk] = ''; o[p.nk] = p.name; });
+  DN_PRODS.forEach(p => { o[p.qk] = ''; }); // use DN sheet qty columns only
   o._custEditRow = null; o._custEditId = null; o._custNotes = ''; o._custConsignment = '';
   o._fromDelivery = null; // {rowIndex, num, origQtys} when converting from a delivery note
   return o;
