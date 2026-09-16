@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.5'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.6'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2286,8 +2286,9 @@ function renderDeliveryForm() {
       oninput="onDnCustIdInput(sanitizeId(this.value))">
   </div>
   <div class="field"><label>תאריך *</label>
-    <input type="text" id="dn-date" class="finput" value="${esc(f[COLS.dnDate]||'')}"
-      placeholder="DD/MM/YYYY" oninput="S.dForm[COLS.dnDate]=this.value">
+    <input type="date" id="dn-date" class="finput"
+      value="${dateToISO(f[COLS.dnDate] || tod())}"
+      onchange="S.dForm[COLS.dnDate]=this.value.split('-').reverse().join('/')">
   </div>`;
 
   h += `<div class="sec-t" style="margin-top:12px">כמויות</div><div class="prod-table">`;
@@ -2410,16 +2411,25 @@ function adjDnQty(qk, delta) {
 }
 
 function renderDnBar() {
-  const el = document.getElementById('dn-bar');
-  if (!el) return;
   const calc = calcDnInv(S.dForm);
   const color = tc();
-  el.innerHTML = calc.totalQty
-    ? `<div class="inv-bar" style="background:${color}12;border-radius:8px;padding:10px 12px;margin:8px 0;direction:rtl;font-size:13px">
-        <span>כמות: <b>${calc.totalQty}</b></span>
-        <span style="margin-right:12px">לפני הנחה: <b>${fmt(String(calc.subtotal))}</b></span>
-        <span style="margin-right:12px">סה"כ + מע"מ: <b style="color:${color}">${fmt(String(calc.withVat))}</b></span>
-      </div>` : '';
+  // Bar inside the form
+  const el = document.getElementById('dn-bar');
+  if (el) {
+    el.innerHTML = calc.totalQty
+      ? `<div class="inv-bar" style="background:${color}12;border-radius:8px;padding:10px 12px;margin:8px 0;direction:rtl;font-size:13px">
+          <span>כמות: <b>${calc.totalQty}</b></span>
+          <span style="margin-right:12px">לפני הנחה: <b>${fmt(String(calc.subtotal))}</b></span>
+          <span style="margin-right:12px">סה"כ + מע"מ: <b style="color:${color}">${fmt(String(calc.withVat))}</b></span>
+        </div>` : '';
+  }
+  // Header subtitle: show running quantity + rounded VAT total
+  const sub = document.getElementById('hdr-sub');
+  if (sub && S.screen === 'new-delivery') {
+    sub.textContent = calc.totalQty
+      ? `${calc.totalQty} יח' | ₪${Math.round(calc.withVat).toLocaleString('he-IL')}`
+      : 'מיקאל קולמן | MOOV';
+  }
 }
 
 function deliveryFormErrors() {
@@ -2430,7 +2440,7 @@ function deliveryFormErrors() {
     if (!S.customers.find(c => (c[COLS.custId]||'').trim() === custId))
       return 'הלקוח אינו קיים בטבלת לקוחות';
   }
-  if (!f[COLS.docDate]?.trim()) return 'תאריך חסר';
+  if (!f[COLS.dnDate]?.trim()) return 'תאריך חסר';
   if (!calcDnInv(f).totalQty) return 'יש להזין לפחות מוצר אחד';
   return null;
 }
