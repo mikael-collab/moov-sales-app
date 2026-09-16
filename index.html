@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.6'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.8'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -241,6 +241,8 @@ const COLS = {
   invDelivRef: 'C',    // מספר תעודת משלוח (אם רלוונטי) — NEW col C in invoice sheets
   docDate: 'D',        // תאריך (was C — shifted +1 by new col C)
   dnDate: 'C',         // תאריך in DN sheet (unchanged — DN sheet has no new col)
+  dnPrice: 'AN',       // מחיר in DN sheet (unchanged — was price col before shift)
+  dnDiscount: 'AP',    // הנחה in DN sheet (unchanged)
   
   price: 'AO',         // מחיר ליחידה
   subtotal: 'AP',      // סה"כ לפני מע"מ
@@ -509,7 +511,7 @@ function efR() {
 function efD() {
   const o = {};
   o[COLS.docCustId] = ''; o[COLS.dnDate] = tod();
-  o[COLS.price] = '13'; o[COLS.discount] = ''; o[COLS.delivNotes] = '';
+  o[COLS.dnPrice] = '13'; o[COLS.discount] = ''; o[COLS.delivNotes] = '';
   DN_PRODS.forEach(p => { o[p.qk] = ''; }); // use DN sheet qty columns only
   o._custEditRow = null; o._custEditId = null; o._custNotes = ''; o._custConsignment = '';
   o._fromDelivery = null; // {rowIndex, num, origQtys} when converting from a delivery note
@@ -663,10 +665,10 @@ function calcDnInv(f) {
   let totalQty = 0, subtotal = 0;
   DN_PRODS.forEach(p => {
     const qty = parseInt(f[p.qk] || 0) || 0;
-    const price = parseFloat(f[COLS.price] || 0);
+    const price = parseFloat(f[COLS.dnPrice] || 0);
     totalQty += qty; subtotal += qty * price;
   });
-  const disc = parseFloat(f[COLS.discount] || 0) / 100;
+  const disc = parseFloat(f[COLS.dnDiscount] || 0) / 100;
   const afterDisc = subtotal * (1 - disc);
   const withVat = Math.round(afterDisc * 1.18 * 100) / 100;
   return { totalQty, subtotal, afterDisc, withVat };
@@ -2308,12 +2310,12 @@ function renderDeliveryForm() {
 
   h += `<div class="irow" style="margin-top:12px;gap:10px">
     <div class="field" style="flex:1"><label>מחיר ₪</label>
-      <input type="number" inputmode="decimal" class="finput" value="${esc(f[COLS.price]||'')}"
-        oninput="S.dForm[COLS.price]=this.value;renderDnBar()" placeholder="13.00">
+      <input type="number" inputmode="decimal" class="finput" value="${esc(f[COLS.dnPrice]||'')}"
+        oninput="S.dForm[COLS.dnPrice]=this.value;renderDnBar()" placeholder="13.00">
     </div>
     <div class="field" style="flex:1"><label>הנחה %</label>
-      <input type="number" inputmode="decimal" class="finput" value="${esc(f[COLS.discount]||'')}"
-        oninput="S.dForm[COLS.discount]=this.value;renderDnBar()" placeholder="0">
+      <input type="number" inputmode="decimal" class="finput" value="${esc(f[COLS.dnDiscount]||'')}"
+        oninput="S.dForm[COLS.dnDiscount]=this.value;renderDnBar()" placeholder="0">
     </div>
   </div>`;
 
@@ -2451,7 +2453,7 @@ async function saveDelivery() {
   if (err) { showToast('❌ ' + err, 'err'); return; }
   S.saving = true; S.msg = null; render();
   const f = S.dForm;
-  const allowed = new Set([COLS.docCustId, COLS.docCustName, COLS.dnDate, COLS.price, COLS.discount, COLS.delivNotes,
+  const allowed = new Set([COLS.docCustId, COLS.dnDate, COLS.dnPrice, COLS.dnDiscount, COLS.delivNotes, // docCustName excluded — col B has XLOOKUP formula in DN sheet
     ...DN_PRODS.map(p => p.qk)]);
   const data = {};
   allowed.forEach(k => { const v = (f[k]||'').toString().trim(); if (v) data[k] = v; });
