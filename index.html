@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.4'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.5'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2286,7 +2286,7 @@ function renderDeliveryForm() {
       oninput="onDnCustIdInput(sanitizeId(this.value))">
   </div>
   <div class="field"><label>תאריך *</label>
-    <input type="text" id="dn-date" class="finput" value="${esc(f[COLS.docDate]||'')}"
+    <input type="text" id="dn-date" class="finput" value="${esc(f[COLS.dnDate]||'')}"
       placeholder="DD/MM/YYYY" oninput="S.dForm[COLS.dnDate]=this.value">
   </div>`;
 
