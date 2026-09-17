@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.9'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.0'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -908,8 +908,27 @@ async function runDiagnose() {
 // Transient error = network/timeout/cold-start — safe to auto-retry once.
 // GAS logic errors (sheet not found, script error) are non-transient — don't retry.
 function isTransient(e) {
-  const m = (e?.message || '').toUpperCase();
-  return m === 'TIMEOUT' || m === 'FAILED TO FETCH' || m.includes('NETWORKERROR') || m.startsWith('HTTP 5');
+  // Network/timeout errors that are safe to retry once.
+  // iOS Safari uses different messages than Chrome/Firefox — must catch all variants:
+  //   Chrome/FF: "Failed to fetch"
+  //   iOS Safari: "Load failed", "The network connection was lost", "cancelled"
+  //   AbortController (all): converted to "TIMEOUT" above
+  if (!e) return false;
+  const m = (e.message || '').toUpperCase();
+  const n = (e.name   || '').toUpperCase();
+  return n === 'ABORTERROR'
+      || m === 'TIMEOUT'
+      || m.includes('FETCH')        // "Failed to fetch" (Chrome/FF)
+      || m.includes('LOAD FAILED')  // iOS Safari
+      || m.includes('LOAD_FAILED')
+      || m.includes('NETWORKERROR')
+      || m.includes('NETWORK')      // "Network request failed" (React Native / some Safari)
+      || m.includes('OFFLINE')
+      || m.includes('CONNECTION')
+      || m.includes('INTERNET')
+      || m.includes('CANCELLED')    // iOS sometimes says "cancelled"
+      || m.includes('CANCELED')
+      || m.startsWith('HTTP 5');    // 5xx server errors — retry-safe
 }
 
 async function loadAny(tab, stateKey, limit, req) {
