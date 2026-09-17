@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v5.8'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v5.9'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -511,7 +511,7 @@ function efR() {
 function efD() {
   const o = {};
   o[COLS.docCustId] = ''; o[COLS.dnDate] = tod();
-  o[COLS.dnPrice] = '13'; o[COLS.discount] = ''; o[COLS.delivNotes] = '';
+  o[COLS.dnPrice] = '13'; o[COLS.dnDiscount] = ''; o[COLS.delivNotes] = '';
   DN_PRODS.forEach(p => { o[p.qk] = ''; }); // use DN sheet qty columns only
   o._custEditRow = null; o._custEditId = null; o._custNotes = ''; o._custConsignment = '';
   o._fromDelivery = null; // {rowIndex, num, origQtys} when converting from a delivery note
@@ -2225,12 +2225,13 @@ function renderDeliveryList() {
 
   list.slice().reverse().forEach(d => {
     const custName = dnCustName(d);
-    const date = d[COLS.docDate] || '';
+    const date  = d[COLS.dnDate] || '';
     const total = parseMoney(d[COLS.delivTotalVat]) || 0;
     const notes = d[COLS.delivNotes] || '';
     const num   = d[COLS.delivNum] || '';
     const rowIdx = d._rowIndex;
     const isExp  = S.expId === rowIdx;
+    const totalQty = DN_PRODS.reduce((s, p) => s + (parseInt(d[p.qk]||0)||0), 0);
 
     h += `<div class="card" style="border-right:4px solid ${color};cursor:pointer"
       onclick="S.expId=(S.expId===${rowIdx}?null:${rowIdx});render()">
@@ -2240,8 +2241,8 @@ function renderDeliveryList() {
           <div style="font-size:11px;color:#888">${esc(d[COLS.docCustId]||'')}${num ? ' | ת.מ. ' + esc(num) : ''}</div>
         </div>
         <div style="text-align:left">
-          <div style="font-size:15px;font-weight:700;color:${color}">${total ? fmt(String(total)) : '—'}</div>
-          <div style="font-size:11px;color:#aaa">${esc(date)}</div>
+          <div style="font-size:15px;font-weight:700;color:${color}">${total ? fmt(String(total)) : (totalQty ? '₪—' : '—')}</div>
+          <div style="font-size:11px;color:#aaa">${esc(date)}${totalQty ? " · " + totalQty + " יח'" : ""}</div>
         </div>
       </div>
       ${notes && isExp ? `<div style="font-size:12px;color:#666;margin-top:6px">${esc(notes)}</div>` : ''}
@@ -2492,8 +2493,8 @@ function convertToInvoice(rowIndex, asTax) {
   S.iForm[COLS.docCustName] = dnCustName(d); // uses stored col B or live customer lookup
   S.iForm[COLS.docDate]     = tod();
   S.iForm[COLS.invDelivRef]  = (d[COLS.delivNum]||'').trim(); // DN ID → invoice col C
-  S.iForm[COLS.price]       = (d[COLS.price]       ||'').toString().trim();
-  S.iForm[COLS.discount]    = (d[COLS.discount]     ||'').toString().trim();
+  S.iForm[COLS.price]       = (d[COLS.dnPrice]    ||'').toString().trim();
+  S.iForm[COLS.discount]    = (d[COLS.dnDiscount] ||'').toString().trim();
   // Map DN qty columns (DN_PRODS) → invoice qty columns (PRODS)
   DN_PRODS.forEach((dnP, i) => { S.iForm[PRODS[i].qk] = (d[dnP.qk]||'').toString().trim(); });
   const custId = S.iForm[COLS.docCustId];
