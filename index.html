@@ -217,7 +217,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v6.0'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.2'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2297,10 +2297,11 @@ function renderDeliveryForm() {
   if (S.msg) h += alertHtml(S.msg);
   h += `<div class="sec-t">📦 תעודת משלוח חדשה</div>`;
 
-  h += `<div class="field"><label>שם לקוח *</label>
+  h += `<div class="field" style="position:relative"><label>שם לקוח *</label>
     <input type="text" id="dn-custName" class="finput"
       value="${esc(f[COLS.docCustName]||f[COLS.docCustId]||'')}" placeholder="הקלד שם..."
       oninput="onDnCustSearch(this.value)">
+    <div id="dn-suggest-box" class="suggest-box" style="display:none"></div>
   </div>
   <div class="field"><label>ת.ז. / ח.פ.</label>
     <input type="text" inputmode="numeric" id="dn-custId" class="finput num"
@@ -2376,7 +2377,7 @@ function pickDnCust(id, name) {
   // Update input value directly so the field shows the chosen name,
   // remove the dropdown via DOM (no keyboard-dismissing render needed)
   const box = document.getElementById('dn-suggest-box');
-  if (box) box.remove();
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
   const inp = document.getElementById('dn-custName');
   if (inp) inp.value = name;
   const idInp = document.getElementById('dn-custId');
@@ -2385,42 +2386,45 @@ function pickDnCust(id, name) {
 
 function onDnCustSearch(val) {
   S.dForm[COLS.docCustName] = val;
-  const inp  = document.getElementById('dn-custName');
-  const wrap = inp?.parentElement;
-  let box = document.getElementById('dn-suggest-box');
+  const box = document.getElementById('dn-suggest-box');
   if (!val.trim()) {
     S.suggest = []; S.showSuggest = false;
-    if (box) box.remove();
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
     return;
   }
   const q = val.trim().toLowerCase();
+  // Search by company name (custBiz), contact name (custName), and ID — same as invoice form
   S.suggest = S.customers.filter(c =>
-    (c[COLS.custName]||'').toLowerCase().includes(q) || (c[COLS.custId]||'').includes(q)
+    (c[COLS.custBiz] ||'').toLowerCase().includes(q) ||
+    (c[COLS.custName]||'').toLowerCase().includes(q) ||
+    (c[COLS.custId]  ||'').toLowerCase().includes(q)
   ).slice(0, 6);
   S.showSuggest = !!S.suggest.length;
-  if (S.showSuggest && wrap) {
-    const inner = S.suggest.map(c =>
-      `<div class="sug-item" onmousedown="event.preventDefault()"
-        onclick="pickDnCust('${esc(c[COLS.custId]||'')}','${esc(c[COLS.custName]||'')}')">
-        <div>${esc(c[COLS.custName]||'')}</div>
-        <div class="sug-sub">${esc(c[COLS.custId]||'')}</div>
-      </div>`
-    ).join('');
-    if (box) { box.innerHTML = inner; }
-    else {
-      const el = document.createElement('div');
-      el.className = 'suggest-box'; el.id = 'dn-suggest-box';
-      el.innerHTML = inner; wrap.style.position = 'relative'; wrap.appendChild(el);
+  if (box) {
+    if (S.showSuggest) {
+      box.innerHTML = S.suggest.map(c =>
+        `<div class="sug-item" onmousedown="event.preventDefault()"
+          onclick="pickDnCust('${esc(c[COLS.custId]||'')}','${esc(c[COLS.custBiz]||c[COLS.custName]||'')}')">
+          <div>${esc(c[COLS.custBiz]||c[COLS.custName]||'\u2014')}</div>
+          <div class="sug-sub">${c[COLS.custBiz]&&c[COLS.custName] ? esc(c[COLS.custName])+' · ' : ''}${esc(c[COLS.custId]||'')}</div>
+        </div>`
+      ).join('');
+      box.style.display = '';
+    } else {
+      box.style.display = 'none';
+      box.innerHTML = '';
     }
-  } else if (box) { box.remove(); }
+  }
 }
 
 function onDnCustIdInput(val) {
   S.dForm[COLS.docCustId] = val;
   const cust = S.customers.find(c => c[COLS.custId] === val.trim());
   if (cust) {
-    S.dForm[COLS.docCustName] = cust[COLS.custName] || '';
+    S.dForm[COLS.docCustName] = cust[COLS.custBiz] || cust[COLS.custName] || '';
     S.dForm._custEditRow = cust._row; S.dForm._custEditId = cust._id;
+    const inp = document.getElementById('dn-custName');
+    if (inp) inp.value = S.dForm[COLS.docCustName];
   }
 }
 
