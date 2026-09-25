@@ -212,12 +212,13 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
     <button class="bnav-btn" data-tab="receipts"  onclick="switchTab('receipts')"><span class="ico">🧾</span><span class="lbl">קבלות</span></button>
     <button class="bnav-btn" data-tab="tax"       onclick="switchTab('tax')"><span class="ico">📋</span><span class="lbl">חשמ"ק</span></button>
     <button class="bnav-btn" data-tab="delivery"  onclick="switchTab('delivery')"><span class="ico">📦</span><span class="lbl">ת.מ.</span></button>
+    <button class="bnav-btn" data-tab="returns"   onclick="switchTab('returns')"><span class="ico">↩️</span><span class="lbl">ת.ח.</span></button>
   </div>
 </div>
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v6.2'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.4'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -309,8 +310,9 @@ const TABS={
   receipts: {label:'קבלות',           color:'#1e8e3e',bg:'#e6f4ea'},
   tax:      {label:'חשבוניות/קבלות', color:'#7b1fa2',bg:'#f3e5f5'},
   delivery: {label:'ת.מ.',            color:'#00796b',bg:'#e0f2f1'},
+  returns:  {label:'ת.ח.',            color:'#c62828',bg:'#ffebee'},
 };
-const SHEETS={customers:'לקוחות',invoices:'חשבוניות',receipts:'קבלות',tax:'חשבוניות/קבלות',delivery:'תעודות משלוח',deliveries:'תעודות משלוח'};
+const SHEETS={customers:'לקוחות',invoices:'חשבוניות',receipts:'קבלות',tax:'חשבוניות/קבלות',delivery:'תעודות משלוח',deliveries:'תעודות משלוח',returns:'תעודות החזרה',returnsList:'תעודות החזרה'};
 const PAYMENT_TYPES=['מזומן','שיק'];
 
 const CF=[
@@ -480,6 +482,7 @@ const S = {
   receipts: [], rsState: 'idle',
   tax: [], tsState: 'idle',
   deliveries: [], dnState: 'idle', dForm: {},
+  returnsList: [], rtState: 'idle', rtnForm: {},
   search: '', expId: null,
   cForm: {}, rForm: {}, iForm: {},
   saving: false, msg: null,
@@ -972,6 +975,7 @@ const loadInvoices = () => loadAny('invoices', 'isState', 0, COLS.docCustId);
 const loadReceipts = () => loadAny('receipts', 'rsState', 0, COLS.recInvNum);
 const loadTax = () => loadAny('tax', 'tsState', 0, COLS.docCustId);
 const loadDeliveries = () => loadAny('deliveries', 'dnState', 0, COLS.docCustId);
+const loadReturns     = () => loadAny('returnsList', 'rtState', 0, COLS.docCustId);
 
 // ── Nav ──
 function syncNav() {
@@ -1002,6 +1006,8 @@ function switchTab(tab) {
     if (S.tsState === 'idle') loadTax();
   } else if (tab === 'delivery') {
     if (S.dnState === 'idle') loadDeliveries();
+  } else if (tab === 'returns') {
+    if (S.rtState === 'idle') loadReturns();
   } else if (tab === 'customers') {
     // Invoices + receipts are needed for open-balance lookups — load them in sequence.
     if (S.isState === 'idle') setTimeout(() => { if (S.isState === 'idle') loadInvoices(); }, 800);
@@ -1016,6 +1022,7 @@ const SCREEN_LABELS = {
   'new-receipt':  'קבלה',
   'new-customer': 'לקוח',
   'new-delivery': 'תעודת משלוח',
+  'new-return':   'תעודת החזרה',
 };
 
 function _doGoBackToList() {
@@ -1185,12 +1192,14 @@ function render() {
   else if (scr === 'new-invoice') el.innerHTML = renderInvForm(false);
   else if (scr === 'new-tax') el.innerHTML = renderInvForm(true);
   else if (scr === 'new-delivery') el.innerHTML = renderDeliveryForm();
+  else if (scr === 'new-return')   el.innerHTML = renderReturnForm();
   else {
     try {
       if      (S.tab === 'customers') el.innerHTML = renderCustList();
       else if (S.tab === 'invoices') el.innerHTML = renderDocList(S.invoices, S.isState, false);
       else if (S.tab === 'receipts') el.innerHTML = renderRecList();
       else if (S.tab === 'delivery') el.innerHTML = renderDeliveryList();
+      else if (S.tab === 'returns')   el.innerHTML = renderReturnsList();
       else                           el.innerHTML = renderDocList(S.tax, S.tsState, true);
     } catch(renderErr) {
       el.innerHTML = `<div class="status"><p style="color:#c62828">שגיאת תצוגה: ${esc(renderErr.message)}</p>
@@ -1249,7 +1258,7 @@ function renderSettings() {
 
   if (connected) {
     h += `<div class="stitle">נתונים</div><div class="scard">
-      ${[['customers','לקוחות','csState','customers'],['invoices','חשבוניות','isState','invoices'],['receipts','קבלות','rsState','receipts'],['tax','חשמ"ק','tsState','tax'],['delivery','ת.מ.','dnState','deliveries']].map(([k, lbl, sk, dk], i) => {
+      ${[['customers','לקוחות','csState','customers'],['invoices','חשבוניות','isState','invoices'],['receipts','קבלות','rsState','receipts'],['tax','חשמ"ק','tsState','tax'],['delivery','ת.מ.','dnState','deliveries'],['returns','ת.ח.','rtState','returnsList']].map(([k, lbl, sk, dk], i) => {
         const st = S[sk]; const cnt = (S[dk]||[]).length; const err = S.errors[k] || '';
         return `<div class="srow"${i === 0 ? ' style="border-top:none"' : ''}>
           <span class="slabel" style="font-size:12px">${lbl}</span>
@@ -1710,7 +1719,7 @@ function renderInvForm(isTax) {
       style="background:#f0f0f0;color:#555;cursor:default">
   </div>` : ''}
   <div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
-    <input type="date" id="inv-date" class="finput" style="direction:ltr;text-align:left"
+    <input type="date" lang="he" id="inv-date" class="finput" style="direction:ltr;text-align:left"
       value="${dateToISO(f[COLS.docDate])}" max="${dateToISO(tod())}"
       oninput="uf('iForm','${COLS.docDate}',isoToHeb(this.value))">
   </div>`;
@@ -1790,7 +1799,7 @@ function renderInvForm(isTax) {
         oninput="uf('iForm','${COLS.taxChkNum}',this.value);renderSaveBtn()">
     </div>
     <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.taxPayDate}) *</small></label>
-      <input type="date" id="f-taxPayDate" class="finput"
+      <input type="date" lang="he" id="f-taxPayDate" class="finput"
         value="${dateToISO(f[COLS.taxPayDate] || tod())}"
         onchange="uf('iForm','${COLS.taxPayDate}',this.value.split('-').reverse().join('/'));renderSaveBtn()">
     </div>
@@ -1974,7 +1983,7 @@ function renderReceiptForm() {
         oninput="uf('rForm','${COLS.recChkNum}',this.value);renderSaveBtnRec()">
     </div>
     <div class="field"><label>תאריך פרעון שיק <small>(עמודה ${COLS.recPayDate}) *</small></label>
-      <input type="date" id="r-${COLS.recPayDate}" class="finput"
+      <input type="date" lang="he" id="r-${COLS.recPayDate}" class="finput"
         value="${dateToISO(rf[COLS.recPayDate] || tod())}"
         onchange="uf('rForm','${COLS.recPayDate}',this.value.split('-').reverse().join('/'));renderSaveBtnRec()">
     </div>
@@ -2265,14 +2274,18 @@ function renderDeliveryList() {
         </div>
       </div>
       ${notes && isExp ? `<div style="font-size:12px;color:#666;margin-top:6px">${esc(notes)}</div>` : ''}
-      ${isExp ? `<div style="display:flex;gap:8px;margin-top:10px">
+      ${isExp ? `<div style="display:flex;gap:6px;margin-top:10px">
         <button onclick="event.stopPropagation();convertToInvoice(${rowIdx})"
-          style="flex:1;background:${color};color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+          style="flex:1;background:${color};color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
           📄 חשבונית
         </button>
         <button onclick="event.stopPropagation();convertToInvoice(${rowIdx},true)"
-          style="flex:1;background:${color}22;color:${color};border:1.5px solid ${color};border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-          📋 חשמק
+          style="flex:1;background:${color}22;color:${color};border:1.5px solid ${color};border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
+          📋 חשמ"ק
+        </button>
+        <button onclick="event.stopPropagation();convertDnToReturn(${rowIdx})"
+          style="flex:1;background:#c62828;color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
+          ↩️ ת.ח.
         </button>
       </div>` : ''}
     </div>`;
@@ -2309,7 +2322,7 @@ function renderDeliveryForm() {
       oninput="onDnCustIdInput(sanitizeId(this.value))">
   </div>
   <div class="field"><label>תאריך *</label>
-    <input type="date" id="dn-date" class="finput"
+    <input type="date" lang="he" id="dn-date" class="finput"
       value="${dateToISO(f[COLS.dnDate] || tod())}"
       onchange="S.dForm[COLS.dnDate]=this.value.split('-').reverse().join('/')">
   </div>`;
@@ -2393,12 +2406,11 @@ function onDnCustSearch(val) {
     return;
   }
   const q = val.trim().toLowerCase();
-  // Search by company name (custBiz), contact name (custName), and ID — same as invoice form
+  const words = q.split(/\s+/).filter(Boolean);
+  const keys = [COLS.custBiz, COLS.custName, COLS.custId];
   S.suggest = S.customers.filter(c =>
-    (c[COLS.custBiz] ||'').toLowerCase().includes(q) ||
-    (c[COLS.custName]||'').toLowerCase().includes(q) ||
-    (c[COLS.custId]  ||'').toLowerCase().includes(q)
-  ).slice(0, 6);
+    words.every(w => keys.some(k => (c[k]||'').toLowerCase().includes(w)))
+  ).slice(0, 8);
   S.showSuggest = !!S.suggest.length;
   if (box) {
     if (S.showSuggest) {
@@ -2538,6 +2550,216 @@ function convertToInvoice(rowIndex, asTax) {
 }
 
 
+// ════════════════════════════════════════════════════
+// RETURN NOTES (תעודות החזרה)
+// Column layout mirrors תעודות משלוח (DN_PRODS, dnDate, dnPrice, dnDiscount)
+// Returns can only be created from an existing DN.
+// ════════════════════════════════════════════════════
+
+function efRtn() {
+  const o = {};
+  o[COLS.docCustId] = ''; o[COLS.dnDate] = tod();
+  o[COLS.dnPrice] = ''; o[COLS.dnDiscount] = ''; o[COLS.delivNotes] = '';
+  DN_PRODS.forEach(p => { o[p.qk] = ''; });
+  o._custEditRow = null; o._custEditId = null;
+  o._srcDnRef = '';   // reference to the source DN (num or row_N)
+  o._srcDnRow = null; // _rowIndex of source DN for display
+  return o;
+}
+
+function renderReturnsList() {
+  const color = tc(), state = S.rtState;
+  const label = 'תעודות החזרה', reload = 'loadReturns()';
+  if (state === 'error') return errScreen(S.errors.returnsList, reload, label, color);
+  if (state !== 'ok')   return statusHtml(state, reload, label);
+
+  const q = S.search.trim().toLowerCase();
+  const list = (S.returnsList||[]).filter(d =>
+    !q ||
+    (d[COLS.docCustId]||'').toLowerCase().includes(q) ||
+    (d[COLS.docCustName]||'').toLowerCase().includes(q) ||
+    (d[COLS.delivNum]||'').toLowerCase().includes(q)
+  );
+
+  let h = `<div class="sbar" style="position:sticky;top:0;z-index:10;background:#fff">
+    <div class="swrap">
+      <input class="sinput" id="sinput" type="text" placeholder="חיפוש לקוח..."
+        value="${esc(S.search)}" oninput="S.search=this.value;render()">
+      <span class="sico">🔍</span>
+    </div>
+  </div>`;
+
+  if (!list.length) {
+    h += `<div class="status"><p style="font-size:36px">↩️</p>
+      <p style="color:#999;margin-bottom:16px">אין תעודות החזרה${q ? ' תואמות' : ''}</p>
+      <p style="font-size:12px;color:#bbb">ניתן ליצור תעודת החזרה מתוך תעודת משלוח</p></div>`;
+    return h;
+  }
+
+  list.slice().reverse().forEach(d => {
+    const custName = dnCustName(d);
+    const date  = d[COLS.dnDate] || '';
+    const total = parseMoney(d[COLS.delivTotalVat]) || 0;
+    const notes = d[COLS.delivNotes] || '';
+    const num   = d[COLS.delivNum] || '';
+    const rowIdx = d._rowIndex;
+    const isExp  = S.expId === rowIdx;
+    const totalQty = DN_PRODS.reduce((s, p) => s + (parseInt(d[p.qk]||0)||0), 0);
+
+    h += `<div class="card" style="border-right:4px solid ${color};cursor:pointer"
+      onclick="S.expId=(S.expId===${rowIdx}?null:${rowIdx});render()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700;font-size:14px">${esc(custName)}</div>
+          <div style="font-size:11px;color:#888">${esc(d[COLS.docCustId]||'')}${num ? ' | ת.ח. ' + esc(num) : ''}</div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-size:15px;font-weight:700;color:${color}">${total ? fmt(String(total)) : (totalQty ? '₪—' : '—')}</div>
+          <div style="font-size:11px;color:#aaa">${esc(date)}${totalQty ? ' · ' + totalQty + " יח'" : ''}</div>
+        </div>
+      </div>
+      ${notes && isExp ? `<div style="font-size:12px;color:#666;margin-top:6px">${esc(notes)}</div>` : ''}
+    </div>`;
+  });
+  return h;
+}
+
+function convertDnToReturn(rowIndex) {
+  const d = S.deliveries.find(r => r._rowIndex === rowIndex);
+  if (!d) { showToast('❌ תעודה לא נמצאה', 'err'); return; }
+  const num = (d[COLS.delivNum]||'').trim();
+  const ref = num ? 'ת.מ. מספר ' + num : 'ת.מ. שורה ' + rowIndex;
+
+  S.rtnForm = efRtn();
+  S.rtnForm[COLS.docCustId]  = (d[COLS.docCustId] ||'').trim();
+  S.rtnForm[COLS.docCustName]= (d[COLS.docCustName]||'').trim() || dnCustName(d);
+  S.rtnForm[COLS.dnDate]     = tod();
+  S.rtnForm[COLS.dnPrice]    = (d[COLS.dnPrice]    ||'').toString().trim();
+  S.rtnForm[COLS.dnDiscount] = (d[COLS.dnDiscount] ||'').toString().trim();
+  S.rtnForm[COLS.delivNotes] = 'החזרה מ' + ref;
+  S.rtnForm._srcDnRef = ref;
+  S.rtnForm._srcDnRow = rowIndex;
+  DN_PRODS.forEach(p => { S.rtnForm[p.qk] = (d[p.qk]||'').toString().trim(); });
+
+  S.screen = 'new-return'; S.tab = 'returns'; S.msg = null;
+  setHeader(); syncNav(); render(); scrollToTop();
+}
+
+function renderReturnForm() {
+  const f = S.rtnForm; const color = tc();
+  let h = `<div class="fwrap" style="--tc:${color}">`;
+  if (S.msg) h += alertHtml(S.msg);
+  h += `<div class="sec-t">↩️ תעודת החזרה</div>`;
+
+  // Source DN reference (read-only)
+  if (f._srcDnRef) {
+    h += `<div class="field"><div style="background:#ffebee;border-radius:8px;padding:9px 12px;font-size:13px;color:#c62828;font-weight:600">
+      ↩️ ${esc(f._srcDnRef)}</div></div>`;
+  }
+
+  // Customer (read-only, pre-filled from DN)
+  h += `<div class="field"><label>לקוח</label>
+    <input type="text" class="finput" value="${esc(dnCustName(f) || f[COLS.docCustName] || f[COLS.docCustId] || '')}" readonly
+      style="background:#f0f0f0;color:#555;cursor:default">
+  </div>
+  <div class="field"><label>תאריך</label>
+    <input type="date" id="rtn-date" class="finput" lang="he"
+      value="${dateToISO(f[COLS.dnDate] || tod())}"
+      onchange="S.rtnForm[COLS.dnDate]=this.value.split('-').reverse().join('/')">
+  </div>`;
+
+  // Products — show all, pre-filled from DN
+  h += `<div class="sec-t" style="margin-top:12px">כמויות להחזרה</div><div class="prod-table">`;
+  DN_PRODS.forEach(p => {
+    const qty = f[p.qk] || '';
+    h += `<div class="prod-field">
+      <input type="text" inputmode="numeric" id="rtn-qty-${p.qk}" class="pf-input" value="${qty||''}"
+        placeholder="0" style="--tc:${color}" autocomplete="off"
+        oninput="S.rtnForm['${p.qk}']=this.value.replace(/[^0-9]/g,'');renderRtnBar()">
+      <div class="pf-left">
+        <div><div class="pf-name">${p.short}</div><div class="pf-sub">${p.heb} • ${p.nic}mg</div></div>
+        <span class="pf-em">${p.em}</span>
+      </div>
+    </div>`;
+  });
+  h += `</div>`;
+
+  h += `<div id="rtn-bar"></div>`;
+
+  h += `<div class="field"><label>הערות</label>
+    <textarea class="finput" rows="2" placeholder="הערות להחזרה..."
+      oninput="S.rtnForm[COLS.delivNotes]=this.value">${esc(f[COLS.delivNotes]||'')}</textarea>
+  </div>`;
+
+  h += `<button onclick="saveReturn()"
+    style="width:100%;padding:14px;background:${color};color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px">
+    שמור תעודת החזרה
+  </button>`;
+  h += `</div>`;
+  return h;
+}
+
+function renderRtnBar() {
+  const el = document.getElementById('rtn-bar');
+  if (!el) return;
+  const f = S.rtnForm;
+  const calc = calcDnInv(f);
+  const color = tc();
+  el.innerHTML = calc.totalQty
+    ? `<div class="inv-bar" style="background:${color}12;border-radius:8px;padding:10px 12px;margin:8px 0;direction:rtl;font-size:13px">
+        <span>כמות: <b>${calc.totalQty}</b></span>
+        <span style="margin-right:12px">סה"כ + מע"מ: <b style="color:${color}">${fmt(String(calc.withVat))}</b></span>
+      </div>` : '';
+  const sub = document.getElementById('hdr-sub');
+  if (sub && S.screen === 'new-return') {
+    sub.textContent = calc.totalQty
+      ? calc.totalQty + " יח' | \u20aa" + Math.round(calc.withVat).toLocaleString('he-IL')
+      : '\u05de\u05d9\u05e7\u05d0\u05dc \u05e7\u05d5\u05dc\u05de\u05df | MOOV';
+  }
+}
+
+function returnFormErrors() {
+  const f = S.rtnForm;
+  if (!f[COLS.docCustId]?.trim()) return '\u05dc\u05e7\u05d5\u05d7 \u05d7\u05e1\u05e8';
+  if (!f[COLS.dnDate]?.trim()) return '\u05ea\u05d0\u05e8\u05d9\u05da \u05d7\u05e1\u05e8';
+  if (!calcDnInv(f).totalQty) return '\u05d9\u05e9 \u05dc\u05d4\u05d6\u05d9\u05df \u05db\u05de\u05d5\u05ea \u05dc\u05d4\u05d7\u05d6\u05e8\u05d4';
+  return null;
+}
+
+async function saveReturn() {
+  if (S.saving) return;
+  const err = returnFormErrors();
+  if (err) { showToast('\u274c ' + err, 'err'); return; }
+  S.saving = true; S.msg = null; render();
+  const f = S.rtnForm;
+  const allowed = new Set([COLS.docCustId, COLS.dnDate, COLS.dnPrice, COLS.dnDiscount, COLS.delivNotes,
+    ...DN_PRODS.map(p => p.qk)]);
+  const data = {};
+  allowed.forEach(k => { const v = (f[k]||'').toString().trim(); if (v) data[k] = v; });
+  try {
+    const res = await apiPost({ action: 'addReturn', data });
+    const beforeRow = localLastRowIndex(S.returnsList);
+    const ok = await verifyRowAdded(SHEETS.returns, beforeRow,
+      { skip: !!(res && res.savedRow && !res.unconfirmed) });
+    S.saving = false;
+    if (ok) {
+      S.returnsList.push({ ...data, _id: S.returnsList.length, _bg: '#ffffff' });
+      S.msg = { t: 's', m: '\u05ea\u05e2\u05d5\u05d3\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4 \u05e0\u05e9\u05de\u05e8\u05d4!' };
+      render();
+      setTimeout(() => { S.screen = 'list'; S.rtnForm = {}; S.msg = null; setHeader(); render(); }, 1500);
+    } else {
+      render();
+      showAlert('\u26a0\ufe0f \u05dc\u05d0 \u05d0\u05d5\u05de\u05ea \u05d1\u05d2\u05d9\u05dc\u05d9\u05d5\u05df',
+        '\u05e9\u05dc\u05d7\u05e0\u05d5 \u05d0\u05ea \u05d4\u05ea\u05e2\u05d5\u05d3\u05d4 \u05d0\u05da \u05dc\u05d0 \u05d0\u05d5\u05de\u05ea\u05e0\u05d5 \u05e9\u05e0\u05e9\u05de\u05e8\u05d4.',
+        () => { S.screen = 'list'; S.rtnForm = {}; S.msg = null; setHeader(); render(); });
+    }
+  } catch(e) {
+    showToast('\u274c ' + (e.message||'\u05e9\u05d2\u05d9\u05d0\u05d4'), 'err');
+    S.saving = false; render();
+  }
+}
+
+
 function renderDocList(data, state, isTax) {
   const label  = isTax ? 'חשבוניות/קבלות' : 'חשבוניות';
   const reload = isTax ? 'loadTax()' : 'loadInvoices()';
@@ -2625,14 +2847,17 @@ function onCustSearch(val) {
   const inp = document.getElementById('r-H');
   const wrap = inp?.parentElement;
   let box = document.getElementById('suggest-box');
-  if (val.length < 2) {
+  if (val.trim().length < 1) {
     S.suggest = []; S.showSuggest = false;
     if (box) box.remove();
     return;
   }
-  const q = val.toLowerCase();
-  const keys = [COLS.custName, COLS.custId, COLS.custBiz];
-  S.suggest = S.customers.filter(c => keys.some(k => (c[k] || '').toLowerCase().includes(q)));
+  const q = val.trim().toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
+  const keys = [COLS.custBiz, COLS.custName, COLS.custId];
+  S.suggest = S.customers.filter(c =>
+    words.every(w => keys.some(k => (c[k]||'').toLowerCase().includes(w)))
+  ).slice(0, 8);
   S.showSuggest = S.suggest.length > 0;
   if (S.showSuggest && wrap) {
     const inner = S.suggest.slice(0, 6).map(c => `<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickCustomer('${esc(c[COLS.custName] || '')}','${esc(c[COLS.custId] || '')}')">
@@ -2668,14 +2893,17 @@ function onInvCustSearch(val) {
   const inp = document.getElementById('inv-custName');
   const wrap = inp?.parentElement;
   let box = document.getElementById('suggest-box');
-  if (val.length < 2) {
+  if (val.trim().length < 1) {
     S.suggest = []; S.showSuggest = false;
     if (box) box.remove();
     return;
   }
-  const q = val.toLowerCase();
-  const keys = [COLS.custName, COLS.custId, COLS.custBiz];
-  S.suggest = S.customers.filter(c => keys.some(k => (c[k] || '').toLowerCase().includes(q)));
+  const q = val.trim().toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
+  const keys = [COLS.custBiz, COLS.custName, COLS.custId];
+  S.suggest = S.customers.filter(c =>
+    words.every(w => keys.some(k => (c[k]||'').toLowerCase().includes(w)))
+  ).slice(0, 8);
   S.showSuggest = S.suggest.length > 0;
   if (S.showSuggest && wrap) {
     const inner = S.suggest.slice(0, 6).map(c => `<div class="sug-item" onmousedown="event.preventDefault()" onclick="pickInvCust('${esc(c[COLS.custId] || '')}','${esc(c[COLS.custBiz] || c[COLS.custName] || '')}')">
