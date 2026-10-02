@@ -1583,21 +1583,33 @@ function onInvCustIdInput(val) {
   clearTimeout(_invCustIdLookupTimer);
   _invCustIdLookupTimer = setTimeout(() => {
     S.iForm._openInvs = openInvsFor(val.trim());
-    
+
     const cust = S.customers.find(c => c[COLS.custId] === val.trim());
     S.iForm._custNotes = cust ? (cust[COLS.custNotes] || '') : '';
     S.iForm._custConsignment = cust ? (cust[COLS.custConsignment] || '') : '';
-    S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : ''; 
+    S.iForm[COLS.invTerms] = cust ? cust[COLS.custTerms] : '';
     S.iForm._custEditRow = cust ? cust._row : null;
     S.iForm._custEditId = cust ? cust._id : null;
-    
+
+    // Fill company name from customer record when ID is typed directly
+    if (cust) {
+      const bizName = cust[COLS.custBiz] || cust[COLS.custName] || '';
+      S.iForm[COLS.docCustName] = bizName;
+      const nameField = document.getElementById('inv-custName');
+      if (nameField) nameField.value = bizName;
+    }
+
     const notesField = document.getElementById('inv-custNotes');
     if (notesField) notesField.value = S.iForm._custNotes;
-    
+
     const termsField = document.getElementById('inv-custTerms');
     if (termsField) termsField.value = S.iForm[COLS.invTerms];
-    
+
+    const conField = document.getElementById('inv-custConsignment');
+    if (conField) conField.value = S.iForm._custConsignment;
+
     renderTaxOpenInvs();
+    renderSaveBtn();
   }, 400);
 }
 
@@ -2358,10 +2370,12 @@ function renderDeliveryForm() {
     <textarea class="finput" rows="2" placeholder="הערות לתעודה..."
       oninput="S.dForm[COLS.delivNotes]=this.value">${esc(f[COLS.delivNotes]||'')}</textarea>
   </div>`;
-  h += `<button onclick="saveDelivery()"
-    style="width:100%;padding:14px;background:${color};color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px">
-    שמור תעודה
-  </button>`;
+  const dnErr = deliveryFormErrors();
+  const dnBtnDis = S.saving || !!dnErr;
+  const dnBtnLabel = S.saving ? '⏳ שומר...' : (dnErr ? '⛔ ' + dnErr : '💾 שמור תעודה');
+  h += `<button id="btn-save-dn" onclick="saveDelivery()"
+    style="width:100%;padding:14px;background:${dnBtnDis ? '#ccc' : color};color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:${dnBtnDis ? 'default' : 'pointer'};font-family:inherit;margin-top:4px"
+    ${dnBtnDis ? 'disabled' : ''}>${dnBtnLabel}</button>`;
   h += `</div>`;
   return h;
 }
@@ -2467,6 +2481,16 @@ function renderDnBar() {
     sub.textContent = calc.totalQty
       ? `${calc.totalQty} יח' | ₪${Math.round(calc.withVat).toLocaleString('he-IL')}`
       : 'מיקאל קולמן | MOOV';
+  }
+  // Update save button live
+  const dnBtn = document.getElementById('btn-save-dn');
+  if (dnBtn) {
+    const validErr = deliveryFormErrors();
+    const dis = S.saving || !!validErr;
+    dnBtn.disabled = dis;
+    dnBtn.style.background = dis ? '#ccc' : color;
+    dnBtn.style.cursor = dis ? 'default' : 'pointer';
+    dnBtn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור תעודה');
   }
 }
 
@@ -2691,10 +2715,12 @@ function renderReturnForm() {
       oninput="S.rtnForm[COLS.delivNotes]=this.value">${esc(f[COLS.delivNotes]||'')}</textarea>
   </div>`;
 
-  h += `<button onclick="saveReturn()"
-    style="width:100%;padding:14px;background:${color};color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px">
-    שמור תעודת החזרה
-  </button>`;
+  const rtnErr = returnFormErrors();
+  const rtnBtnDis = S.saving || !!rtnErr;
+  const rtnBtnLabel = S.saving ? '⏳ שומר...' : (rtnErr ? '⛔ ' + rtnErr : '💾 שמור תעודת החזרה');
+  h += `<button id="btn-save-rtn" onclick="saveReturn()"
+    style="width:100%;padding:14px;background:${rtnBtnDis ? '#ccc' : color};color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:${rtnBtnDis ? 'default' : 'pointer'};font-family:inherit;margin-top:4px"
+    ${rtnBtnDis ? 'disabled' : ''}>${rtnBtnLabel}</button>`;
   h += `</div>`;
   return h;
 }
@@ -2715,6 +2741,16 @@ function renderRtnBar() {
     sub.textContent = calc.totalQty
       ? calc.totalQty + " יח' | \u20aa" + Math.round(calc.withVat).toLocaleString('he-IL')
       : '\u05de\u05d9\u05e7\u05d0\u05dc \u05e7\u05d5\u05dc\u05de\u05df | MOOV';
+  }
+  // Update save button live
+  const rtnBtn = document.getElementById('btn-save-rtn');
+  if (rtnBtn) {
+    const validErr = returnFormErrors();
+    const dis = S.saving || !!validErr;
+    rtnBtn.disabled = dis;
+    rtnBtn.style.background = dis ? '#ccc' : color;
+    rtnBtn.style.cursor = dis ? 'default' : 'pointer';
+    rtnBtn.textContent = S.saving ? '\u23f3 \u05e9\u05d5\u05de\u05e8...' : (validErr ? '\u26d4 ' + validErr : '\ud83d\udcbe \u05e9\u05de\u05d5\u05e8 \u05ea\u05e2\u05d5\u05d3\u05ea \u05d4\u05d7\u05d6\u05e8\u05d4');
   }
 }
 
@@ -2880,10 +2916,21 @@ function onCustIdInput(val) {
     S.rForm._openInvs = openInvsFor(val.trim());
     const cust = S.customers.find(c => c[COLS.custId] === val.trim());
     S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+    S.rForm._custConsignment = cust ? (cust[COLS.custConsignment] || '') : '';
     S.rForm._custEditRow = cust ? cust._row : null;
     S.rForm._custEditId = cust ? cust._id : null;
+
+    // Fill company name from customer record when ID is typed directly
+    if (cust) {
+      const bizName = cust[COLS.custBiz] || cust[COLS.custName] || '';
+      S.rForm._custName = bizName;
+      setElValue('r-H', bizName);
+    }
+
     setElValue('r-custNotes', S.rForm[COLS.custNotes]);
+    setElValue('r-custConsignment', S.rForm._custConsignment);
     renderOpenInvs();
+    renderSaveBtnRec();
   }, 400);
 }
 
@@ -2927,12 +2974,14 @@ function pickCustomer(name, id) {
 
   const cust = S.customers.find(c => c[COLS.custId] === id);
   S.rForm[COLS.custNotes] = cust ? cust[COLS.custNotes] : '';
+  S.rForm._custConsignment = cust ? (cust[COLS.custConsignment] || '') : '';
   S.rForm._custEditRow = cust ? cust._row : null;
   S.rForm._custEditId = cust ? cust._id : null;
 
   setElValue('r-H', name);
   setElValue('r-I', id);
   setElValue('r-custNotes', S.rForm[COLS.custNotes]);
+  setElValue('r-custConsignment', S.rForm._custConsignment);
 
   if (S.rForm._openInvs.length === 1) {
     const inv = S.rForm._openInvs[0];
@@ -3199,7 +3248,10 @@ function pickInvCust(custId, bizName) {
   
   const termsField = document.getElementById('inv-custTerms');
   if (termsField) termsField.value = S.iForm[COLS.invTerms];
-  
+
+  const conField = document.getElementById('inv-custConsignment');
+  if (conField) conField.value = S.iForm._custConsignment;
+
   document.getElementById('suggest-box')?.remove();
   renderTaxOpenInvs();
   renderSaveBtn();
@@ -3684,6 +3736,12 @@ function renderSaveBtn() {
   btn.disabled = dis;
   btn.style.background = dis ? '#ccc' : tc();
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : (isTax ? '💾 שמור חשמ"ק' : '💾 שמור חשבונית'));
+  // Show consignment balance in header subtitle
+  const sub = document.getElementById('hdr-sub');
+  if (sub && (S.screen === 'new-invoice' || S.screen === 'new-tax')) {
+    const con = parseFloat(S.iForm._custConsignment || 0);
+    sub.textContent = con ? 'יתרת נזילות: ₪' + Math.round(con).toLocaleString('he-IL') : 'מיקאל קולמן | MOOV';
+  }
 }
 
 function renderSaveBtnRec() {
@@ -3694,7 +3752,13 @@ function renderSaveBtnRec() {
   btn.disabled = dis;
   btn.style.background = dis ? '#ccc' : tc();
   btn.textContent = S.saving ? '⏳ שומר...' : (validErr ? '⛔ ' + validErr : '💾 שמור קבלה');
-  renderOverInvPicker(); 
+  renderOverInvPicker();
+  // Show consignment balance in header subtitle
+  const sub = document.getElementById('hdr-sub');
+  if (sub && S.screen === 'new-receipt') {
+    const con = parseFloat(S.rForm._custConsignment || 0);
+    sub.textContent = con ? 'יתרת נזילות: ₪' + Math.round(con).toLocaleString('he-IL') : 'מיקאל קולמן | MOOV';
+  }
 }
 
 function showConfirm(title, text, onYes, onNo, yesLabel, noLabel) {
