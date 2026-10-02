@@ -3368,12 +3368,19 @@ async function executeSaveReceipt() {
   const excess = isOverpay ? Math.round((paid - balance) * 100) / 100 : 0;
   const overInvNums = isOverpay ? (rf._overInvNums || []) : [];
 
-  const g1Notes = isOverpay && overInvNums.length
-    ? `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | שולם ₪${Math.round(balance).toLocaleString('he-IL')} לחשבונית זו | יתרה מחולקת ל-${overInvNums.length} חשבוניות${rf[COLS.recNotes]?.trim() ? ' | ' + rf[COLS.recNotes].trim() : ''}`
-    : rf[COLS.recNotes] || '';
-    
   const invNumRaw = (rf[COLS.recInvNum] || '').trim();
   const invNumVal = invNumRaw && /^\d+$/.test(invNumRaw) ? parseInt(invNumRaw, 10) : invNumRaw;
+
+  // If no invoice number (receipt created same day as invoice before accountant assigns a number),
+  // prepend the customer name + ID + invoice date to the notes column so the row is identifiable in the sheet.
+  // Date is included so that when a postdated cheque is used, the accountant knows which date to look for the invoice.
+  const custFallback = !invNumRaw
+    ? [rf[COLS.recCustName] || '', rf[COLS.recCustId] || '', 'תאריך: ' + (rf[COLS.docDate] || tod())].filter(Boolean).join(' | ')
+    : '';
+
+  const g1Notes = isOverpay && overInvNums.length
+    ? `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | שולם ₪${Math.round(balance).toLocaleString('he-IL')} לחשבונית זו | יתרה מחולקת ל-${overInvNums.length} חשבוניות${rf[COLS.recNotes]?.trim() ? ' | ' + rf[COLS.recNotes].trim() : ''}${custFallback ? ' | ' + custFallback : ''}`
+    : [custFallback, rf[COLS.recNotes] || ''].filter(Boolean).join(' | ');
 
   const data1 = {
     [COLS.recInvNum]: invNumVal,
