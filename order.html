@@ -88,8 +88,8 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 10px;
-    padding: 6px 0 26px;
+    gap: 8px;
+    padding: 4px 0 16px;
   }
 
   .brand-dots {
@@ -131,11 +131,11 @@
   h2.section-label {
     font-family: "Rubik", sans-serif;
     font-weight: 700;
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--ink-muted);
-    margin: 30px 4px 12px;
+    margin: 18px 4px 9px;
   }
 
   /* ---- Cards ---- */
@@ -208,12 +208,12 @@
   }
 
   /* ---- Product list ---- */
-  .products { display: flex; flex-direction: column; gap: 14px; }
+  .products { display: flex; flex-direction: column; gap: 9px; }
 
   .flavor {
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow);
     overflow: hidden;
   }
@@ -221,7 +221,7 @@
   .flavor-head {
     background: var(--flavor-bg);
     color: var(--flavor-ink);
-    padding: 13px 16px;
+    padding: 8px 14px;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -230,12 +230,12 @@
   .flavor-head .he {
     font-family: "Rubik", sans-serif;
     font-weight: 700;
-    font-size: 1.06rem;
+    font-size: 0.9rem;
   }
   .flavor-head .en {
     font-family: "Rubik", sans-serif;
     font-weight: 500;
-    font-size: 0.74rem;
+    font-size: 0.64rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     opacity: 0.85;
@@ -246,16 +246,16 @@
   .strength-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: 10px;
+    padding: 7px 14px;
     border-top: 1px solid var(--line);
   }
   .strength-row:first-child { border-top: none; }
 
   .thumb {
     flex: 0 0 auto;
-    width: 52px;
-    height: 52px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     overflow: hidden;
     background: var(--flavor-bg);
@@ -278,7 +278,7 @@
   .thumb-mg {
     font-family: "Rubik", sans-serif;
     font-weight: 800;
-    font-size: 0.92rem;
+    font-size: 0.78rem;
     font-variant-numeric: tabular-nums;
   }
 
@@ -287,26 +287,26 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
   }
   .mg {
     font-family: "Rubik", sans-serif;
     font-weight: 700;
-    font-size: 0.96rem;
+    font-size: 0.82rem;
     font-variant-numeric: tabular-nums;
   }
-  .dots { display: flex; gap: 4px; }
+  .dots { display: flex; gap: 3px; }
   .dots span {
-    width: 5px; height: 5px; border-radius: 50%;
+    width: 4px; height: 4px; border-radius: 50%;
     background: var(--line);
   }
   .dots span.filled { background: var(--flavor-bg); }
 
   .line-note {
-    font-size: 0.78rem;
+    font-size: 0.7rem;
     color: var(--ink-faint);
     font-variant-numeric: tabular-nums;
-    min-width: 64px;
+    min-width: 54px;
     text-align: left;
   }
 
@@ -320,11 +320,11 @@
     flex: 0 0 auto;
   }
   .stepper button {
-    width: 32px; height: 32px;
+    width: 26px; height: 26px;
     border: none;
     background: transparent;
     color: var(--ink);
-    font-size: 1.15rem;
+    font-size: 1rem;
     font-family: "Rubik", sans-serif;
     line-height: 1;
     cursor: pointer;
@@ -334,7 +334,7 @@
   }
   .stepper button:active { background: var(--line); }
   .qty-input {
-    width: 34px;
+    width: 28px;
     border: none;
     background: transparent;
     text-align: center;
@@ -449,8 +449,12 @@
         <input type="text" id="custName" name="custName" placeholder="לדוגמה: ישראל ישראלי" autocomplete="name">
       </div>
       <div class="field">
+        <label for="custTaxId">ת&quot;ז / ח&quot;פ <span class="req">*</span></label>
+        <input type="text" id="custTaxId" name="custTaxId" placeholder="לדוגמה: 123456789" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
         <label for="custNotes">הערות להזמנה (לא חובה)</label>
-        <textarea id="custNotes" name="custNotes" rows="2" placeholder="למשל: מועד אספקה מועדף"></textarea>
+        <textarea id="custNotes" name="custNotes" rows="2" placeholder="יש לכם כמה סניפים? ציינו כאן את כתובת הסניף למשלוח"></textarea>
       </div>
     </section>
 
@@ -605,7 +609,8 @@
     var btn = document.getElementById('sendBtn');
     var preview = document.getElementById('previewCard');
     var hasName = document.getElementById('custName').value.trim().length > 0;
-    if (units > 0 && hasName) {
+    var hasTaxId = document.getElementById('custTaxId').value.trim().length > 0;
+    if (units > 0 && hasName && hasTaxId) {
       btn.setAttribute('href', buildWaLink());
       btn.removeAttribute('aria-disabled');
       document.getElementById('messagePreview').value = buildMessage();
@@ -623,11 +628,13 @@
 
   function buildMessage() {
     var name = document.getElementById('custName').value.trim();
+    var taxId = document.getElementById('custTaxId').value.trim();
     var notes = document.getElementById('custNotes').value.trim();
 
     var lines = [];
     lines.push('*הזמנה חדשה – MOOV*');
     if (name) lines.push('*שם:* ' + name);
+    if (taxId) lines.push('*ת"ז / ח"פ:* ' + taxId);
     lines.push('');
     lines.push('*פריטים:*');
 
@@ -668,6 +675,7 @@
       });
       var payload = JSON.stringify({
         name: document.getElementById('custName').value.trim(),
+        taxId: document.getElementById('custTaxId').value.trim(),
         notes: document.getElementById('custNotes').value.trim(),
         message: buildMessage(),
         items: items,
@@ -714,14 +722,17 @@
     });
 
     document.getElementById('custName').addEventListener('input', updateSummary);
+    document.getElementById('custTaxId').addEventListener('input', updateSummary);
     document.getElementById('custNotes').addEventListener('input', updateSummary);
 
     document.getElementById('copyBtn').addEventListener('click', function () {
       var feedback = document.getElementById('copyFeedback');
       if (document.getElementById('sendBtn').getAttribute('aria-disabled') === 'true') {
-        feedback.textContent = document.getElementById('custName').value.trim()
-          ? 'בחרו קודם כמות של מוצר אחד לפחות'
-          : 'מלאו קודם שם מלא';
+        var hasName = document.getElementById('custName').value.trim().length > 0;
+        var hasTaxId = document.getElementById('custTaxId').value.trim().length > 0;
+        feedback.textContent = !hasName
+          ? 'מלאו קודם שם מלא'
+          : (!hasTaxId ? 'מלאו קודם ת"ז / ח"פ' : 'בחרו קודם כמות של מוצר אחד לפחות');
         feedback.classList.add('show');
         return;
       }
