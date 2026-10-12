@@ -208,7 +208,7 @@
   }
 
   /* ---- Product list ---- */
-  .products { display: flex; flex-direction: column; gap: 9px; }
+  .products { display: flex; flex-direction: column; gap: 6px; }
 
   .flavor {
     background: var(--surface);
@@ -221,7 +221,7 @@
   .flavor-head {
     background: var(--flavor-bg);
     color: var(--flavor-ink);
-    padding: 8px 14px;
+    padding: 5px 12px;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -246,16 +246,16 @@
   .strength-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 7px 14px;
+    gap: 8px;
+    padding: 4px 12px;
     border-top: 1px solid var(--line);
   }
   .strength-row:first-child { border-top: none; }
 
   .thumb {
     flex: 0 0 auto;
-    width: 38px;
-    height: 38px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     overflow: hidden;
     background: var(--flavor-bg);
@@ -278,7 +278,7 @@
   .thumb-mg {
     font-family: "Rubik", sans-serif;
     font-weight: 800;
-    font-size: 0.78rem;
+    font-size: 0.68rem;
     font-variant-numeric: tabular-nums;
   }
 
@@ -287,12 +287,12 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
   }
   .mg {
     font-family: "Rubik", sans-serif;
     font-weight: 700;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-variant-numeric: tabular-nums;
   }
   .dots { display: flex; gap: 3px; }
@@ -303,10 +303,10 @@
   .dots span.filled { background: var(--flavor-bg); }
 
   .line-note {
-    font-size: 0.7rem;
+    font-size: 0.66rem;
     color: var(--ink-faint);
     font-variant-numeric: tabular-nums;
-    min-width: 54px;
+    min-width: 48px;
     text-align: left;
   }
 
@@ -320,11 +320,11 @@
     flex: 0 0 auto;
   }
   .stepper button {
-    width: 26px; height: 26px;
+    width: 24px; height: 24px;
     border: none;
     background: transparent;
     color: var(--ink);
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-family: "Rubik", sans-serif;
     line-height: 1;
     cursor: pointer;
@@ -334,7 +334,7 @@
   }
   .stepper button:active { background: var(--line); }
   .qty-input {
-    width: 28px;
+    width: 24px;
     border: none;
     background: transparent;
     text-align: center;
@@ -710,9 +710,42 @@
     // Select the existing value when a qty field gets focus (tap, or the keyboard's
     // "next" button) so typing a digit replaces it instead of inserting before it
     // (otherwise typing "1" into a field showing "0" produces "10").
+    // Also scroll the newly focused field into view: when "next" moves focus to the
+    // next item programmatically, the page doesn't auto-scroll, so on a long list the
+    // new field can end up off-screen (or behind the on-screen keyboard) with no
+    // visible indication of where the cursor went.
     document.getElementById('productsList').addEventListener('focusin', function (e) {
       if (!e.target.classList.contains('qty-input')) return;
-      e.target.select();
+      var target = e.target;
+      target.select();
+
+      var doScroll = function () {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+
+      // On mobile the on-screen keyboard animates in after focus, which changes the
+      // visible viewport size. Scrolling immediately uses the pre-keyboard viewport
+      // and can still leave the field hidden behind the keyboard, so wait for the
+      // viewport to settle (or fall back to a short delay if that never fires).
+      if (window.visualViewport) {
+        var vv = window.visualViewport;
+        var settled = false;
+        var onResize = function () {
+          if (settled) return;
+          settled = true;
+          vv.removeEventListener('resize', onResize);
+          doScroll();
+        };
+        vv.addEventListener('resize', onResize);
+        setTimeout(function () {
+          if (settled) return;
+          settled = true;
+          vv.removeEventListener('resize', onResize);
+          doScroll();
+        }, 350);
+      } else {
+        setTimeout(doScroll, 300);
+      }
     });
 
 
