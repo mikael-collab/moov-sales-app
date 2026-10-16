@@ -425,6 +425,105 @@
     cursor: pointer;
   }
 
+  /* ---- "Select existing customer" button + picker ---- */
+  .pick-btn {
+    display: inline-block;
+    margin-top: 8px;
+    font: inherit;
+    font-family: "Heebo", sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: none;
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pick-btn:active { transform: scale(0.97); }
+
+  .selected-customer {
+    margin: 6px 0 0;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+  }
+  .selected-customer.show { color: var(--accent); font-weight: 600; }
+
+  .picker-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(33, 28, 22, 0.45);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 50;
+  }
+  .picker-overlay[hidden] { display: none; }
+  .picker-sheet {
+    width: 100%;
+    max-width: 480px;
+    max-height: 80vh;
+    background: var(--surface);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .picker-head {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  .picker-head h3 {
+    margin: 0 0 8px;
+    font-family: "Rubik", sans-serif;
+    font-size: 1rem;
+  }
+  #pickerSearch {
+    width: 100%;
+    font: inherit;
+    font-family: "Heebo", sans-serif;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  .picker-list { overflow-y: auto; flex: 1 1 auto; }
+  .picker-row {
+    padding: 11px 16px;
+    border-top: 1px solid var(--line);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .picker-row:first-child { border-top: none; }
+  .picker-row:active { background: var(--surface-2); }
+  .picker-row .name { font-weight: 700; display: block; }
+  .picker-row .id { font-size: 0.76rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .picker-empty { padding: 22px 16px; color: var(--ink-faint); text-align: center; font-size: 0.86rem; }
+
+  /* ---- "Add new customer" modal (shares .picker-overlay/.picker-sheet above) ---- */
+  .nc-body { padding: 14px 16px 6px; overflow-y: auto; }
+  .nc-status { margin: 2px 0 12px; font-size: 0.82rem; text-align: center; }
+  .nc-status.error { color: #c0392b; }
+  .nc-status.success { color: var(--accent); font-weight: 600; }
+  .nc-submit { display: block; width: 100%; text-align: center; margin-top: 4px; }
+  .nc-submit[disabled] { opacity: 0.55; }
+  .picker-close {
+    flex: none;
+    margin: 10px auto 14px;
+    font: inherit;
+    font-family: "Heebo", sans-serif;
+    font-weight: 700;
+    background: none;
+    border: none;
+    color: var(--ink-muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
   footer.made {
     text-align: center;
     color: var(--ink-faint);
@@ -451,6 +550,9 @@
       <div class="field">
         <label for="custTaxId">ת&quot;ז / ח&quot;פ <span class="req">*</span></label>
         <input type="text" id="custTaxId" name="custTaxId" placeholder="לדוגמה: 123456789" inputmode="numeric" autocomplete="off">
+        <button type="button" class="pick-btn" id="pickCustomerBtn">בחירת לקוח קיים לפי שם העסק</button>
+        <button type="button" class="pick-btn" id="addNewCustomerBtn">לקוח חדש? הוספה מהירה</button>
+        <p class="selected-customer" id="selectedCustomerNote" hidden></p>
       </div>
       <div class="field">
         <label for="custNotes">הערות להזמנה (לא חובה)</label>
@@ -484,6 +586,46 @@
   </div>
   <p class="status-note">הכפתור לרוב פותח וואטסאפ עם ההזמנה מוכנה. לא עובד? <button type="button" id="copyBtn">העתיקו את ההזמנה</button>, או גללו למעלה להזמנה בתצוגת טקסט להעתקה ידנית</p>
   <p class="status-note" id="copyFeedback" aria-live="polite"></p>
+</div>
+
+<div class="picker-overlay" id="pickerOverlay" hidden>
+  <div class="picker-sheet" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+    <div class="picker-head">
+      <h3 id="pickerTitle">בחירת לקוח קיים</h3>
+      <input type="text" id="pickerSearch" placeholder="הקלידו שם עסק לחיפוש..." autocomplete="off">
+    </div>
+    <div class="picker-list" id="pickerList"></div>
+    <button type="button" class="picker-close" id="pickerCloseBtn">סגירה</button>
+  </div>
+</div>
+
+<div class="picker-overlay" id="newCustomerOverlay" hidden>
+  <div class="picker-sheet" role="dialog" aria-modal="true" aria-labelledby="newCustomerTitle">
+    <div class="picker-head">
+      <h3 id="newCustomerTitle">הוספת לקוח חדש</h3>
+    </div>
+    <div class="nc-body" id="newCustomerBody">
+      <div class="field">
+        <label for="ncName">שם <span class="req">*</span></label>
+        <input type="text" id="ncName" placeholder="לדוגמה: ישראל ישראלי" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ncCompany">שם החברה <span class="req">*</span></label>
+        <input type="text" id="ncCompany" placeholder="לדוגמה: בית קפה השקד" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ncPhone">טלפון <span class="req">*</span></label>
+        <input type="tel" id="ncPhone" placeholder="לדוגמה: 050-1234567" inputmode="tel" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ncAddress">כתובת <span class="req">*</span></label>
+        <input type="text" id="ncAddress" placeholder="רחוב ומספר, עיר" autocomplete="off">
+      </div>
+      <p class="nc-status" id="newCustomerStatus" hidden></p>
+      <button type="button" class="pick-btn nc-submit" id="ncSubmitBtn">שמירה ובחירה</button>
+    </div>
+    <button type="button" class="picker-close" id="newCustomerCloseBtn">סגירה</button>
+  </div>
 </div>
 
 <script>
@@ -534,6 +676,13 @@
 
   function fmtMoney(agorot) {
     return (agorot / 100).toFixed(2) + ' ₪';
+  }
+
+  // For the order's grand total only (summary bar + the WhatsApp message's "סה״כ" line) —
+  // rounded to whole shekels, no agorot. Per-line prices/subtotals stay precise and keep
+  // using fmtMoney above; only the final total is rounded.
+  function fmtMoneyRounded(agorot) {
+    return Math.round(agorot / 100) + ' ₪';
   }
 
   function dotsMarkup(filled) {
@@ -604,7 +753,7 @@
       agorot += qty[k] * PRICE_AGOROT;
     });
     document.getElementById('summaryCount').textContent = units + (units === 1 ? ' יחידה נבחרה' : ' יחידות נבחרו');
-    document.getElementById('summaryTotal').textContent = fmtMoney(agorot);
+    document.getElementById('summaryTotal').textContent = fmtMoneyRounded(agorot);
 
     var btn = document.getElementById('sendBtn');
     var preview = document.getElementById('previewCard');
@@ -652,7 +801,7 @@
     });
 
     lines.push('');
-    lines.push('*סה״כ: ' + units + ' יחידות | ' + fmtMoney(agorot) + '*');
+    lines.push('*סה״כ: ' + units + ' יחידות | ' + fmtMoneyRounded(agorot) + '*');
 
     if (notes) {
       lines.push('');
@@ -778,6 +927,220 @@
     });
   }
 
+  // "Select existing customer" button: lets the ת"ז / ח"פ field be filled in by picking a
+  // company name instead of typing the number. The customer list is fetched once, lazily,
+  // on first use — from the Apps Script backend's "customers" action, which only ever
+  // returns company name + ת"ז/ח"פ (same two fields lookupCustomerByTaxId itself reads).
+  // Loaded via a JSONP <script> tag rather than fetch(): a script tag isn't subject to
+  // CORS the way reading a fetch() response is, so this works regardless of whatever
+  // cross-origin headers the Apps Script deployment happens to send back.
+  var customerList = null; // null = not fetched yet, [] = fetched (possibly empty/failed)
+
+  function fetchCustomersJsonp() {
+    return new Promise(function (resolve, reject) {
+      var cbName = 'moovCustomersCb' + Date.now();
+      var script = document.createElement('script');
+      var cleanup = function () {
+        delete window[cbName];
+        script.remove();
+      };
+      window[cbName] = function (data) { cleanup(); resolve(data); };
+      script.onerror = function () { cleanup(); reject(new Error('JSONP load failed')); };
+      script.src = NOTIFY_URL + '?action=customers&callback=' + cbName;
+      document.body.appendChild(script);
+    });
+  }
+
+  function openCustomerPicker() {
+    var overlay = document.getElementById('pickerOverlay');
+    var search = document.getElementById('pickerSearch');
+    overlay.removeAttribute('hidden');
+    search.value = '';
+    setTimeout(function () { search.focus(); }, 50);
+
+    if (customerList === null) {
+      renderCustomerList('', true); // loading state while the first fetch is in flight
+      fetchCustomersJsonp()
+        .then(function (list) {
+          customerList = Array.isArray(list) ? list : [];
+          renderCustomerList(search.value);
+        })
+        .catch(function (err) {
+          console.error('MOOV customer list fetch failed:', err);
+          customerList = [];
+          renderCustomerList(search.value);
+        });
+    } else {
+      renderCustomerList('');
+    }
+  }
+
+  function closeCustomerPicker() {
+    document.getElementById('pickerOverlay').setAttribute('hidden', '');
+  }
+
+  function renderCustomerList(filterText, loading) {
+    var list = document.getElementById('pickerList');
+    list.innerHTML = '';
+
+    if (loading) {
+      var loadingEl = document.createElement('p');
+      loadingEl.className = 'picker-empty';
+      loadingEl.textContent = 'טוען רשימת לקוחות...';
+      list.appendChild(loadingEl);
+      return;
+    }
+
+    var term = filterText.trim().toLowerCase();
+    var matches = (customerList || []).filter(function (c) {
+      return !term || c.companyName.toLowerCase().indexOf(term) !== -1 || c.taxId.indexOf(term) !== -1;
+    });
+
+    if (matches.length === 0) {
+      var emptyEl = document.createElement('p');
+      emptyEl.className = 'picker-empty';
+      emptyEl.textContent = (customerList && customerList.length === 0)
+        ? 'לא הצלחנו לטעון את רשימת הלקוחות כרגע'
+        : 'לא נמצאו לקוחות מתאימים';
+      list.appendChild(emptyEl);
+      return;
+    }
+
+    matches.slice(0, 50).forEach(function (c) {
+      var row = document.createElement('div');
+      row.className = 'picker-row';
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
+      var nameEl = document.createElement('span');
+      nameEl.className = 'name';
+      nameEl.textContent = c.companyName;
+      var idEl = document.createElement('span');
+      idEl.className = 'id';
+      idEl.textContent = 'ת"ז / ח"פ: ' + c.taxId;
+      row.appendChild(nameEl);
+      row.appendChild(idEl);
+      row.addEventListener('click', function () { selectCustomer(c); });
+      list.appendChild(row);
+    });
+  }
+
+  function selectCustomer(c) {
+    var taxIdInput = document.getElementById('custTaxId');
+    taxIdInput.value = c.taxId;
+    taxIdInput.dispatchEvent(new Event('input', { bubbles: true }));
+    var note = document.getElementById('selectedCustomerNote');
+    note.textContent = 'נבחר: ' + c.companyName;
+    note.classList.add('show');
+    note.removeAttribute('hidden');
+    closeCustomerPicker();
+  }
+
+  function setupCustomerPicker() {
+    document.getElementById('pickCustomerBtn').addEventListener('click', openCustomerPicker);
+    document.getElementById('pickerCloseBtn').addEventListener('click', closeCustomerPicker);
+    document.getElementById('pickerOverlay').addEventListener('click', function (e) {
+      if (e.target === this) closeCustomerPicker(); // tapping the dark backdrop closes it
+    });
+    document.getElementById('pickerSearch').addEventListener('input', function (e) {
+      renderCustomerList(e.target.value);
+    });
+    // Typing a ת"ז/ח"פ by hand after having picked a customer makes the "selected" note
+    // stale (it no longer matches the field), so clear it as soon as they type again.
+    document.getElementById('custTaxId').addEventListener('input', function () {
+      document.getElementById('selectedCustomerNote').setAttribute('hidden', '');
+    });
+  }
+
+  // ---- "Add new customer" (for a customer not yet in the accountant's customer list) ----
+  // Only four fields are asked for: Name, Company name, Telephone, Address (one free-text
+  // field — not split into street/city here). Submits via the same JSONP pattern as the
+  // customer picker above (a <script> tag, not fetch(), to sidestep CORS). On success the
+  // backend hands back a temporary ID, which is then dropped straight into custTaxId exactly
+  // like picking an existing customer would — so the rest of the form (and the order it
+  // produces) can't tell the difference.
+  function addNewCustomerJsonp(data) {
+    return new Promise(function (resolve, reject) {
+      var cbName = 'moovAddCustomerCb' + Date.now();
+      var script = document.createElement('script');
+      var cleanup = function () {
+        delete window[cbName];
+        script.remove();
+      };
+      window[cbName] = function (result) { cleanup(); resolve(result); };
+      script.onerror = function () { cleanup(); reject(new Error('JSONP load failed')); };
+      var qs = Object.keys(data).map(function (k) {
+        return encodeURIComponent(k) + '=' + encodeURIComponent(data[k] || '');
+      }).join('&');
+      script.src = NOTIFY_URL + '?action=addCustomer&' + qs + '&callback=' + cbName;
+      document.body.appendChild(script);
+    });
+  }
+
+  function openNewCustomerModal() {
+    ['ncName', 'ncCompany', 'ncPhone', 'ncAddress'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    var status = document.getElementById('newCustomerStatus');
+    status.setAttribute('hidden', '');
+    status.className = 'nc-status';
+    document.getElementById('newCustomerOverlay').removeAttribute('hidden');
+    setTimeout(function () { document.getElementById('ncName').focus(); }, 50);
+  }
+
+  function closeNewCustomerModal() {
+    document.getElementById('newCustomerOverlay').setAttribute('hidden', '');
+  }
+
+  function showNewCustomerStatus(text, kind) {
+    var status = document.getElementById('newCustomerStatus');
+    status.textContent = text;
+    status.className = 'nc-status' + (kind ? ' ' + kind : '');
+    status.removeAttribute('hidden');
+  }
+
+  function submitNewCustomer() {
+    var name = document.getElementById('ncName').value.trim();
+    var companyName = document.getElementById('ncCompany').value.trim();
+    var phone = document.getElementById('ncPhone').value.trim();
+    var address = document.getElementById('ncAddress').value.trim();
+
+    if (!name || !companyName || !phone || !address) {
+      showNewCustomerStatus('יש למלא שם, שם חברה, טלפון וכתובת.', 'error');
+      return;
+    }
+
+    var btn = document.getElementById('ncSubmitBtn');
+    btn.disabled = true;
+    showNewCustomerStatus('שומר...', '');
+
+    addNewCustomerJsonp({ name: name, companyName: companyName, phone: phone, address: address })
+      .then(function (result) {
+        btn.disabled = false;
+        if (!result || !result.ok) {
+          showNewCustomerStatus('שמירה נכשלה: ' + ((result && result.error) || 'שגיאה לא ידועה') + '. נסו שוב.', 'error');
+          return;
+        }
+        selectCustomer({ taxId: result.taxId, companyName: result.companyName });
+        var note = document.getElementById('selectedCustomerNote');
+        note.textContent = 'לקוח חדש נוסף ונבחר: ' + result.companyName;
+        closeNewCustomerModal();
+      })
+      .catch(function (err) {
+        console.error('MOOV addNewCustomer failed:', err);
+        btn.disabled = false;
+        showNewCustomerStatus('שמירה נכשלה (בעיית תקשורת). נסו שוב.', 'error');
+      });
+  }
+
+  function setupNewCustomerModal() {
+    document.getElementById('addNewCustomerBtn').addEventListener('click', openNewCustomerModal);
+    document.getElementById('newCustomerCloseBtn').addEventListener('click', closeNewCustomerModal);
+    document.getElementById('newCustomerOverlay').addEventListener('click', function (e) {
+      if (e.target === this) closeNewCustomerModal(); // tapping the dark backdrop closes it
+    });
+    document.getElementById('ncSubmitBtn').addEventListener('click', submitNewCustomer);
+  }
+
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(text).then(function () { return true; }).catch(function () { return fallbackCopy(text); });
@@ -804,6 +1167,8 @@
 
   buildProducts();
   attachHandlers();
+  setupCustomerPicker();
+  setupNewCustomerModal();
   updateSummary();
 })();
 </script>
