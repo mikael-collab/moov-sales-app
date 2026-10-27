@@ -512,6 +512,25 @@
   .picker-row .id { font-size: 0.76rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
   .picker-empty { padding: 22px 16px; color: var(--ink-faint); text-align: center; font-size: 0.86rem; }
 
+  /* ---- Address lookup-by-ת"ז/ח"פ: single result note + multi-site chooser ---- */
+  .address-choices {
+    margin-top: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .address-choices[hidden] { display: none; }
+  .address-choices .choices-label {
+    display: block;
+    padding: 8px 12px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--ink-muted);
+    background: var(--surface-2);
+  }
+  .address-choices .picker-row { padding: 9px 12px; }
+  .address-choices .picker-row .id { font-size: 0.76rem; }
+
   /* ---- "Add new customer" modal (shares .picker-overlay/.picker-sheet above) ---- */
   .nc-body { padding: 14px 16px 6px; overflow-y: auto; }
   .nc-status { margin: 2px 0 12px; font-size: 0.82rem; text-align: center; }
@@ -561,6 +580,8 @@
         <button type="button" class="pick-btn" id="pickCustomerBtn">בחירת לקוח קיים לפי שם העסק</button>
         <button type="button" class="pick-btn" id="addNewCustomerBtn">לקוח חדש? הוספה מהירה</button>
         <p class="selected-customer" id="selectedCustomerNote" hidden></p>
+        <p class="selected-customer" id="addressNote" hidden></p>
+        <div class="address-choices" id="addressChoices" hidden></div>
       </div>
       <div class="field">
         <label for="custNotes">הערות להזמנה (לא חובה)</label>
@@ -846,6 +867,11 @@
     lines.push('*הזמנה חדשה – MOOV*');
     if (name) lines.push('*שם:* ' + name);
     if (taxId) lines.push('*ת"ז / ח"פ:* ' + taxId);
+    if (resolvedAddress) {
+      if (resolvedAddress.companyName) lines.push('*שם העסק:* ' + resolvedAddress.companyName);
+      var addrLine = [resolvedAddress.street, resolvedAddress.city].filter(Boolean).join(', ');
+      if (addrLine) lines.push('*כתובת:* ' + addrLine);
+    }
     lines.push('');
     lines.push('*פריטים:*');
 
@@ -894,6 +920,13 @@
         name: document.getElementById('custName').value.trim(),
         taxId: document.getElementById('custTaxId').value.trim(),
         notes: document.getElementById('custNotes').value.trim(),
+        // The specific site resolved (and, if there were several, confirmed by the user)
+        // from the address lookup below — sent along so the backend records this exact
+        // address instead of re-guessing by ת"ז/ח"פ (which can't disambiguate multi-site
+        // customers on its own).
+        companyName: resolvedAddress ? resolvedAddress.companyName : '',
+        street: resolvedAddress ? resolvedAddress.street : '',
+        city: resolvedAddress ? resolvedAddress.city : '',
         message: buildMessage(),
         items: items,
         time: new Date().toISOString()
@@ -992,6 +1025,123 @@
         feedback.classList.add('show');
         if (ok) notifyOrder();
       });
+    });
+  }
+
+  // ---- Address lookup by ת"ז / ח"פ ----
+  // As soon as custTaxId has a value — typed by hand, filled in by "Select existing
+  // customer", or by "Add new customer" (all three end up dispatching an 'input' event on
+  // this field) — this looks up the matching address(es) from the backend's
+  // "addressesForTaxId" action and shows the result: one match shows the address directly;
+  // more than one (a customer with more than one site/branch) shows a chooser so the user
+  // picks the right one; no match clears everything quietly (e.g. while still typing).
+  // resolvedAddress — once set — is sent along with the order so the backend records this
+  // exact site instead of re-guessing by ת"ז/ח"פ alone.
+  var resolvedAddress = null; // null, or { companyName, street, city }
+  var resolvedAddressForTaxId = null; // the custTaxId value resolvedAddress was resolved for
+  var addressLookupTimer = null;
+  var addressLookupSeq = 0; // guards against a slow earlier lookup overwriting a newer one
+
+  function fetchAddressesForTaxIdJsonp(taxId) {
+    return new Promise(function (resolve, reject) {
+      var cbName = 'moovAddressesCb' + Date.now();
+      var script = document.createElement('script');
+      var cleanup = function () {
+        delete window[cbName];
+        script.remove();
+      };
+      window[cbName] = function (data) { cleanup(); resolve(data); };
+      script.onerror = function () { cleanup(); reject(new Error('JSONP load failed')); };
+      script.src = NOTIFY_URL + '?action=addressesForTaxId&taxId=' + encodeURIComponent(taxId) + '&callback=' + cbName;
+      document.body.appendChild(script);
+    });
+  }
+
+  function clearAddressUI() {
+    resolvedAddress = null;
+    resolvedAddressForTaxId = null;
+    var note = document.getElementById('addressNote');
+    note.setAttribute('hidden', '');
+    note.textContent = '';
+    var choices = document.getElementById('addressChoices');
+    choices.setAttribute('hidden', '');
+    choices.innerHTML = '';
+  }
+
+  function formatSiteLabel(site) {
+    var addr = [site.street, site.city].filter(Boolean).join(', ');
+    return site.companyName && addr ? (site.companyName + ' — ' + addr) : (site.companyName || addr);
+  }
+
+  function chooseAddressSite(site) {
+    resolvedAddress = { companyName: site.companyName || '', street: site.street || '', city: site.city || '' };
+    resolvedAddressForTaxId = document.getElementById('custTaxId').value.trim();
+    var note = document.getElementById('addressNote');
+    note.textContent = 'כתובת: ' + formatSiteLabel(resolvedAddress);
+    note.classList.add('show');
+    note.removeAttribute('hidden');
+    var choices = document.getElementById('addressChoices');
+    choices.setAttribute('hidden', '');
+    choices.innerHTML = '';
+  }
+
+  function showAddressChoices(sites) {
+    var choices = document.getElementById('addressChoices');
+    choices.innerHTML = '';
+    var label = document.createElement('span');
+    label.className = 'choices-label';
+    label.textContent = 'נמצאו כמה כתובות לת"ז/ח"פ הזה — בחרו את הסניף הנכון:';
+    choices.appendChild(label);
+    sites.forEach(function (site) {
+      var row = document.createElement('div');
+      row.className = 'picker-row';
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
+      var nameEl = document.createElement('span');
+      nameEl.className = 'name';
+      nameEl.textContent = site.companyName || '(ללא שם)';
+      var idEl = document.createElement('span');
+      idEl.className = 'id';
+      idEl.textContent = [site.street, site.city].filter(Boolean).join(', ');
+      row.appendChild(nameEl);
+      row.appendChild(idEl);
+      row.addEventListener('click', function () { chooseAddressSite(site); });
+      choices.appendChild(row);
+    });
+    choices.removeAttribute('hidden');
+    document.getElementById('addressNote').setAttribute('hidden', '');
+  }
+
+  function lookupAddressForCurrentTaxId() {
+    var taxId = document.getElementById('custTaxId').value.trim();
+    clearAddressUI();
+    if (taxId.length < 5) return; // too short to be a real ת"ז/ח"פ or temp ID — avoid noise while typing
+
+    var seq = ++addressLookupSeq;
+    fetchAddressesForTaxIdJsonp(taxId)
+      .then(function (sites) {
+        if (seq !== addressLookupSeq) return; // a newer lookup has since started; drop this one
+        sites = Array.isArray(sites) ? sites : [];
+        if (sites.length === 1) {
+          chooseAddressSite(sites[0]);
+        } else if (sites.length > 1) {
+          showAddressChoices(sites);
+        } // 0 matches: leave everything cleared, quietly (could just be a new customer not yet added)
+      })
+      .catch(function (err) {
+        console.error('MOOV address lookup failed:', err);
+      });
+  }
+
+  function setupAddressLookup() {
+    document.getElementById('custTaxId').addEventListener('input', function () {
+      // Invalidate a stale resolved address immediately (not debounced) — otherwise, if the
+      // user edits the ת"ז/ח"פ and submits the order within the debounce window below,
+      // resolvedAddress could still hold the PREVIOUS value's address and get attached to
+      // the wrong customer.
+      if (this.value.trim() !== resolvedAddressForTaxId) clearAddressUI();
+      if (addressLookupTimer) clearTimeout(addressLookupTimer);
+      addressLookupTimer = setTimeout(lookupAddressForCurrentTaxId, 450);
     });
   }
 
@@ -1237,6 +1387,7 @@
   attachHandlers();
   setupCustomerPicker();
   setupNewCustomerModal();
+  setupAddressLookup();
   updateSummary();
 })();
 </script>
