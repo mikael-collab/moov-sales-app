@@ -682,7 +682,7 @@
       <div class="picker-list" id="pickerList"></div>
       <div class="staff-bulk-footer">
         <label for="staffVisitDate">הוספת המסומנים למסלול, לתאריך:</label>
-        <input type="text" id="staffVisitDate" placeholder="dd/mm/yyyy">
+        <input type="date" id="staffVisitDate">
         <button type="button" class="pick-btn nc-submit" id="staffAddVisitsBtn">הוספת המסומנים למסלול</button>
         <p class="nc-status" id="staffBulkStatus" hidden></p>
       </div>
@@ -1234,10 +1234,21 @@
     return (site.taxId || '') + '|' + (site.street || '') + '|' + (site.city || '');
   }
 
-  function todayDdMmYyyy() {
+  // staffVisitDate is a native <input type="date"> (a real calendar picker), whose value is
+  // always "YYYY-MM-DD" regardless of the page's RTL direction or the visitor's locale — but
+  // the backend (addStaffVisits/parseIsraeliDate) expects "dd/mm/yyyy", so every value needs
+  // converting right before it's sent (isoToDdMmYyyy) or when setting today's date as the
+  // default (todayIso).
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function todayIso() {
     var d = new Date();
-    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
-    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function isoToDdMmYyyy(iso) {
+    var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? (m[3] + '/' + m[2] + '/' + m[1]) : '';
   }
 
   function fetchStaffSitesJsonp(passcode) {
@@ -1304,7 +1315,7 @@
     document.getElementById('pickerSearch').value = '';
     document.getElementById('pickerCityFilter').value = '';
     var dateInput = document.getElementById('staffVisitDate');
-    if (!dateInput.value) dateInput.value = todayDdMmYyyy();
+    if (!dateInput.value) dateInput.value = todayIso();
     document.getElementById('staffBulkStatus').setAttribute('hidden', '');
 
     if (staffSites === null) {
@@ -1449,7 +1460,13 @@
       status.removeAttribute('hidden');
       return;
     }
-    var dateStr = document.getElementById('staffVisitDate').value.trim();
+    var dateStr = isoToDdMmYyyy(document.getElementById('staffVisitDate').value);
+    if (!dateStr) {
+      status.textContent = 'יש לבחור תאריך';
+      status.className = 'nc-status error';
+      status.removeAttribute('hidden');
+      return;
+    }
     var sitesToAdd = keys.map(function (k) { return markedSites[k]; });
     var btn = document.getElementById('staffAddVisitsBtn');
     btn.disabled = true;
