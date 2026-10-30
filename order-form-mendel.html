@@ -489,7 +489,7 @@
     font-family: "Rubik", sans-serif;
     font-size: 1rem;
   }
-  #pickerSearch {
+  #pickerSearch, #pickerCityFilter {
     width: 100%;
     font: inherit;
     font-family: "Heebo", sans-serif;
@@ -499,6 +499,12 @@
     border-radius: var(--radius-sm);
     padding: 10px 12px;
   }
+  .picker-filters { display: flex; flex-direction: column; gap: 8px; }
+  /* #pickerStaffView wraps the filters/list/footer as one flex item of .picker-sheet — it
+     needs to be a flex column itself so .picker-list's flex:1/overflow still works inside it,
+     same as when those were direct children of .picker-sheet. */
+  #pickerStaffView { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  #pickerStaffView[hidden] { display: none; }
   .picker-list { overflow-y: auto; flex: 1 1 auto; }
   .picker-row {
     padding: 11px 16px;
@@ -511,6 +517,41 @@
   .picker-row .name { font-weight: 700; display: block; }
   .picker-row .id { font-size: 0.76rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
   .picker-empty { padding: 22px 16px; color: var(--ink-faint); text-align: center; font-size: 0.86rem; }
+
+  /* ---- Staff tool: per-row "mark for bulk route-add" checkbox + bottom action bar ---- */
+  .staff-row { display: flex; align-items: flex-start; gap: 10px; }
+  .staff-row-check {
+    flex: none;
+    width: 19px;
+    height: 19px;
+    margin-top: 2px;
+    accent-color: var(--accent);
+  }
+  .staff-row-info { flex: 1 1 auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .staff-bulk-footer {
+    flex: none;
+    padding: 12px 16px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+  .staff-bulk-footer label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+  }
+  .staff-bulk-footer input {
+    width: 100%;
+    font: inherit;
+    font-family: "Heebo", sans-serif;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    margin-bottom: 8px;
+  }
 
   /* ---- Address lookup-by-ת"ז/ח"פ: single result note + multi-site chooser ---- */
   .address-choices {
@@ -621,10 +662,32 @@
 <div class="picker-overlay" id="pickerOverlay" hidden>
   <div class="picker-sheet" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
     <div class="picker-head">
-      <h3 id="pickerTitle">בחירת לקוח קיים</h3>
-      <input type="text" id="pickerSearch" placeholder="הקלידו שם עסק לחיפוש..." autocomplete="off">
+      <h3 id="pickerTitle">בחירת לקוח קיים — לצוות</h3>
     </div>
-    <div class="picker-list" id="pickerList"></div>
+
+    <div class="nc-body" id="pickerGate">
+      <div class="field">
+        <label for="staffPasscodeInput">קוד גישה</label>
+        <input type="password" id="staffPasscodeInput" autocomplete="off" dir="ltr" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <p class="nc-status" id="pickerGateStatus" hidden></p>
+      <button type="button" class="pick-btn nc-submit" id="pickerGateSubmitBtn">כניסה</button>
+    </div>
+
+    <div id="pickerStaffView" hidden>
+      <div class="picker-head picker-filters">
+        <input type="text" id="pickerSearch" placeholder="סינון לפי שם עסק..." autocomplete="off">
+        <input type="text" id="pickerCityFilter" placeholder="סינון לפי עיר..." autocomplete="off">
+      </div>
+      <div class="picker-list" id="pickerList"></div>
+      <div class="staff-bulk-footer">
+        <label for="staffVisitDate">הוספת המסומנים למסלול, לתאריך:</label>
+        <input type="text" id="staffVisitDate" placeholder="dd/mm/yyyy">
+        <button type="button" class="pick-btn nc-submit" id="staffAddVisitsBtn">הוספת המסומנים למסלול</button>
+        <p class="nc-status" id="staffBulkStatus" hidden></p>
+      </div>
+    </div>
+
     <button type="button" class="picker-close" id="pickerCloseBtn">סגירה</button>
   </div>
 </div>
@@ -664,8 +727,8 @@
   // the original. WHATSAPP_NUMBER: international format, digits only, no "+" or leading 0
   // (e.g. Israeli 050-123-4567 becomes 972501234567). NOTIFY_URL: Mendel's OWN Apps Script
   // Web App /exec URL (from Code-Mendel.gs's own deployment) — NOT Mikael's.
-  var WHATSAPP_NUMBER = '972507660125'; // e.g. '972501234567' — fill in before publishing
-  var NOTIFY_URL = 'https://script.google.com/macros/s/AKfycbxCJ1ys4H74P3UwIAUz-Y4Hj57SDMFfVPFmzIEEY6wz2Z-XpWSq8ZRt-NpJ3XBCSuoE/exec'; // e.g. 'https://script.google.com/macros/s/AKfycb.../exec' — fill in after deploying Code-Mendel.gs
+  var WHATSAPP_NUMBER = '<MENDEL_WHATSAPP_NUMBER>'; // e.g. '972501234567' — fill in before publishing
+  var NOTIFY_URL = '<MENDEL_APPS_SCRIPT_WEB_APP_URL>'; // e.g. 'https://script.google.com/macros/s/AKfycb.../exec' — fill in after deploying Code-Mendel.gs
   var PRICE_AGOROT = 1534; // 15.34 ₪ per unit, incl. VAT — standard (non-distributor) retail price
 
   // Distributor/wholesale volume pricing: once the ORDER'S TOTAL quantity (summed across
@@ -1149,18 +1212,37 @@
     });
   }
 
-  // "Select existing customer" button: lets the ת"ז / ח"פ field be filled in by picking a
-  // company name instead of typing the number. The customer list is fetched once, lazily,
-  // on first use — from the Apps Script backend's "customers" action, which only ever
-  // returns company name + ת"ז/ח"פ (same two fields lookupCustomerByTaxId itself reads).
-  // Loaded via a JSONP <script> tag rather than fetch(): a script tag isn't subject to
-  // CORS the way reading a fetch() response is, so this works regardless of whatever
-  // cross-origin headers the Apps Script deployment happens to send back.
-  var customerList = null; // null = not fetched yet, [] = fetched (possibly empty/failed)
+  // "Select existing customer" button — a STAFF-ONLY tool, gated by a shared passcode (see
+  // Code-Mendel.gs's STAFF_PASSCODE). Only people who know the passcode can browse/filter the
+  // customer list at all; everyone else just sees the passcode prompt. Once unlocked for
+  // this page load, it stays unlocked (no need to re-enter the passcode every time the
+  // picker is reopened). Two things it can do with the (filterable, by name AND city) list:
+  //   - Click a row's name/address to attach that exact site to the order being filled in
+  //     right now (selectStaffSite) — same end result as the old plain picker.
+  //   - Check one or more rows' boxes, pick a date, and "add as visits" (submitStaffVisits)
+  //     to schedule them as route stops for that date with no product order — a bulk
+  //     version of the Sheet's "Add Visit" tab, usable right from the form.
+  // All loaded/submitted via JSONP <script> tags rather than fetch(), same reason as
+  // everywhere else in this file: sidesteps CORS regardless of the Apps Script deployment's
+  // response headers.
+  var staffUnlocked = false;
+  var staffPasscode = '';
+  var staffSites = null; // null = not fetched yet, [] = fetched (possibly empty)
+  var markedSites = {}; // siteKey(site) -> site, for the ones checked for bulk "add as visits"
 
-  function fetchCustomersJsonp() {
+  function siteKey(site) {
+    return (site.taxId || '') + '|' + (site.street || '') + '|' + (site.city || '');
+  }
+
+  function todayDdMmYyyy() {
+    var d = new Date();
+    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  function fetchStaffSitesJsonp(passcode) {
     return new Promise(function (resolve, reject) {
-      var cbName = 'moovCustomersCb' + Date.now();
+      var cbName = 'moovStaffSitesCb' + Date.now();
       var script = document.createElement('script');
       var cleanup = function () {
         delete window[cbName];
@@ -1168,32 +1250,36 @@
       };
       window[cbName] = function (data) { cleanup(); resolve(data); };
       script.onerror = function () { cleanup(); reject(new Error('JSONP load failed')); };
-      script.src = NOTIFY_URL + '?action=customers&callback=' + cbName;
+      script.src = NOTIFY_URL + '?action=staffSites&passcode=' + encodeURIComponent(passcode) + '&callback=' + cbName;
+      document.body.appendChild(script);
+    });
+  }
+
+  function addStaffVisitsJsonp(passcode, dateStr, sites) {
+    return new Promise(function (resolve, reject) {
+      var cbName = 'moovAddVisitsCb' + Date.now();
+      var script = document.createElement('script');
+      var cleanup = function () {
+        delete window[cbName];
+        script.remove();
+      };
+      window[cbName] = function (data) { cleanup(); resolve(data); };
+      script.onerror = function () { cleanup(); reject(new Error('JSONP load failed')); };
+      script.src = NOTIFY_URL + '?action=addStaffVisits' +
+        '&passcode=' + encodeURIComponent(passcode) +
+        '&date=' + encodeURIComponent(dateStr) +
+        '&sites=' + encodeURIComponent(JSON.stringify(sites)) +
+        '&callback=' + cbName;
       document.body.appendChild(script);
     });
   }
 
   function openCustomerPicker() {
-    var overlay = document.getElementById('pickerOverlay');
-    var search = document.getElementById('pickerSearch');
-    overlay.removeAttribute('hidden');
-    search.value = '';
-    setTimeout(function () { search.focus(); }, 50);
-
-    if (customerList === null) {
-      renderCustomerList('', true); // loading state while the first fetch is in flight
-      fetchCustomersJsonp()
-        .then(function (list) {
-          customerList = Array.isArray(list) ? list : [];
-          renderCustomerList(search.value);
-        })
-        .catch(function (err) {
-          console.error('MOOV customer list fetch failed:', err);
-          customerList = [];
-          renderCustomerList(search.value);
-        });
+    document.getElementById('pickerOverlay').removeAttribute('hidden');
+    if (staffUnlocked) {
+      showStaffView();
     } else {
-      renderCustomerList('');
+      showGateView();
     }
   }
 
@@ -1201,7 +1287,76 @@
     document.getElementById('pickerOverlay').setAttribute('hidden', '');
   }
 
-  function renderCustomerList(filterText, loading) {
+  function showGateView() {
+    document.getElementById('pickerGate').removeAttribute('hidden');
+    document.getElementById('pickerStaffView').setAttribute('hidden', '');
+    var status = document.getElementById('pickerGateStatus');
+    status.setAttribute('hidden', '');
+    status.className = 'nc-status';
+    var input = document.getElementById('staffPasscodeInput');
+    input.value = '';
+    setTimeout(function () { input.focus(); }, 50);
+  }
+
+  function showStaffView() {
+    document.getElementById('pickerGate').setAttribute('hidden', '');
+    document.getElementById('pickerStaffView').removeAttribute('hidden');
+    document.getElementById('pickerSearch').value = '';
+    document.getElementById('pickerCityFilter').value = '';
+    var dateInput = document.getElementById('staffVisitDate');
+    if (!dateInput.value) dateInput.value = todayDdMmYyyy();
+    document.getElementById('staffBulkStatus').setAttribute('hidden', '');
+
+    if (staffSites === null) {
+      renderStaffList('', '', true); // loading state while the first fetch is in flight
+      fetchStaffSitesJsonp(staffPasscode)
+        .then(function (result) {
+          staffSites = (result && result.ok && Array.isArray(result.sites)) ? result.sites : [];
+          renderStaffList('', '');
+        })
+        .catch(function (err) {
+          console.error('MOOV staff sites fetch failed:', err);
+          staffSites = [];
+          renderStaffList('', '');
+        });
+    } else {
+      renderStaffList('', '');
+    }
+  }
+
+  function submitGatePasscode() {
+    var passcode = document.getElementById('staffPasscodeInput').value.trim();
+    var status = document.getElementById('pickerGateStatus');
+    if (!passcode) {
+      status.textContent = 'יש להקליד קוד גישה';
+      status.className = 'nc-status error';
+      status.removeAttribute('hidden');
+      return;
+    }
+    status.textContent = 'בודק...';
+    status.className = 'nc-status';
+    status.removeAttribute('hidden');
+
+    fetchStaffSitesJsonp(passcode)
+      .then(function (result) {
+        if (!result || !result.ok) {
+          status.textContent = 'קוד גישה שגוי';
+          status.className = 'nc-status error';
+          return;
+        }
+        staffUnlocked = true;
+        staffPasscode = passcode;
+        staffSites = Array.isArray(result.sites) ? result.sites : [];
+        showStaffView();
+      })
+      .catch(function (err) {
+        console.error('MOOV passcode check failed:', err);
+        status.textContent = 'שגיאת תקשורת, נסו שוב';
+        status.className = 'nc-status error';
+      });
+  }
+
+  function renderStaffList(nameFilter, cityFilter, loading) {
     var list = document.getElementById('pickerList');
     list.innerHTML = '';
 
@@ -1213,37 +1368,65 @@
       return;
     }
 
-    var term = filterText.trim().toLowerCase();
-    var matches = (customerList || []).filter(function (c) {
-      return !term || c.companyName.toLowerCase().indexOf(term) !== -1 || c.taxId.indexOf(term) !== -1;
+    var nameTerm = nameFilter.trim().toLowerCase();
+    var cityTerm = cityFilter.trim().toLowerCase();
+    var matches = (staffSites || []).filter(function (s) {
+      var nameOk = !nameTerm || s.companyName.toLowerCase().indexOf(nameTerm) !== -1 || s.taxId.indexOf(nameTerm) !== -1;
+      var cityOk = !cityTerm || (s.city || '').toLowerCase().indexOf(cityTerm) !== -1;
+      return nameOk && cityOk;
     });
 
     if (matches.length === 0) {
       var emptyEl = document.createElement('p');
       emptyEl.className = 'picker-empty';
-      emptyEl.textContent = (customerList && customerList.length === 0)
+      emptyEl.textContent = (staffSites && staffSites.length === 0)
         ? 'לא הצלחנו לטעון את רשימת הלקוחות כרגע'
         : 'לא נמצאו לקוחות מתאימים';
       list.appendChild(emptyEl);
       return;
     }
 
-    matches.slice(0, 50).forEach(function (c) {
+    matches.slice(0, 200).forEach(function (s) {
       var row = document.createElement('div');
-      row.className = 'picker-row';
-      row.setAttribute('role', 'button');
-      row.tabIndex = 0;
+      row.className = 'picker-row staff-row';
+
+      var checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'staff-row-check';
+      checkbox.setAttribute('aria-label', 'סימון ' + s.companyName + ' להוספה למסלול');
+      checkbox.checked = !!markedSites[siteKey(s)];
+      checkbox.addEventListener('change', function () {
+        if (checkbox.checked) markedSites[siteKey(s)] = s;
+        else delete markedSites[siteKey(s)];
+      });
+
+      var info = document.createElement('div');
+      info.className = 'staff-row-info';
+      info.setAttribute('role', 'button');
+      info.tabIndex = 0;
       var nameEl = document.createElement('span');
       nameEl.className = 'name';
-      nameEl.textContent = c.companyName;
+      nameEl.textContent = s.companyName;
       var idEl = document.createElement('span');
       idEl.className = 'id';
-      idEl.textContent = 'ת"ז / ח"פ: ' + c.taxId;
-      row.appendChild(nameEl);
-      row.appendChild(idEl);
-      row.addEventListener('click', function () { selectCustomer(c); });
+      idEl.textContent = [s.street, s.city].filter(Boolean).join(', ') || ('ת"ז / ח"פ: ' + s.taxId);
+      info.appendChild(nameEl);
+      info.appendChild(idEl);
+      info.addEventListener('click', function () { selectStaffSite(s); });
+
+      row.appendChild(checkbox);
+      row.appendChild(info);
       list.appendChild(row);
     });
+  }
+
+  function selectStaffSite(site) {
+    selectCustomer({ taxId: site.taxId, companyName: site.companyName });
+    // We already know the exact site (street/city) that was picked — set it directly
+    // rather than waiting for the automatic ת"ז/ח"פ lookup (which would re-fetch and, for a
+    // multi-site customer, show its own chooser again for no reason).
+    if (addressLookupTimer) clearTimeout(addressLookupTimer);
+    chooseAddressSite(site);
   }
 
   function selectCustomer(c) {
@@ -1257,15 +1440,61 @@
     closeCustomerPicker();
   }
 
+  function submitStaffVisits() {
+    var keys = Object.keys(markedSites);
+    var status = document.getElementById('staffBulkStatus');
+    if (keys.length === 0) {
+      status.textContent = 'לא סומנו לקוחות';
+      status.className = 'nc-status error';
+      status.removeAttribute('hidden');
+      return;
+    }
+    var dateStr = document.getElementById('staffVisitDate').value.trim();
+    var sitesToAdd = keys.map(function (k) { return markedSites[k]; });
+    var btn = document.getElementById('staffAddVisitsBtn');
+    btn.disabled = true;
+    status.textContent = 'מוסיף...';
+    status.className = 'nc-status';
+    status.removeAttribute('hidden');
+
+    addStaffVisitsJsonp(staffPasscode, dateStr, sitesToAdd)
+      .then(function (result) {
+        btn.disabled = false;
+        if (!result || !result.ok) {
+          status.textContent = 'שגיאה: ' + ((result && result.error) || 'לא ידועה');
+          status.className = 'nc-status error';
+          return;
+        }
+        status.textContent = 'נוספו ' + result.added + ' ביקורים לתאריך ' + dateStr;
+        status.className = 'nc-status success';
+        markedSites = {};
+        renderStaffList(document.getElementById('pickerSearch').value, document.getElementById('pickerCityFilter').value);
+      })
+      .catch(function (err) {
+        console.error('MOOV addStaffVisits failed:', err);
+        btn.disabled = false;
+        status.textContent = 'שגיאת תקשורת, נסו שוב';
+        status.className = 'nc-status error';
+      });
+  }
+
   function setupCustomerPicker() {
     document.getElementById('pickCustomerBtn').addEventListener('click', openCustomerPicker);
     document.getElementById('pickerCloseBtn').addEventListener('click', closeCustomerPicker);
     document.getElementById('pickerOverlay').addEventListener('click', function (e) {
       if (e.target === this) closeCustomerPicker(); // tapping the dark backdrop closes it
     });
-    document.getElementById('pickerSearch').addEventListener('input', function (e) {
-      renderCustomerList(e.target.value);
+    document.getElementById('pickerGateSubmitBtn').addEventListener('click', submitGatePasscode);
+    document.getElementById('staffPasscodeInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitGatePasscode();
     });
+    document.getElementById('pickerSearch').addEventListener('input', function (e) {
+      renderStaffList(e.target.value, document.getElementById('pickerCityFilter').value);
+    });
+    document.getElementById('pickerCityFilter').addEventListener('input', function (e) {
+      renderStaffList(document.getElementById('pickerSearch').value, e.target.value);
+    });
+    document.getElementById('staffAddVisitsBtn').addEventListener('click', submitStaffVisits);
     // Typing a ת"ז/ח"פ by hand after having picked a customer makes the "selected" note
     // stale (it no longer matches the field), so clear it as soon as they type again.
     document.getElementById('custTaxId').addEventListener('input', function () {
