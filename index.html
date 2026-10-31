@@ -671,8 +671,12 @@ function fmt(x) {
 function fmtNum(n) { return n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtPhone(x) {
   if (!x) return x;
-  const d = x.replace(/\D/g, '');
+  let d = x.replace(/\D/g, '');
+  // Strip Israeli country code: +972 or 00972
+  if (d.startsWith('972') && d.length >= 11) d = '0' + d.slice(3);
+  // Israeli mobile 10-digit: 05X-XXXXXXX
   if (d.length === 10 && d.startsWith('0')) return d.slice(0, 3) + '-' + d.slice(3);
+  // Israeli landline 9-digit: 0X-XXXXXXX
   if (d.length === 9 && d.startsWith('0')) return d.slice(0, 2) + '-' + d.slice(2);
   return x;
 }
