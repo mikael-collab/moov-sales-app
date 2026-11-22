@@ -218,7 +218,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v6.4'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.5'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -239,36 +239,36 @@ const COLS = {
   // -- 1. Shared Invoices & Tax (חשבוניות / חשמ"ק) --
   docCustId: 'A',      // ת"ז / ח"פ
   docCustName: 'B',    // שם העסק
-  invDelivRef: 'C',    // מספר תעודת משלוח (אם רלוונטי) — NEW col C in invoice sheets
-  docDate: 'D',        // תאריך (was C — shifted +1 by new col C)
-  dnDate: 'C',         // תאריך in DN sheet (unchanged — DN sheet has no new col)
-  dnPrice: 'AN',       // מחיר in DN sheet (unchanged — was price col before shift)
-  dnDiscount: 'AP',    // הנחה in DN sheet (unchanged)
-  
-  price: 'BO',         // מחיר ליחידה
-  subtotal: 'BP',      // סה"כ לפני מע"מ
-  discount: 'BQ',      // הנחה
-  afterDisc: 'BR',     // סה"כ אחר הנחה
-  
+  docDate: 'C',        // תאריך
+  dnDate: 'C',         // תאריך in DN sheet (same col C, different sheet)
+  dnPrice: 'AN',       // מחיר in DN sheet
+  dnDiscount: 'AP',    // הנחה in DN sheet
+  invDelivRef: 'AL',   // מספר תעודת משלוח (אם רלוונטי) — after invoice tail
+
+  price: 'Z',          // מחיר ליחידה
+  subtotal: 'AA',      // סה"כ לפני מע"מ
+  discount: 'AB',      // הנחה
+  afterDisc: 'AC',     // סה"כ אחר הנחה
+
   // -- 2. Invoices Specific (חשבוניות) --
-  invTerms: 'BS',      // תנאי תשלום
-  invTotalVat: 'BT',   // סה"כ כולל מע"מ
-  invNum: 'BU',        // מספר חשבונית
-  invPayType: 'BV',    // סוג תשלום
-  invPayAmt: 'BW',     // סכום התשלום
-  invPayDate: 'BX',    // תאריך פרעון שיק
-  invChkNum: 'BY',     // מספר שיק
-  invNotes: 'BZ',      // הערות
-  
+  invTerms: 'AD',      // תנאי תשלום
+  invTotalVat: 'AE',   // סה"כ כולל מע"מ
+  invNum: 'AF',        // מספר חשבונית
+  invPayType: 'AG',    // סוג תשלום
+  invPayAmt: 'AH',     // סכום התשלום
+  invPayDate: 'AI',    // תאריך פרעון שיק
+  invChkNum: 'AJ',     // מספר שיק
+  invNotes: 'AK',      // הערות
+
   // -- 3. Tax Specific (חשבוניות/קבלות) --
-  taxTotalVat: 'BS',   // סה"כ כולל מע"מ
-  taxPayType: 'BT',    // סוג תשלום
-  taxPayAmt: 'BU',     // סכום התשלום
-  taxPayDate: 'BV',    // תאריך פרעון שיק
-  taxChkNum: 'BW',     // מספר שיק
-  taxPhoto: 'BX',      // צילום שיק
-  taxNotes: 'BY',      // הערות
-  taxNum: 'BZ',        // מספר חשבונית מס / קבלה
+  taxTotalVat: 'AD',   // סה"כ כולל מע"מ
+  taxPayType: 'AE',    // סוג תשלום
+  taxPayAmt: 'AF',     // סכום התשלום
+  taxPayDate: 'AG',    // תאריך פרעון שיק
+  taxChkNum: 'AH',     // מספר שיק
+  taxPhoto: 'AI',      // צילום שיק
+  taxNotes: 'AJ',      // הערות
+  taxNum: 'AK',        // מספר חשבונית מס / קבלה
 
   // -- 4. Receipts (קבלות) --
   recInvNum: 'A',      // מספר חשבונית
@@ -304,9 +304,6 @@ const COLS = {
   delivNum:      'AT', // unique ID added by accountant (read-only in app)
 };
 // ─────────────────────────────────────────────────────────
-// Legacy column positions — backward compat for invoices saved before the NM product expansion
-const LEGACY_INV_TOT = 'AT'; // was COLS.invTotalVat before column shift
-const LEGACY_TAX_TOT = 'AS'; // was COLS.taxTotalVat before column shift
 
 const TABS={
   customers:{label:'לקוחות',         color:'#1a73e8',bg:'#e8f0fe'},
@@ -386,54 +383,56 @@ const DN_PRODS=[
   // Mojito: 50
   {nk:'AD',qk:'AE', name:'Voon/Moov Mojito 50mg - מוחיטו', short:'Voon Mojito 50',   heb:'מוחיטו',      nic:50,em:'🍹'},
 ];
-// PRODS: invoice/tax sheet column layout (shifted +1 by new col C)
+// PRODS: invoice/tax sheet column layout
+// Original 11 products (indexes 0-6, 8-11): same nk/qk as DN_PRODS → matches actual invoice sheet D-Y
+// New 20 products (indexes 7, 12-30): qk assigned to invoice cols AM-BF (after AL=invDelivRef)
 const PRODS=[
   // Blueberry Mint: 6, 10
-  {nk:'G',qk:'H',  name:'Blueberry Mint 6 - אוכמניות',      short:'Blueberry Mint 6',  heb:'אוכמניות',    nic:6, em:'🫐'},
-  {nk:'E',qk:'F',  name:'Blueberry Mint 10 - אוכמניות',     short:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
+  {nk:'F',qk:'G',  name:'Blueberry Mint 6 - אוכמניות',      short:'Blueberry Mint 6',  heb:'אוכמניות',    nic:6, em:'🫐'},
+  {nk:'D',qk:'E',  name:'Blueberry Mint 10 - אוכמניות',     short:'Blueberry Mint 10', heb:'אוכמניות',    nic:10,em:'🫐'},
   // Jalapeno Lime: 6, 14
-  {nk:'K',qk:'L',  name:'Jalapeno Lime 6 - חלפינע ליים',   short:'Jalapeno Lime 6',   heb:'חלפינו ליים',nic:6, em:'🌶'},
-  {nk:'I',qk:'J',  name:'Jalapeno Lime 14 - חלפיניו ליים',  short:'Jalapeno Lime 14',  heb:'חלפינו ליים',nic:14,em:'🌶'},
+  {nk:'J',qk:'K',  name:'Jalapeno Lime 6 - חלפינע ליים',   short:'Jalapeno Lime 6',   heb:'חלפינו ליים',nic:6, em:'🌶'},
+  {nk:'H',qk:'I',  name:'Jalapeno Lime 14 - חלפיניו ליים',  short:'Jalapeno Lime 14',  heb:'חלפינו ליים',nic:14,em:'🌶'},
   // Peppermint: 3, 10, 20
-  {nk:'Q',qk:'R',  name:'Peppermint 3 - מנטה',              short:'Peppermint 3',      heb:'מנטה',        nic:3, em:'🌿'},
-  {nk:'O',qk:'P',  name:'Peppermint 10 - מנטה',             short:'Peppermint 10',     heb:'מנטה',        nic:10,em:'🌿'},
-  {nk:'M',qk:'N',  name:'Peppermint 20 - מנטה',             short:'Peppermint 20',     heb:'מנטה',        nic:20,em:'🌿'},
-  // Ice Mint: 20
-  {nk:'BM',qk:'BN',name:'Ice Mint 20',                      short:'Ice Mint 20',       heb:'מנטה קרח',    nic:20,em:'❄️'},
+  {nk:'P',qk:'Q',  name:'Peppermint 3 - מנטה',              short:'Peppermint 3',      heb:'מנטה',        nic:3, em:'🌿'},
+  {nk:'N',qk:'O',  name:'Peppermint 10 - מנטה',             short:'Peppermint 10',     heb:'מנטה',        nic:10,em:'🌿'},
+  {nk:'L',qk:'M',  name:'Peppermint 20 - מנטה',             short:'Peppermint 20',     heb:'מנטה',        nic:20,em:'🌿'},
+  // Ice Mint: 20 — invoice col AM (new, was BM/BN)
+  {nk:'BL',qk:'AM',name:'Ice Mint 20',                      short:'Ice Mint 20',       heb:'מנטה קרח',    nic:20,em:'❄️'},
   // Raspberry Soda: 10
-  {nk:'S',qk:'T',  name:'Raspberry Soda 10 - פטל',          short:'Raspberry Soda 10', heb:'פטל',         nic:10,em:'🍓'},
+  {nk:'R',qk:'S',  name:'Raspberry Soda 10 - פטל',          short:'Raspberry Soda 10', heb:'פטל',         nic:10,em:'🍓'},
   // Watermelon: 14, 20
-  {nk:'W',qk:'X',  name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
-  {nk:'U',qk:'V',  name:'Watermelon 20 - אבטיח',            short:'Watermelon 20',     heb:'אבטיח',       nic:20,em:'🍉'},
+  {nk:'V',qk:'W',  name:'Watermelon 14 - אבטיח',            short:'Watermelon 14',     heb:'אבטיח',       nic:14,em:'🍉'},
+  {nk:'T',qk:'U',  name:'Watermelon 20 - אבטיח',            short:'Watermelon 20',     heb:'אבטיח',       nic:20,em:'🍉'},
   // Banana: 3
-  {nk:'Y',qk:'Z',  name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
-  // Orange: 10, 25, 50
-  {nk:'BG',qk:'BH',name:'Orange 10 - תפוז',                 short:'Orange 10',         heb:'תפוז',        nic:10,em:'🍊'},
-  {nk:'AA',qk:'AB', name:'Orange 25 - תפוז',                short:'Orange 25',         heb:'תפוז',        nic:25,em:'🍊'},
-  {nk:'BI',qk:'BJ',name:'Orange 50 - תפוז',                 short:'Orange 50',         heb:'תפוז',        nic:50,em:'🍊'},
-  // Double Apple: 25, 50
-  {nk:'AC',qk:'AD', name:'Double Apple 25 - תפוח כפול',     short:'Double Apple 25',   heb:'תפוח כפול',   nic:25,em:'🍏🍏'},
-  {nk:'AU',qk:'AV', name:'Double Apple 50 - תפוח כפול',     short:'Double Apple 50',   heb:'תפוח כפול',   nic:50,em:'🍏🍏'},
-  // Cola/Kola: 14, 25
-  {nk:'BE',qk:'BF', name:'Cola 14 - קולה',                  short:'Cola 14',           heb:'קולה',        nic:14,em:'🥤'},
-  {nk:'AG',qk:'AH', name:'Kola 25 - קולה',                  short:'Kola 25',           heb:'קולה',        nic:25,em:'🥤'},
-  // Pineapple Ice: 10, 25
-  {nk:'BC',qk:'BD', name:'Pineapple Ice 10 - אננס קרח',    short:'Pineapple Ice 10',  heb:'אננס קרח',    nic:10,em:'🍍'},
-  {nk:'AI',qk:'AJ', name:'Pineapple Ice 25 - אננס קרח',    short:'Pineapple Ice 25',  heb:'אננס קרח',    nic:25,em:'🍍'},
-  // Nana Mint: 10, 14, 25, 50
-  {nk:'AO',qk:'AP', name:'Nana Mint 10 - נענע מנטה',       short:'Nana Mint 10',      heb:'נענע מנטה',   nic:10,em:'🌱'},
-  {nk:'AQ',qk:'AR', name:'Nana Mint 14 - נענע מנטה',       short:'Nana Mint 14',      heb:'נענע מנטה',   nic:14,em:'🌱'},
-  {nk:'AK',qk:'AL', name:'Nana Mint 25 - נענע מנטה',       short:'Nana Mint 25',      heb:'נענע מנטה',   nic:25,em:'🌱'},
-  {nk:'AS',qk:'AT', name:'Nana Mint 50 - נענע מנטה',       short:'Nana Mint 50',      heb:'נענע מנטה',   nic:50,em:'🌱'},
-  // Strawberry Kiwi: 10, 14, 25, 50
-  {nk:'AW',qk:'AX', name:'Strawberry Kiwi 10 - תות קיווי', short:'Strawberry Kiwi 10',heb:'תות קיווי',   nic:10,em:'🍓'},
-  {nk:'AY',qk:'AZ', name:'Strawberry Kiwi 14 - תות קיווי', short:'Strawberry Kiwi 14',heb:'תות קיווי',   nic:14,em:'🍓'},
-  {nk:'AM',qk:'AN', name:'Strawberry/Kiwi 25 - תות/קיווי', short:'Strawberry Kiwi 25',heb:'תות/קיווי',   nic:25,em:'🍓'},
-  {nk:'BA',qk:'BB', name:'Strawberry Kiwi 50 - תות קיווי', short:'Strawberry Kiwi 50',heb:'תות קיווי',   nic:50,em:'🍓'},
-  // Cherry: 20
-  {nk:'BK',qk:'BL', name:'Cherry 20 - דובדבן',             short:'Cherry 20',         heb:'דובדבן',      nic:20,em:'🍒'},
-  // Mojito: 50
-  {nk:'AE',qk:'AF', name:'Voon/Moov Mojito 50mg - מוחיטו',  short:'Voon Mojito 50',   heb:'מוחיטו',      nic:50,em:'🍹'},
+  {nk:'X',qk:'Y',  name:'Banana 3 - בננה',                  short:'Banana 3',          heb:'בננה',        nic:3, em:'🍌'},
+  // Orange: 10, 25, 50 — new invoice cols AN, AO, AP
+  {nk:'BF',qk:'AN',name:'Orange 10 - תפוז',                 short:'Orange 10',         heb:'תפוז',        nic:10,em:'🍊'},
+  {nk:'Z', qk:'AO',name:'Orange 25 - תפוז',                 short:'Orange 25',         heb:'תפוז',        nic:25,em:'🍊'},
+  {nk:'BH',qk:'AP',name:'Orange 50 - תפוז',                 short:'Orange 50',         heb:'תפוז',        nic:50,em:'🍊'},
+  // Double Apple: 25, 50 — new invoice cols AQ, AR
+  {nk:'AB',qk:'AQ',name:'Double Apple 25 - תפוח כפול',      short:'Double Apple 25',   heb:'תפוח כפול',   nic:25,em:'🍏🍏'},
+  {nk:'AT',qk:'AR',name:'Double Apple 50 - תפוח כפול',      short:'Double Apple 50',   heb:'תפוח כפול',   nic:50,em:'🍏🍏'},
+  // Cola/Kola: 14, 25 — new invoice cols AS, AT
+  {nk:'BD',qk:'AS',name:'Cola 14 - קולה',                   short:'Cola 14',           heb:'קולה',        nic:14,em:'🥤'},
+  {nk:'AF',qk:'AT',name:'Kola 25 - קולה',                   short:'Kola 25',           heb:'קולה',        nic:25,em:'🥤'},
+  // Pineapple Ice: 10, 25 — new invoice cols AU, AV
+  {nk:'BB',qk:'AU',name:'Pineapple Ice 10 - אננס קרח',     short:'Pineapple Ice 10',  heb:'אננס קרח',    nic:10,em:'🍍'},
+  {nk:'AH',qk:'AV',name:'Pineapple Ice 25 - אננס קרח',     short:'Pineapple Ice 25',  heb:'אננס קרח',    nic:25,em:'🍍'},
+  // Nana Mint: 10, 14, 25, 50 — new invoice cols AW, AX, AY, AZ
+  {nk:'AN',qk:'AW',name:'Nana Mint 10 - נענע מנטה',        short:'Nana Mint 10',      heb:'נענע מנטה',   nic:10,em:'🌱'},
+  {nk:'AP',qk:'AX',name:'Nana Mint 14 - נענע מנטה',        short:'Nana Mint 14',      heb:'נענע מנטה',   nic:14,em:'🌱'},
+  {nk:'AJ',qk:'AY',name:'Nana Mint 25 - נענע מנטה',        short:'Nana Mint 25',      heb:'נענע מנטה',   nic:25,em:'🌱'},
+  {nk:'AR',qk:'AZ',name:'Nana Mint 50 - נענע מנטה',        short:'Nana Mint 50',      heb:'נענע מנטה',   nic:50,em:'🌱'},
+  // Strawberry Kiwi: 10, 14, 25, 50 — new invoice cols BA, BB, BC, BD
+  {nk:'AV',qk:'BA',name:'Strawberry Kiwi 10 - תות קיווי',  short:'Strawberry Kiwi 10',heb:'תות קיווי',   nic:10,em:'🍓'},
+  {nk:'AX',qk:'BB',name:'Strawberry Kiwi 14 - תות קיווי',  short:'Strawberry Kiwi 14',heb:'תות קיווי',   nic:14,em:'🍓'},
+  {nk:'BG',qk:'BC',name:'Strawberry/Kiwi 25 - תות/קיווי',  short:'Strawberry Kiwi 25',heb:'תות/קיווי',   nic:25,em:'🍓'},
+  {nk:'AZ',qk:'BD',name:'Strawberry Kiwi 50 - תות קיווי',  short:'Strawberry Kiwi 50',heb:'תות קיווי',   nic:50,em:'🍓'},
+  // Cherry: 20 — new invoice col BE
+  {nk:'BJ',qk:'BE',name:'Cherry 20 - דובדבן',              short:'Cherry 20',         heb:'דובדבן',      nic:20,em:'🍒'},
+  // Mojito: 50 — new invoice col BF
+  {nk:'AD',qk:'BF',name:'Voon/Moov Mojito 50mg - מוחיטו',  short:'Voon Mojito 50',    heb:'מוחיטו',      nic:50,em:'🍹'},
 ];
 
 const INV_TAIL=[
@@ -1122,9 +1121,7 @@ function openNewReceipt() {
 }
 function parseMoney(v) { return parseFloat((v || '').toString().replace(/[^0-9.]/g, '')) || 0; }
 function getDocTotal(doc) {
-  // Reads invoice/tax total with fallback to old column positions (backward compat)
-  return parseMoney(doc[COLS.invTotalVat]) || parseMoney(doc[LEGACY_INV_TOT])
-       || parseMoney(doc[COLS.taxTotalVat]) || parseMoney(doc[LEGACY_TAX_TOT]) || 0;
+  return parseMoney(doc[COLS.invTotalVat]) || parseMoney(doc[COLS.taxTotalVat]) || 0;
 }
 function getInvBalance(invNum) {
   if (!invNum) return 0;
