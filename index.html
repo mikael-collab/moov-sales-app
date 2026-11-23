@@ -218,7 +218,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v6.6'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.61'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -2177,13 +2177,12 @@ function buildInvCardsHtml(data, isTax) {
   if (!data.length) return `<div style="padding:32px 20px;text-align:center"><p style="color:#999;font-size:14px">אין תוצאות לפי הסינון</p></div>`;
   const color = tc();
   const totalKey = isTax ? COLS.taxTotalVat : COLS.invTotalVat;
-  const legacyTotKey = isTax ? LEGACY_TAX_TOT : LEGACY_INV_TOT;
   const numKey   = isTax ? COLS.taxNum : COLS.invNum;
   const tail     = isTax ? TAX_TAIL : INV_TAIL;
   let h = '';
   [...data].reverse().forEach((r, i) => {
     const id = `${isTax ? 't' : 'v'}-${r._id}`; const isE = S.expId === id; const bg = rowBg(r, isE);
-    const totVAT = nz(r[totalKey]) || nz(r[legacyTotKey]); const invNum = nz(r[numKey]);
+    const totVAT = nz(r[totalKey]); const invNum = nz(r[numKey]);
     const bizName = nz(r[COLS.docCustName]); const custId = nz(r[COLS.docCustId]); const date = nz(r[COLS.docDate]);
     const prods = PRODS.filter(p => { const q = parseFloat(r[p.qk]); return !isNaN(q) && q > 0; });
     const totItems = prods.reduce((s, p) => s + (parseFloat(r[p.qk]) || 0), 0);
