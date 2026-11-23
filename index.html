@@ -218,7 +218,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v6.5'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.6'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -241,8 +241,8 @@ const COLS = {
   docCustName: 'B',    // שם העסק
   docDate: 'C',        // תאריך
   dnDate: 'C',         // תאריך in DN sheet (same col C, different sheet)
-  dnPrice: 'AN',       // מחיר in DN sheet
-  dnDiscount: 'AP',    // הנחה in DN sheet
+  dnPrice: 'BN',       // מחיר in DN sheet (shifted +26 from AN for 13 new products)
+  dnDiscount: 'BP',    // הנחה in DN sheet (shifted +26 from AP)
   invDelivRef: 'AL',   // מספר תעודת משלוח (אם רלוונטי) — after invoice tail
 
   price: 'Z',          // מחיר ליחידה
@@ -298,10 +298,10 @@ const COLS = {
   custNotes: 'N',      // הערות לקוח (Column N)
   custConsignment: 'O', // יתרת נזילות (Column O) — editable across all tabs
   custVat:       'I',  // יש מע"מ? (Column I)
-  // Delivery notes (תעודות משלוח) — same product cols as invoices, different sheet
-  delivTotalVat: 'AR', // total with VAT (formula, parallel to taxTotalVat)
-  delivNotes:    'AS', // notes written by app
-  delivNum:      'AT', // unique ID added by accountant (read-only in app)
+  // Delivery notes (תעודות משלוח) — tail cols shifted +26 from original AN/AP/AR/AS/AT
+  delivTotalVat: 'BR', // total with VAT (formula, shifted +26 from AR)
+  delivNotes:    'BS', // notes written by app (shifted +26 from AS)
+  delivNum:      'BT', // unique ID added by accountant (read-only in app, shifted +26 from AT)
 };
 // ─────────────────────────────────────────────────────────
 
