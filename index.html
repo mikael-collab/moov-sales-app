@@ -218,7 +218,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v6.62'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.63'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -239,11 +239,12 @@ const COLS = {
   // -- 1. Shared Invoices & Tax (חשבוניות / חשמ"ק) --
   docCustId: 'A',      // ת"ז / ח"פ
   docCustName: 'B',    // שם העסק
-  docDate: 'C',        // תאריך
+  docDate: 'C',        // תאריך — DN/receipt context (col C)
+  invDate: 'D',        // תאריך — invoice/tax context (col D; col C = invDelivRef)
   dnDate: 'C',         // תאריך in DN sheet (same col C, different sheet)
   dnPrice: 'BN',       // מחיר in DN sheet (shifted +26 from AN for 13 new products)
   dnDiscount: 'BP',    // הנחה in DN sheet (shifted +26 from AP)
-  invDelivRef: 'D',    // מספר תעודת משלוח — col D in invoice sheet (products start at E)
+  invDelivRef: 'C',    // מספר תעודת משלוח — col C in invoice sheet (date at col D; products at E)
 
   price: 'BO',         // מחיר ליחידה (shifted +26 from original AO)
   subtotal: 'BP',      // סה"כ לפני מע"מ
@@ -384,7 +385,7 @@ const DN_PRODS=[
   {nk:'AD',qk:'AE', name:'Voon/Moov Mojito 50mg - מוחיטו', short:'Voon Mojito 50',   heb:'מוחיטו',      nic:50,em:'🍹'},
 ];
 // PRODS: invoice/tax sheet column layout
-// Invoice sheet: col D = invDelivRef, then 31 products at E–BN (each col +1 vs DN sheet)
+// Invoice sheet: col C = invDelivRef, col D = date, then 31 products at E–BN (each col +1 vs DN sheet)
 // qk values match Code.gs CONFIG.qtyCols exactly: F,H,J,L,N,P,R,T,V,X,Z,AB,AD,AF,AH,AJ,AL,AN,AP,AR,AT,AV,AX,AZ,BB,BD,BF,BH,BJ,BL,BN
 const PRODS=[
   // Blueberry Mint: 10, 6
@@ -667,7 +668,7 @@ function receiptFormErrors() {
 
 function efI(isTax) {
   const o = {};
-  o[COLS.docCustId] = ''; o[COLS.docCustName] = ''; o[COLS.docDate] = tod();
+  o[COLS.docCustId] = ''; o[COLS.docCustName] = ''; o[COLS.invDate] = tod();
   o._openInvs = []; o._overInvNums = []; 
   o._custEditRow = null; o._custEditId = null;
   o._custNotes = '';  // private field (underscore prefix avoids collision with any PRODS qk column)
@@ -1166,7 +1167,7 @@ function openNewReceiptFromInv(invId) {
   rf[COLS.recInvNum] = nz(r[COLS.invNum]) || '';
   rf._custId = nz(r[COLS.docCustId]) || '';
   rf._custName = nz(r[COLS.docCustName]) || '';
-  rf._invDate = nz(r[COLS.docDate]) || '';
+  rf._invDate = nz(r[COLS.invDate]) || '';
   const invTotal = getDocTotal(r);
   const paidSoFar = S.receipts
     .filter(rec => nz(rec[COLS.recInvNum]) === rf[COLS.recInvNum])
@@ -1728,7 +1729,7 @@ function buildTaxOpenInvsHtml() {
 
   f._openInvs.forEach((inv, i) => {
     const invNum  = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '';
-    const invDate = nz(inv[COLS.docDate]) || '';
+    const invDate = nz(inv[COLS.invDate]) || '';
     const invTot  = getDocTotal(inv);
     const key     = invNum || `row_${inv._rowIndex}`;
     const isSel   = selected.includes(key);
@@ -1805,10 +1806,10 @@ function renderInvForm(isTax) {
     <input type="text" class="finput" value="${esc(f[COLS.invDelivRef]||'')}" readonly
       style="background:#f0f0f0;color:#555;cursor:default">
   </div>` : ''}
-  <div class="field"><label>תאריך <small>(עמודה ${COLS.docDate})</small></label>
+  <div class="field"><label>תאריך <small>(עמודה ${COLS.invDate})</small></label>
     <input type="date" lang="he" id="inv-date" class="finput" style="direction:ltr;text-align:left"
-      value="${dateToISO(f[COLS.docDate])}" max="${dateToISO(tod())}"
-      oninput="uf('iForm','${COLS.docDate}',isoToHeb(this.value))">
+      value="${dateToISO(f[COLS.invDate])}" max="${dateToISO(tod())}"
+      oninput="uf('iForm','${COLS.invDate}',isoToHeb(this.value))">
   </div>`;
 
   h += `<div class="fdivider"><hr><span>📦 מוצרים</span><hr></div>
@@ -1962,7 +1963,7 @@ function buildOpenInvsHtml() {
           '<div class="dthead" style="background:' + tc() + '"><span>בחר חשבונית לתשלום</span><span>' + rf._openInvs.length + ' פתוחות</span></div>';
   rf._openInvs.forEach((inv, i) => {
     const invNum = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
-    const invDate = nz(inv[COLS.docDate]) || '';
+    const invDate = nz(inv[COLS.invDate]) || '';
     const balance = getInvBalance(invNum);
     const rawTotal = getDocTotal(inv);
     const hasPartial = balance < rawTotal - 0.1;
@@ -2194,7 +2195,7 @@ function buildInvCardsHtml(data, isTax) {
   [...data].reverse().forEach((r, i) => {
     const id = `${isTax ? 't' : 'v'}-${r._id}`; const isE = S.expId === id; const bg = rowBg(r, isE);
     const totVAT = nz(r[totalKey]); const invNum = nz(r[numKey]);
-    const bizName = nz(r[COLS.docCustName]); const custId = nz(r[COLS.docCustId]); const date = nz(r[COLS.docDate]);
+    const bizName = nz(r[COLS.docCustName]); const custId = nz(r[COLS.docCustId]); const date = nz(r[COLS.invDate]);
     const prods = PRODS.filter(p => { const q = parseFloat(r[p.qk]); return !isNaN(q) && q > 0; });
     const totItems = prods.reduce((s, p) => s + (parseFloat(r[p.qk]) || 0), 0);
     const balance = (!isTax && invNum) ? getInvBalance(invNum) : null;
@@ -2625,8 +2626,8 @@ function convertToInvoice(rowIndex, asTax) {
   S.iForm = {};
   S.iForm[COLS.docCustId]   = (d[COLS.docCustId]  ||'').trim();
   S.iForm[COLS.docCustName] = dnCustName(d); // uses stored col B or live customer lookup
-  S.iForm[COLS.docDate]     = tod();
-  S.iForm[COLS.invDelivRef]  = (d[COLS.delivNum]||'').trim(); // DN ID → invoice col C
+  S.iForm[COLS.invDate]      = tod();
+  S.iForm[COLS.invDelivRef]  = (d[COLS.delivNum]||'').trim(); // DN ID → invoice col C (invDelivRef)
   S.iForm[COLS.price]       = (d[COLS.dnPrice]    ||'').toString().trim();
   S.iForm[COLS.discount]    = (d[COLS.dnDiscount] ||'').toString().trim();
   // Map DN qty columns (DN_PRODS) → invoice qty columns (PRODS)
@@ -3062,7 +3063,7 @@ function pickCustomer(name, id) {
     const inv = S.rForm._openInvs[0];
     S.rForm[COLS.recInvNum] = nz(inv[COLS.invNum]) || '';
     S.rForm._invTotal = String(getInvBalance(S.rForm[COLS.recInvNum]));
-    S.rForm._invDate = nz(inv[COLS.docDate]) || '';
+    S.rForm._invDate = nz(inv[COLS.invDate]) || '';
     setElValue('r-' + COLS.recInvNum, S.rForm[COLS.recInvNum]);
     setElDisplay('receipt-inv-total', 'flex');
     setElText('rcb-total-val', fmt(S.rForm._invTotal));
@@ -3139,7 +3140,7 @@ function onReceiptInvNumInput(val) {
       }
       S.rForm._custName = cName || '';
       S.rForm._invTotal = String(getInvBalance(val.trim()));
-      S.rForm._invDate = nz(found[COLS.docDate]) || '';
+      S.rForm._invDate = nz(found[COLS.invDate]) || '';
       if (!S.rForm._custOpenInvs?.length) S.rForm._custOpenInvs = openInvsFor(S.rForm._custId);
 
       const cust = S.customers.find(c => c[COLS.custId] === S.rForm._custId);
@@ -3228,7 +3229,7 @@ function buildOverInvPickerHtml() {
          '<span style="font-weight:700">הפרש ₪' + Math.round(excess).toLocaleString('he-IL') + '</span></div>';
     others.forEach((inv, i) => {
       const invNum   = nz(inv[COLS.invNum]) || nz(inv[COLS.taxNum]) || '—';
-      const invDate  = nz(inv[COLS.docDate]) || '';
+      const invDate  = nz(inv[COLS.invDate]) || '';
       const invBal   = getInvBalance(invNum);
       const rawTotal = getDocTotal(inv);
       const hasPartial = rawTotal > 0 && invBal < rawTotal - 0.1;
@@ -3502,7 +3503,7 @@ async function executeSaveReceipt() {
   // prepend the customer name + ID + invoice date to the notes column so the row is identifiable in the sheet.
   // Date is included so that when a postdated cheque is used, the accountant knows which date to look for the invoice.
   const custFallback = !invNumRaw
-    ? [rf[COLS.recCustName] || '', rf[COLS.recCustId] || '', 'תאריך: ' + (rf[COLS.docDate] || tod())].filter(Boolean).join(' | ')
+    ? [rf[COLS.recCustName] || '', rf[COLS.recCustId] || '', 'תאריך: ' + (rf._invDate || tod())].filter(Boolean).join(' | ')
     : '';
 
   const g1Notes = isOverpay && overInvNums.length
@@ -3660,7 +3661,7 @@ async function executeSaveInv(isTax, calc) {
   // Overpayment: check covers multiple invoices — build notes and receipt list
   const _overRecList = [];
   if (isTax && !isCashPartial && f[COLS.taxPayType] === 'שיק' && total > 0.5 && paid > total + 0.5 && (f._overInvNums || []).length) {
-    const taxRef = `חשמ"ק ${f[COLS.docDate] || ''} לקוח ${f[COLS.docCustId] || ''}`;
+    const taxRef = `חשמ"ק ${f[COLS.invDate] || ''} לקוח ${f[COLS.docCustId] || ''}`;
     const invRefs = [];
     for (const overKey of f._overInvNums) {
       const isNumKey = !overKey.startsWith('row_');
@@ -3673,7 +3674,7 @@ async function executeSaveInv(isTax, calc) {
         [COLS.recInvNum]:   isNumKey ? overKey : '',
         [COLS.recPayType]:  'שיק',
         [COLS.recPayAmt]:   overTotal,
-        [COLS.recPayDate]:  f[COLS.taxPayDate] || f[COLS.docDate] || '',
+        [COLS.recPayDate]:  f[COLS.taxPayDate] || f[COLS.invDate] || '',
         [COLS.recChkNum]:   f[COLS.taxChkNum] || '',
         [COLS.recNotes]:    `שיק ₪${Math.round(paid).toLocaleString('he-IL')} | ${taxRef}`,
         [COLS.recCustName]: overInv ? (overInv[COLS.docCustName] || '') : '',
@@ -3687,7 +3688,7 @@ async function executeSaveInv(isTax, calc) {
 
   const qkCols = PRODS.map(p => p.qk);
   // Only user-entered fields — never write calculated columns (BP subtotal, BR afterDisc, BT/BS totalVat, B bizName)
-  const allowed = new Set([COLS.docCustId, COLS.invDelivRef, COLS.docDate, COLS.price, COLS.discount, ...qkCols]);
+  const allowed = new Set([COLS.docCustId, COLS.invDelivRef, COLS.invDate, COLS.price, COLS.discount, ...qkCols]);
 
   if (isTax && !isCashPartial) {
     [COLS.taxPayType, COLS.taxPayAmt, COLS.taxPayDate, COLS.taxChkNum, COLS.taxNotes, COLS.taxNum].forEach(k => allowed.add(k));
@@ -3743,7 +3744,7 @@ async function executeSaveInv(isTax, calc) {
 
     if (isCashPartial) {
       const custId  = (f[COLS.docCustId] || '').trim();
-      const invDate = (f[COLS.docDate] || tod()).trim();
+      const invDate = (f[COLS.invDate] || tod()).trim();
       const recNotes = `ת"ז/ח"פ: ${custId || '—'} | תאריך: ${invDate} | סה"כ חשבונית: ₪${Math.round(total).toLocaleString('he-IL')} | שולם מזומן: ₪${Math.round(paid).toLocaleString('he-IL')}`;
       const isChqPartial = f[COLS.taxPayType] === 'שיק';
       const recData = {
