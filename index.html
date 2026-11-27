@@ -1021,7 +1021,14 @@ async function loadAny(tab, stateKey, limit, req) {
 
   const doLoad = async () => {
     const d = await apiFetch(p);
-    S[tab] = (d.data || []).map((r, i) => ({ ...r, _id: i, _row: r._rowIndex ? parseInt(r._rowIndex) : (i + 2) }));
+    S[tab] = (d.data || []).map((r, i) => ({
+      ...r,
+      _id: i,
+      // Code.gs doGet does NOT include _rowIndex — assign from filtered-array index + 2 (row 1 = header).
+      // This gives each row a stable unique key for client-side lookups (convertToInvoice, etc.).
+      _rowIndex: i + 2,
+      _row: i + 2,
+    }));
     if (tab === 'customers' && d.termsOptions && d.termsOptions.length) {
       const termsField = CF.find(f => f.k === COLS.custTerms);
       if (termsField) termsField.options = d.termsOptions;
@@ -1289,6 +1296,21 @@ function render() {
   }
 
   el.scrollTop = pos; bindAll();
+}
+
+// Search on list screens: update state, re-render, then restore focus + cursor so the mobile
+// keyboard doesn't close (full render replaces the DOM, blurring the old input element).
+function searchRender(val) {
+  S.search = val;
+  const inp = document.getElementById('sinput');
+  const st = inp ? inp.selectionStart : val.length;
+  const se = inp ? inp.selectionEnd   : val.length;
+  render();
+  const inp2 = document.getElementById('sinput');
+  if (inp2) {
+    inp2.focus();
+    try { inp2.setSelectionRange(st, se); } catch(_) {}
+  }
 }
 
 function renderSetup() {
@@ -2328,7 +2350,7 @@ function renderDeliveryList() {
   let h = `<div class="sbar" style="position:sticky;top:0;z-index:10;background:#fff">
     <div class="swrap">
       <input class="sinput" id="sinput" type="text" placeholder="חיפוש לקוח, שם..."
-        value="${esc(S.search)}" oninput="S.search=this.value;render()">
+        value="${esc(S.search)}" oninput="searchRender(this.value)">
       <span class="sico">🔍</span>
     </div>
   </div>`;
@@ -2703,7 +2725,7 @@ function renderReturnsList() {
   let h = `<div class="sbar" style="position:sticky;top:0;z-index:10;background:#fff">
     <div class="swrap">
       <input class="sinput" id="sinput" type="text" placeholder="חיפוש לקוח..."
-        value="${esc(S.search)}" oninput="S.search=this.value;render()">
+        value="${esc(S.search)}" oninput="searchRender(this.value)">
       <span class="sico">🔍</span>
     </div>
   </div>`;
