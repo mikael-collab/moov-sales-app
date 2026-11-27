@@ -218,7 +218,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v6.65'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.66'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -1457,7 +1457,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.65</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.66</div></div>`;
   return h;
 }
 
@@ -1833,9 +1833,6 @@ function renderInvForm(isTax) {
   ${f[COLS.invDelivRef] ? `<div class="field"><label>מספר ת.מ. <small>(עמודה ${COLS.invDelivRef})</small></label>
     <input type="text" class="finput" value="${esc(f[COLS.invDelivRef]||'')}" readonly
       style="background:#f0f0f0;color:#555;cursor:default">
-  </div>` : ''}
-  ${f._fromDelivery ? `<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:11px;direction:ltr;font-family:monospace;margin:4px 0 8px">
-    🔍 DEBUG v6.64: invDelivRef→C="${esc(String(f[COLS.invDelivRef]||'(empty)'))}" | invDate→D="${esc(String(f[COLS.invDate]||'(empty)'))}"
   </div>` : ''}
   <div class="field"><label>תאריך <small>(עמודה ${COLS.invDate})</small></label>
     <input type="date" lang="he" id="inv-date" class="finput" style="direction:ltr;text-align:left"
@@ -2631,7 +2628,10 @@ async function saveDelivery() {
       { skip: !!(res && res.savedRow && !res.unconfirmed) });
     S.saving = false;
     if (ok) {
-      S.deliveries.push({ ...data, _id: S.deliveries.length, _bg: '#ffffff' });
+      // Store savedRow as _rowIndex so this delivery is immediately convertible (and BT fallback works)
+      const savedRowNum = res && res.savedRow ? parseInt(res.savedRow) : null;
+      S.deliveries.push({ ...data, _id: S.deliveries.length, _bg: '#ffffff',
+        _rowIndex: savedRowNum, _row: savedRowNum });
       S.msg = { t: 's', m: 'תעודת המשלוח נשמרה!' }; render();
       setTimeout(() => { S.screen = 'list'; S.dForm = {}; S.msg = null; setHeader(); render(); }, 1500);
     } else {
@@ -2650,7 +2650,9 @@ function convertToInvoice(rowIndex, asTax) {
   const d = S.deliveries.find(r => r._rowIndex === rowIndex);
   if (!d) { showToast('❌ תעודה לא נמצאה', 'err'); return; }
   const num = (d[COLS.delivNum]||'').trim();
-  const ref = num ? 'ת.מ. מספר ' + num : 'ת.מ. שורה ' + rowIndex;
+  // Fall back to spreadsheet row number when accountant hasn't yet assigned a DN number to BT
+  const dnRef = num || (d._rowIndex ? String(d._rowIndex) : '');
+  const ref = num ? 'ת.מ. מספר ' + num : (d._rowIndex ? 'ת.מ. שורה ' + d._rowIndex : 'ת.מ. לא ידוע');
   // Build DN name→product lookup for correct qty mapping (DN_PRODS and PRODS have different ordering)
   const dnByName = {};
   DN_PRODS.forEach(dnP => { dnByName[dnP.name] = dnP; });
@@ -2664,7 +2666,7 @@ function convertToInvoice(rowIndex, asTax) {
   S.iForm[COLS.docCustId]   = (d[COLS.docCustId]  ||'').trim();
   S.iForm[COLS.docCustName] = dnCustName(d); // uses stored col B or live customer lookup
   S.iForm[COLS.invDate]      = tod();
-  S.iForm[COLS.invDelivRef]  = (d[COLS.delivNum]||'').trim(); // DN ID → invoice col C (invDelivRef)
+  S.iForm[COLS.invDelivRef]  = dnRef; // col C: DN number (BT) if set by accountant, else spreadsheet row number
   S.iForm[COLS.price]       = (d[COLS.dnPrice]    ||'').toString().trim();
   S.iForm[COLS.discount]    = (d[COLS.dnDiscount] ||'').toString().trim();
   // Map DN qty columns → invoice qty columns by product name (not by index — the two arrays have different order)
@@ -2672,7 +2674,7 @@ function convertToInvoice(rowIndex, asTax) {
     const dnP = dnByName[p.name];
     S.iForm[p.qk] = dnP ? (d[dnP.qk]||'').toString().trim() : '0';
   });
-  console.log('[MOOV v6.64] convertToInvoice — iForm C:', S.iForm[COLS.invDelivRef], '| iForm D:', S.iForm[COLS.invDate]);
+  console.log('[MOOV v6.66] convertToInvoice — iForm C (invDelivRef):', S.iForm[COLS.invDelivRef], '| iForm D (date):', S.iForm[COLS.invDate]);
   const custId = S.iForm[COLS.docCustId];
   const cust = S.customers.find(c => (c[COLS.custId]||'').trim() === custId);
   S.iForm._custEditRow     = cust ? cust._row : null;
@@ -3765,7 +3767,7 @@ async function executeSaveInv(isTax, calc) {
       data,
       photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''
     };
-    console.log('[MOOV v6.64] executeSaveInv — data C:', data[COLS.invDelivRef], '| data D:', data[COLS.invDate], '| action:', payload.action);
+    console.log('[MOOV v6.66] executeSaveInv — data C:', data[COLS.invDelivRef], '| data D:', data[COLS.invDate], '| action:', payload.action);
     const invRes = await apiPost(payload);
 
     // Skip verification when we got a confirmed savedRow from the POST response —
