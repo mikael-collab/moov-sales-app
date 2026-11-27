@@ -218,7 +218,7 @@ textarea.finput{resize:vertical;min-height:65px;font-size:14px;line-height:1.5;}
 <script>
 // ── Config ──
 const STORAGE_KEY='moov_url_v6';
-const APP_VERSION = 'v6.63'; // bump this every frontend deploy to confirm cache is cleared
+const APP_VERSION = 'v6.64'; // bump this every frontend deploy to confirm cache is cleared
 const VAT=0.18;
 // Strips invisible Unicode control/bidi characters (RTL/LTR marks, zero-width, BOM) + non-digit/dash chars.
 // Prevents corrupted ID׺ from copy-paste (shows as right-aligned instead of left-aligned in the sheet)
@@ -846,7 +846,12 @@ async function apiPost(body) {
   const sep    = base.includes('?') ? '&' : '?';
   const getUrl = base + sep + 'write=1&payload=' + encodeURIComponent(bodyStrNoPhoto);
   const t = new Date().toLocaleTimeString('he-IL');
-  S._lastSave = { t, bodyLen: bodyStrFull.length, phase: '?', resp: '', payloadPreview: bodyStrNoPhoto.slice(0, 200) };
+  S._lastSave = {
+    t, bodyLen: bodyStrFull.length, phase: '?', resp: '',
+    payloadPreview: bodyStrNoPhoto.slice(0, 500),
+    dataC: (body && body.data) ? (body.data['C'] ?? '(אין C)') : '—',
+    dataD: (body && body.data) ? (body.data['D'] ?? '(אין D)') : '—',
+  };
 
   try {
     const r = await fetch(base, {
@@ -1405,6 +1410,7 @@ function renderSettings() {
           ${ls.p1err ? `<div style="font-size:10px;color:#c62828;direction:ltr">p1 err: ${esc(ls.p1err)}</div>` : ''}
           ${ls.resp ? `<div style="font-size:10px;direction:ltr;word-break:break-all">resp: ${esc(ls.resp)}</div>` : ''}
           <div style="font-size:10px;color:#888">body len: ${ls.bodyLen || ls.urlLen || '?'}</div>
+          ${ls.dataC !== undefined ? `<div style="font-size:12px;font-weight:bold;color:#1a73e8;margin-top:4px;direction:ltr">ת.מ.→C: "${esc(String(ls.dataC))}" | תאריך→D: "${esc(String(ls.dataD))}"</div>` : ''}
           ${ls.payloadPreview ? `<div style="font-size:10px;direction:ltr;word-break:break-all;color:#444;margin-top:2px">payload: ${esc(ls.payloadPreview)}</div>` : ''}
         </div>`;
       }
@@ -1429,7 +1435,7 @@ function renderSettings() {
       <div class="srow"><span class="slabel">נקה חיבור</span><button class="sbtn red" onclick="clearUrl()">🗑 נקה</button></div>
     </div>`;
   }
-  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.180</div></div>`;
+  h += `<div style="text-align:center;margin-top:14px;font-size:11px;color:#ccc">MOOV Sales App v6.64</div></div>`;
   return h;
 }
 
@@ -1805,6 +1811,9 @@ function renderInvForm(isTax) {
   ${f[COLS.invDelivRef] ? `<div class="field"><label>מספר ת.מ. <small>(עמודה ${COLS.invDelivRef})</small></label>
     <input type="text" class="finput" value="${esc(f[COLS.invDelivRef]||'')}" readonly
       style="background:#f0f0f0;color:#555;cursor:default">
+  </div>` : ''}
+  ${f._fromDelivery ? `<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:11px;direction:ltr;font-family:monospace;margin:4px 0 8px">
+    🔍 DEBUG v6.64: invDelivRef→C="${esc(String(f[COLS.invDelivRef]||'(empty)'))}" | invDate→D="${esc(String(f[COLS.invDate]||'(empty)'))}"
   </div>` : ''}
   <div class="field"><label>תאריך <small>(עמודה ${COLS.invDate})</small></label>
     <input type="date" lang="he" id="inv-date" class="finput" style="direction:ltr;text-align:left"
@@ -2620,9 +2629,15 @@ function convertToInvoice(rowIndex, asTax) {
   if (!d) { showToast('❌ תעודה לא נמצאה', 'err'); return; }
   const num = (d[COLS.delivNum]||'').trim();
   const ref = num ? 'ת.מ. מספר ' + num : 'ת.מ. שורה ' + rowIndex;
-  // origQtys: keyed by INVOICE column (PRODS[i].qk), values from DN row (DN_PRODS[i].qk)
+  // Build DN name→product lookup for correct qty mapping (DN_PRODS and PRODS have different ordering)
+  const dnByName = {};
+  DN_PRODS.forEach(dnP => { dnByName[dnP.name] = dnP; });
+  // origQtys: keyed by INVOICE column (p.qk), values from DN row matched by product name
   const origQtys = {};
-  DN_PRODS.forEach((dnP, i) => { origQtys[PRODS[i].qk] = (d[dnP.qk]||'').toString().trim(); });
+  PRODS.forEach(p => {
+    const dnP = dnByName[p.name];
+    origQtys[p.qk] = dnP ? (d[dnP.qk]||'').toString().trim() : '0';
+  });
   S.iForm = {};
   S.iForm[COLS.docCustId]   = (d[COLS.docCustId]  ||'').trim();
   S.iForm[COLS.docCustName] = dnCustName(d); // uses stored col B or live customer lookup
@@ -2630,8 +2645,12 @@ function convertToInvoice(rowIndex, asTax) {
   S.iForm[COLS.invDelivRef]  = (d[COLS.delivNum]||'').trim(); // DN ID → invoice col C (invDelivRef)
   S.iForm[COLS.price]       = (d[COLS.dnPrice]    ||'').toString().trim();
   S.iForm[COLS.discount]    = (d[COLS.dnDiscount] ||'').toString().trim();
-  // Map DN qty columns (DN_PRODS) → invoice qty columns (PRODS)
-  DN_PRODS.forEach((dnP, i) => { S.iForm[PRODS[i].qk] = (d[dnP.qk]||'').toString().trim(); });
+  // Map DN qty columns → invoice qty columns by product name (not by index — the two arrays have different order)
+  PRODS.forEach(p => {
+    const dnP = dnByName[p.name];
+    S.iForm[p.qk] = dnP ? (d[dnP.qk]||'').toString().trim() : '0';
+  });
+  console.log('[MOOV v6.64] convertToInvoice — iForm C:', S.iForm[COLS.invDelivRef], '| iForm D:', S.iForm[COLS.invDate]);
   const custId = S.iForm[COLS.docCustId];
   const cust = S.customers.find(c => (c[COLS.custId]||'').trim() === custId);
   S.iForm._custEditRow     = cust ? cust._row : null;
@@ -3724,6 +3743,7 @@ async function executeSaveInv(isTax, calc) {
       data,
       photoBase64: f._photoDataUrl ? (f._photoBase64 || '') : ''
     };
+    console.log('[MOOV v6.64] executeSaveInv — data C:', data[COLS.invDelivRef], '| data D:', data[COLS.invDate], '| action:', payload.action);
     const invRes = await apiPost(payload);
 
     // Skip verification when we got a confirmed savedRow from the POST response —
